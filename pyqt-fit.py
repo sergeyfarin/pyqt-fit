@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt
 import matplotlib
@@ -9,6 +9,7 @@ import residuals
 from path import path
 from curve_fit import curve_fit
 from plot_fit import plot_fit as _plot_fit
+from plot_fit import write_fit as _write_fit
 import bootstrap
 from csv import reader as csv_reader
 from csv import writer as csv_writer
@@ -139,6 +140,8 @@ class QtFitDlg(QtGui.QDialog):
         self._CI = None
         self._scale = None
         self._header = None
+        self._CIchanged = False
+        self.setData(None, None)
         residuals.load()
         functions.load()
         list_fcts = sorted(functions.names())
@@ -208,6 +211,8 @@ class QtFitDlg(QtGui.QDialog):
         txt = path(txt)
         if txt != self._input:
             try:
+                data = None
+                header = None
                 with file(txt, "rb") as f:
                     r = csv_reader(f)
                     header = r.next()
@@ -217,20 +222,31 @@ class QtFitDlg(QtGui.QDialog):
                     data = [[float(f) if f else nan for f in line] for line in r if r]
                     max_length = max(len(l) for l in data)
                     data = array([l + [nan]*(max_length-len(l)) for l in data], dtype=float)
-                    self._data = ma.masked_invalid(data)
-                    self._header = header
+                    data = ma.masked_invalid(data)
+                    header = header
                 self._input = txt
                 if self._input != self.inputFile.text():
                     self.inputFile.setText(self._input)
-                self.fieldXbox.clear()
-                self.fieldXbox.addItems(self._header)
-                self.fieldYbox.clear()
-                self.fieldYbox.addItems(self._header)
-                self.fieldX = self._header[0]
-                self.fieldY = self._header[1]
+                self.setData(header, data)
             except Exception, ex:
                 QtGui.QMessageBox.critical(self, "Error reading CSV file", str(ex))
     input = property(_getInput, _setInput)
+
+    def setData(self, header, data):
+        if header is None or data is None:
+            self._header = None
+            self._data = None
+            self.parameters.setModel(None)
+            self.param_model = None
+        else:
+            self._header = header
+            self._data = data
+            self.fieldXbox.clear()
+            self.fieldXbox.addItems(self._header)
+            self.fieldYbox.clear()
+            self.fieldYbox.addItems(self._header)
+            self.fieldX = self._header[0]
+            self.fieldY = self._header[1]
 
     def _getOutput(self):
         return self._output
@@ -298,12 +314,23 @@ class QtFitDlg(QtGui.QDialog):
         else:
             self.CI = None
 
+    @pyqtSignature("const QString&")
+    def on_CIvalues_textEdited(self, txt):
+        self._CIchanged = True
+
     @pyqtSignature("")
     def on_CIvalues_editingFinished(self):
         if self.CI:
-            ints = [float(f) for f in unicode(self.CIvalues.text()).split(";")]
-            self.setIntervals(ints)
-            self.CIvalues.setText(";".join("%g"%f for f in ints))
+            try:
+                ints = [float(f) for f in unicode(self.CIvalues.text()).split(";")]
+                self.setIntervals(ints)
+            except:
+                pass
+            if self.CI[1]:
+                self.CIvalues.setText(";".join("%g"%f for f in self.CI[1]))
+            else:
+                self.CIvalues.setText("")
+            self._CIchanged = False
 
     @pyqtSignature("const QString&")
     def on_CImethod_currentIndexChanged(self, txt):
@@ -349,17 +376,11 @@ class QtFitDlg(QtGui.QDialog):
         close_figure('all')
 
     def plot(self):
-        if self.fct is None or self.res is None or self.input is None:
-            txt = "Error, the following is missing:"
-            lst = []
-            if self.fct is None:
-                lst.append("function")
-            if self.res is None:
-                lst.append("residuals")
-            if self.input is None:
-                lst.append("input file")
-            QtGui.QMessageBox.critical(self, "Error plotting", txt + ", ".join(lst))
+        if self.param_model is None:
+            QtGui.QMessageBox.critical(self, "Error plotting", "Error, you don't have any data loaded")
         else:
+            if self._CIchanged:
+                self.on_CIvalues_editingFinished()
             fct = self.fct
             res = self.res
             model = self.param_model
@@ -387,68 +408,35 @@ class QtFitDlg(QtGui.QDialog):
             CI = ()
             result = None
             fct_desc = "$%s$" % (fct.description,)
+            loc = self.legendLocation.currentIndex()
             if self.CI is not None:
                 method = self.CI[0]
                 CI = self.CI[1]
                 result = _plot_fit(fct, xdata, ydata, p0,
                         eval_points=eval_points, CI = CI,
                         xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                        param_names = parm_names, res_desc = res.name, repeats=repeats,
-                        fit_args={"residuals": res, "maxfev": 10000, "fix_params": fixed},
+                        param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res, loc=loc,
+                        fit_args={"maxfev": 10000, "fix_params": fixed},
                         shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
             else:
                 result = _plot_fit(fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
                         eval_points=eval_points,
                         xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                        param_names = parm_names, res_desc = res.name,
+                        param_names = parm_names, res_name = res.name, loc=loc,
                         residuals = res, maxfev=10000)
             if outfile:
-                with file(outfile, "wb") as f:
-                    w = csv_writer(f)
-                    w.writerow(["Function",fct.description])
-                    w.writerow(["Residuals",res.name,res.description])
-                    w.writerow(["Parameter","Value"])
-                    for pn, pv in izip(parm_names, p0):
-                        w.writerow([pn, "%.20g" % pv])
-                    #TODO w.writerow(["Regression Evaluation"])
-                    w.writerow([])
-                    w.writerow(["Data"])
-                    w.writerow([self.fieldX, self.fieldY, fct.description, "Residuals: %s" % res.name])
-                    w.writerows(c_[xdata, ydata, result.yopts, result.res])
-                    w.writerow([])
-                    w.writerow(['Model validation'])
-                    w.writerow([self.fieldX, 'Normalized residuals', 'Theoretical quantiles'])
-                    w.writerows(c_[result.residuals_evaluation])
-                    if eval_points is not None:
-                        w.writerow([])
-                        w.writerow(["Interpolated data"])
-                        w.writerow([self.fieldY, self.fieldY])
-                        w.writerows(c_[result.interpolation])
-                    if CI:
-                        w.writerow([])
-                        w.writerow(["Confidence interval"])
-                        w.writerow(["Method",self.CI[0]])
-                        head = ["Parameters"] + list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in self.CI[1]]))
-                        w.writerow(head)
-                        print result.CIparams
-                        for cis in izip(parm_names, *chain(*result.CIparams)):
-                            cistr = [cis[0]] + ["%.20g" % v for v in cis[1:]]
-                            w.writerow(cistr)
-                        w.writerow([self.fieldY])
-                        head[0] = self.fieldX
-                        w.writerow(head)
-                        w.writerows(c_[tuple(chain([eval_points], *result.CIs))])
+                _write_fit(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
 
-def test():
+def main():
     wnd = QtFitDlg()
     wnd.show()
+    wnd.raise_()
     return wnd
 
 if __name__ == "__main__":
     import sys
     app = QtGui.QApplication(sys.argv)
     matplotlib.interactive(True)
-    wnd = QtFitDlg()
-    wnd.show()
+    wnd = main()
     app.exec_()
 

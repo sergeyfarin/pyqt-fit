@@ -1,12 +1,14 @@
 from __future__ import division
 from curve_fit import curve_fit
-from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi
+from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
 from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, clf, ylim, hist, suptitle, gca
 import bootstrap
-from itertools import izip
+from itertools import izip, chain
 from scipy.special import erfinv, gamma
 from scipy import stats
 from kernel_smoothing import SpatialAverage
+import inspect
+from csv import writer as csv_writer
 
 def plot_dist_residuals(res):
     hist(res,normed=True)
@@ -69,7 +71,7 @@ class ResultStruct(object):
     pass
 
 def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
-             CI=(), xname="X", yname="Y", fct_desc = None, param_names = (), res_desc = 'Standard',
+             CI=(), xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard',
              args=(), loc=None, **kwrds):
     """
     Fit the function ``fct(xdata, p0, *args)`` using the ``fit`` function
@@ -102,8 +104,10 @@ def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
         Formula of the function
     param_names: tuple of strings
         Name of the various parameters
+    residuals: callable
+        Residual function
     res_desc: string
-        String describing the residuals
+        Description of the residuals
     args: tuple
         Extra arguments for fct
     loc: string or int
@@ -142,9 +146,21 @@ def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
     plots: dict
         Dictionnary to access the various plot curves
     extra_output: extra output provided by the fit or bootstrap function
+    And also all the arguments that may change the result of the estimation.
     """
     CIs = []
     CIparams = []
+    if residuals is None:
+        residuals = lambda y1,y0: y1-y0
+        res_name = "Standard"
+        res_desc = '$y_0 - y_1$'
+    if 'residuals' in inspect.getargspec(fit).args:
+        if CI:
+            kwrds["fit_args"]["residuals"] = residuals
+        else:
+            kwrds["residuals"] = residuals
+    if eval_points is None:
+        eval_points = xdata
     if CI:
         if not iterable(CI):
             CI = (CI,)
@@ -181,7 +197,7 @@ def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
     figure()
     plot1 = subplot(2,2,1)
 # First subplot is the residuals
-    p_res = plot_residuals(xname, xdata, res_desc, res)
+    p_res = plot_residuals(xname, xdata, res_name, res)
 
     plot2 = subplot(2,2,2)
 # Scaled location
@@ -203,16 +219,64 @@ def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
     suptitle("Checks of correctness for function %s with params %s" % (fct_desc, param_strs))
 
     result = ResultStruct()
+    result.fct = fct
+    result.fct_desc = fct_desc
+    result.xdata = xdata
+    result.ydata = ydata
+    result.xname = xname
+    result.yname = yname
+    result.res_name = res_name
+    result.residuals = residuals
+    result.args = args
     result.popt = popt
     result.res = res
     result.yopts = yopts
-    result.interpolation = (eval_points, yvals)
+    result.eval_points = eval_points
+    result.interpolation = yvals
     result.residuals_evaluation = (sorted_x, scaled_res, normq)
+    result.CI = CI
     result.CIs = CIs
     result.CIparams = CIparams
     result.plots = plots
     result.extra_output = extra_output
     return result
+
+def write_fit(outfile, result, res_desc, parm_names, CImethod):
+    with file(outfile, "wb") as f:
+        w = csv_writer(f)
+        w.writerow(["Function",result.fct.description])
+        w.writerow(["Residuals",result.res_name,res_desc])
+        w.writerow(["Parameter","Value"])
+        for pn, pv in izip(parm_names, result.popt):
+            w.writerow([pn, "%.20g" % pv])
+        #TODO w.writerow(["Regression Evaluation"])
+        w.writerow([])
+        w.writerow(["Data"])
+        w.writerow([result.xname, result.yname, result.fct_desc, "Residuals: %s" % result.res_name])
+        w.writerows(c_[result.xdata, result.ydata, result.yopts, result.res])
+        w.writerow([])
+        w.writerow(['Model validation'])
+        w.writerow([result.xname, 'Normalized residuals', 'Theoretical quantiles'])
+        w.writerows(c_[result.residuals_evaluation])
+        if result.eval_points is not result.xdata:
+            w.writerow([])
+            w.writerow(["Interpolated data"])
+            w.writerow([result.yname, result.yname])
+            w.writerows(c_[result.eval_points, result.interpolation])
+        if result.CI:
+            w.writerow([])
+            w.writerow(["Confidence interval"])
+            w.writerow(["Method",CImethod])
+            head = ["Parameters"] + list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in result.CI]))
+            w.writerow(head)
+            print result.CIparams
+            for cis in izip(parm_names, *chain(*result.CIparams)):
+                cistr = [cis[0]] + ["%.20g" % v for v in cis[1:]]
+                w.writerow(cistr)
+            w.writerow([result.yname])
+            head[0] = result.xname
+            w.writerow(head)
+            w.writerows(c_[tuple(chain([result.eval_points], *result.CIs))])
 
 def test():
     import residuals
