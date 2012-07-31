@@ -386,19 +386,20 @@ class QtFitDlg(QtGui.QDialog):
             outfile = self.outputFile.text()
             CI = ()
             result = None
+            fct_desc = "$%s$" % (fct.description,)
             if self.CI is not None:
                 method = self.CI[0]
                 CI = self.CI[1]
                 result = _plot_fit(fct, xdata, ydata, p0,
                         eval_points=eval_points, CI = CI,
-                        xname = self.fieldX, yname = self.fieldY, fct_desc = "$%s$" % (fct.description,),
+                        xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                         param_names = parm_names, res_desc = res.name, repeats=repeats,
                         fit_args={"residuals": res, "maxfev": 10000, "fix_params": fixed},
                         shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
             else:
                 result = _plot_fit(fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
                         eval_points=eval_points,
-                        xname = self.fieldX, yname = self.fieldY, fct_desc = fct.description,
+                        xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                         param_names = parm_names, res_desc = res.name,
                         residuals = res, maxfev=10000)
             if outfile:
