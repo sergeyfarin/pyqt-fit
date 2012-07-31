@@ -208,8 +208,7 @@ def getCIs(CI, result_array, params_array):
     return CIs, CIparams
 
 def test():
-    import pyximport
-    pyximport.install()
+    import cyth
     import quad
     from numpy.random import rand, randn
     from pylab import plot, savefig, clf, legend, arange, figure, title, show

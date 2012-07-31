@@ -2,8 +2,22 @@ __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 import sys
 from path import path
-import traceback
-import imp
+
+sys_modules = "*.so"
+if sys.platform == 'win32' or sys.platform == 'cygwin':
+    sys_modules = "*.dll"
+elif sys.platform == 'darwin':
+    sys_modules = "*.dylib"
+
+class Residual(object):
+    def __init__(self, fct, name, desc, invert):
+        self.fct = fct
+        self.name = name
+        self.description = desc
+        self.invert = invert
+
+    def __call__(self, *args, **kwords):
+        return self.fct(*args, **kwords)
 
 def find_functions(module):
     content = dir(module)
@@ -33,10 +47,7 @@ def find_functions(module):
                     elif fields[0] == 'Formula':
                         desc = fields[1].strip()
             if name and desc and invert:
-                attr.name = name
-                attr.invert = invert
-                attr.description = desc
-                result[name] = attr
+                result[name] = Residual(attr, name, desc, invert)
     return result
 
 def load():
@@ -47,26 +58,22 @@ def load():
             f = f[:-3]+"py"
         sys_files.add(path(f).abspath())
     search_path = path(__file__).abspath().dirname()
-    errors = []
     fcts = {}
-    for f in search_path.files("*.py"):
+    for f in (search_path.files("*.py") + search_path.files("*.pyx") + search_path.files(sys_modules)):
         if f not in sys_files:
-            module_name = f.basename()[:-3]
-            full_name = "residuals."+module_name
-            fd, pathname, desc = imp.find_module(module_name, [f.dirname()])
+            module_name = f.namebase
+            pack_name = 'residuals.%s' % module_name
             try:
-                module = imp.load_module(full_name, fd, pathname, desc)
-                fcts.update(find_functions(module))
-            except Exception, ex:
-                tb = sys.exc_info()[2]
-                error_loc = "\n".join("In file %s, line %d\n\tIn '%s': %s" % e for e in traceback.extract_tb(tb))
-                errors.append((f,"Exception %s:\n%s\n%s" % (type(ex).__name__, str(ex), error_loc)))
-            finally:
-                if fd:
-                    fd.close()
-    if errors:
-        errs =  "\n\n".join("In file %s:\n%s" % (f,e) for f,e in errors)
-        raise RuntimeError("Errors while loading modules:\n'%s'" % errs)
+                mod = sys.modules.get(pack_name)
+                if mod:
+                    reload(mod)
+                else:
+                    exec "import %s" % module_name in globals()
+                    mod = sys.modules.get(pack_name)
+                mod = eval(module_name)
+                fcts.update(find_functions(mod))
+            except ImportError:
+                print "Warning, cannot import module '%s'" % (module_name,)
     global residuals
     residuals = fcts
     return fcts
@@ -84,8 +91,10 @@ def get(name):
 
     Returns
     -------
-    fct: callable
+    fct: callable object
         Callable object that will compute the residuals. The callable has the following attributes:
+        fct: callable
+            Function computing the residuals
         name: str
             Name of the residuals type
         description: str

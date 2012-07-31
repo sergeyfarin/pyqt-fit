@@ -2,8 +2,23 @@ __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 import sys
 from path import path
-import traceback
-import imp
+
+sys_modules = "*.so"
+if sys.platform == 'win32' or sys.platform == 'cygwin':
+    sys_modules = "*.dll"
+elif sys.platform == 'darwin':
+    sys_modules = "*.dylib"
+
+class Function(object):
+    def __init__(self, fct, name, desc, args, init_args):
+        self.fct = fct
+        self.name = name
+        self.description = desc
+        self.args = args
+        self.init_args = init_args
+
+    def __call__(self, *args, **kwords):
+        return self.fct(*args, **kwords)
 
 def find_functions(module):
     content = dir(module)
@@ -18,7 +33,7 @@ def find_functions(module):
             name = None
             desc = None
             args = None
-            parms = None
+            init_args = None
             for l in doc:
                 l = l.strip()
                 fields = l.split(':', 1)
@@ -32,15 +47,11 @@ def find_functions(module):
                     elif fields[0] == 'ParametersEstimate':
                         params_name = fields[1].strip()
                         if hasattr(module, params_name):
-                            parms = getattr(module, params_name)
-                            if not callable(parms):
-                                parms = None
-            if name and desc and args and parms:
-                attr.name = name
-                attr.description = desc
-                attr.args = args
-                attr.parms = parms
-                result[name] = attr
+                            init_args = getattr(module, params_name)
+                            if not callable(init_args):
+                                init_args = None
+            if name and desc and args and init_args:
+                result[name] = Function(attr, name, desc, args, init_args)
     return result
 
 def load():
@@ -51,26 +62,23 @@ def load():
             f = f[:-3]+"py"
         sys_files.add(path(f).abspath())
     search_path = path(__file__).abspath().dirname()
-    errors = []
     fcts = {}
-    for f in search_path.files("*.py"):
+# Search for python, cython and modules
+    for f in (search_path.files("*.py") + search_path.files("*.pyx") + search_path.files(sys_modules)):
         if f not in sys_files:
-            module_name = f.basename()[:-3]
-            full_name = "functions."+module_name
-            fd, pathname, desc = imp.find_module(module_name, [f.dirname()])
+            module_name = f.namebase
+            pack_name = 'functions.%s' % module_name
             try:
-                module = imp.load_module(full_name, fd, pathname, desc)
-                fcts.update(find_functions(module))
-            except Exception, ex:
-                tb = sys.exc_info()[2]
-                error_loc = "\n".join("In file %s, line %d\n\tIn '%s': %s" % e for e in traceback.extract_tb(tb))
-                errors.append((f,"Exception %s:\n%s\n%s" % (type(ex).__name__, str(ex), error_loc)))
-            finally:
-                if fd:
-                    fd.close()
-    if errors:
-        errs =  "\n\n".join("In file %s:\n%s" % (f,e) for f,e in errors)
-        raise RuntimeError("Errors while loading modules:\n'%s'" % errs)
+                mod = sys.modules.get(pack_name)
+                if mod:
+                    reload(mod)
+                else:
+                    exec "import %s" % module_name in globals()
+                    mod = sys.modules.get(pack_name)
+                mod = eval(module_name)
+                fcts.update(find_functions(mod))
+            except ImportError:
+                print "Warning, cannot import module '%s'" % (module_name,)
     global functions
     functions = fcts
     return fcts
@@ -88,15 +96,17 @@ def get(name):
 
     Returns
     -------
-    fct: callable
+    fct: callable object
         Function of interest. The callable also has the following properties:
+        fct: callable
+            The function itself
         name: string
             Name of the function
         description: string
             Description (i.e. formula) of the function
         args: tuple of string
             List of argument names
-        parms: callable
+        init_args: callable
             Function used to estimate initial parameters from dataset
     """
     return functions.get(name, None)

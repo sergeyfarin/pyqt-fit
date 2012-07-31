@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import cyth
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt
 import matplotlib
@@ -36,7 +37,7 @@ def plot_fit(fct_name, xdata, ydata, p0, fit = curve_fit, eval_points=None,
     res_desc, invert, res = residuals.get(residuals_name)
     if res is None:
         raise ValueError("Unknown residuals: '%s'" % residuals_name)
-    return _plot_fit(fct, xdata, ydata, p0, fit, eval_points, CI, bootstrap,
+    return _plot_fit(fct.fct, xdata, ydata, p0, fit, eval_points, CI, bootstrap,
                      xname, yname, fct_desc, param_names, res_name, args, loc)
 
 class ParametersModel(QtCore.QAbstractTableModel):
@@ -49,7 +50,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
         self.fct = function
         self.res = res
         self.parm_names = function.args
-        self.parm_values = list(function.parms(self.valuesX, self.valuesY))
+        self.parm_values = list(function.init_args(self.valuesX, self.valuesY))
         self.fixed = [False]*len(function.args)
 
     def rowCount(self, idx = QtCore.QModelIndex()):
@@ -412,18 +413,18 @@ class QtFitDlg(QtGui.QDialog):
             if self.CI is not None:
                 method = self.CI[0]
                 CI = self.CI[1]
-                result = _plot_fit(fct, xdata, ydata, p0,
+                result = _plot_fit(fct.fct, xdata, ydata, p0,
                         eval_points=eval_points, CI = CI,
                         xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                        param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res, loc=loc,
+                        param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct, loc=loc,
                         fit_args={"maxfev": 10000, "fix_params": fixed},
                         shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
             else:
-                result = _plot_fit(fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
+                result = _plot_fit(fct.fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
                         eval_points=eval_points,
                         xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                         param_names = parm_names, res_name = res.name, loc=loc,
-                        residuals = res, maxfev=10000)
+                        residuals = res.fct, maxfev=10000)
             if outfile:
                 _write_fit(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
 
