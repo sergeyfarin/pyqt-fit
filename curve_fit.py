@@ -1,5 +1,5 @@
 from scipy import optimize
-from numpy import array
+from numpy import array, inf
 import pdb
 
 def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), *lsq_args, **lsq_kword):
