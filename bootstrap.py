@@ -1,4 +1,4 @@
-from numpy import iterable, zeros, floor, exp, sort, newaxis
+from numpy import iterable, zeros, floor, exp, sort, newaxis, array
 from numpy.random import rand, randn, randint
 from scipy import optimize
 
@@ -184,6 +184,10 @@ def bootstrap(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, s
         result_array[i+1] = fct(eval_points, new_result[0], *args)
         params_array[i+1] = new_result[0]
 
+    CIs, CIparams = getCIs(CI, result_array, params_array)
+    return popt, pcov, residuals, CIs, CIparams, extra_output
+
+def getCIs(CI, result_array, params_array):
     sorted_array = sort(result_array, axis=0)
     sorted_params = sort(params_array, axis=0)
 
@@ -201,19 +205,24 @@ def bootstrap(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, s
         high = _percentile(sorted_params, 1-ci)
         CIparams.append((low, high))
 
-    return popt, pcov, residuals, CIs, CIparams, extra_output
+    return CIs, CIparams
 
 def test():
+    import pyximport
+    pyximport.install()
+    import quad
     from numpy.random import rand, randn
     from pylab import plot, savefig, clf, legend, arange, figure, title, show
     from curve_fit import curve_fit
     import residuals
 
-    def test(x,(p0,p1,p2)):
+    def quadratic(x,(p0,p1,p2)):
         return p0 + p1*x + p2*x**2
+    #test = quadratic
+    test = quad.quadratic
 
     init = (10,1,1)
-    target = (10,4,1.2)
+    target = array([10,4,1.2])
     print "Target parameters: %s" % (target,)
     x = 6*rand(200) - 3
     y = test(x, target)*(1+0.3*randn(x.shape[0]))
@@ -270,6 +279,13 @@ def test():
     show()
 
     return locals()
+
+def profile(filename = 'bootstrap_profile'):
+    import cProfile
+    import pstats
+    cProfile.run('res = bootstrap.test()', 'bootstrap_profile')
+    p = pstats.Stats('bootstrap_profile')
+    return p
 
 if __name__ == "__main__":
     test()

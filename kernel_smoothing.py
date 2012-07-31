@@ -23,7 +23,7 @@ class SpatialAverage(object):
             result += self.ydata[i]*exp(-energy)
 
         result /= self.kde._norm_factor
-        result /= norm
+        result[norm>1e-50] /= norm[norm>1e-50]
 
         return result
 
