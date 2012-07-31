@@ -29,3 +29,4 @@ class SpatialAverage(object):
 
     def __call__(self, new_x):
         return self.evaluate(new_x)
+

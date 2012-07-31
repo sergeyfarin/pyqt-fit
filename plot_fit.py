@@ -6,7 +6,7 @@ import bootstrap
 from itertools import izip
 from scipy.special import erfinv, gamma
 from scipy import stats
-from average_data import SpatialAverage
+from kernel_smoothing import SpatialAverage
 
 def plot_dist_residuals(res):
     hist(res,normed=True)
