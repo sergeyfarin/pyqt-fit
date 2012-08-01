@@ -7,8 +7,8 @@ target = (10,4,1.2)
 x = 6*rand(2000) - 3
 y = test(x, target)*(1+0.2*randn(x.shape[0]))
 xr = arange(-5, 4, 0.001)
-import kernel_smoothing_c
-est = kernel_smoothing_c.SpatialAverage(x,y)
+import cy_kernel_smoothing
+est = cy_kernel_smoothing.SpatialAverage(x,y)
 xdens = est.density(xr)
 figure()
 #plot(x, y, '+')
