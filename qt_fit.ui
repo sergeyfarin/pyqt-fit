@@ -327,11 +327,6 @@
           </item>
           <item>
            <property name="text">
-            <string>right</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
             <string>center left</string>
            </property>
           </item>

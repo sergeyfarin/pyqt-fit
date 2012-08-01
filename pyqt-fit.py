@@ -408,8 +408,8 @@ class QtFitDlg(QtGui.QDialog):
             outfile = self.outputFile.text()
             CI = ()
             result = None
+            loc = str(self.legendLocation.currentText())
             fct_desc = "$%s$" % (fct.description,)
-            loc = self.legendLocation.currentIndex()
             if self.CI is not None:
                 method = self.CI[0]
                 CI = self.CI[1]
