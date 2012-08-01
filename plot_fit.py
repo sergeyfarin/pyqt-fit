@@ -6,7 +6,7 @@ import bootstrap
 from itertools import izip, chain
 from scipy.special import erfinv, gamma
 from scipy import stats
-from average_data import SpatialAverage
+from kernel_smoothing import SpatialAverage
 import inspect
 from csv import writer as csv_writer
 
