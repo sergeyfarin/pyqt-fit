@@ -25,9 +25,10 @@ if os.name == 'nt':
     pyximport.install(setup_args=mingw_setup_args, reload_support=True)
 
 elif os.name == 'posix':
+    extra_flags = ' -I' + numpy.get_include()
     if os.environ.has_key('CFLAGS'):
-        os.environ['CFLAGS'] = os.environ['CFLAGS'] + ' -I' + numpy.get_include()
+        os.environ['CFLAGS'] = os.environ['CFLAGS'] + extra_flags
     else:
-        os.environ['CFLAGS'] = ' -I' + numpy.get_include()
+        os.environ['CFLAGS'] = extra_flags
 
     pyximport.install(reload_support=True)

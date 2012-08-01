@@ -1,4 +1,5 @@
 #cython: nonecheck=True
+##cython: profile=True
 #  --> check for None argument and returns an AttributeError
 import cython
 import numpy as np
@@ -10,6 +11,75 @@ DTYPE = np.float
 ctypedef np.float_t DTYPE_t
 #ctypedef np.ndarray[DTYPE_t, ndim=2] ndarray2d_t
 #ctypedef np.ndarray[DTYPE_t, ndim=1] ndarray1d_t
+
+np.import_array()
+
+@cython.boundscheck(False)
+@cython.cdivision(False)
+@cython.wraparound(False)
+cdef void point_diff(unsigned int d,
+                     unsigned int m,
+                     unsigned int i,
+                     np.ndarray[DTYPE_t, ndim=2] diff,
+                     np.ndarray[DTYPE_t, ndim=2] xdata,
+                     np.ndarray[DTYPE_t, ndim=2] points):
+    cdef unsigned int j,k
+    cdef unsigned int ds0 = diff.strides[0]
+    cdef unsigned int ds1 = diff.strides[1]
+    cdef unsigned int xs0 = xdata.strides[0]
+    cdef unsigned int xs1 = xdata.strides[1]
+    cdef unsigned int ps0 = points.strides[0]
+    cdef unsigned int ps1 = points.strides[1]
+    cdef char* d_data = diff.data
+    cdef char* x_data = xdata.data + i*xs1
+    cdef char* p_data = points.data
+    #for j in range(d):
+    #    for k in range(m):
+    for j from 0 <= j < d:
+        for k from 0 <= k < m:
+            (<double*>d_data)[0] = (<double*>x_data)[0] - (<double*>p_data)[0]
+            d_data += ds1
+            p_data += ps1
+        d_data += ds0
+        p_data += ps0
+        x_data += xs0
+            #diff[j,k] = xdata[j,i] - points[j,k]
+    return
+
+@cython.boundscheck(False)
+@cython.cdivision(False)
+@cython.wraparound(False)
+cdef void apply_energy(unsigned int d,
+                       unsigned int m,
+                       np.ndarray[DTYPE_t, ndim=1] result,
+                       np.ndarray[DTYPE_t, ndim=2] diff,
+                       np.ndarray[DTYPE_t, ndim=2] tdiff):
+    #result += np.exp(-np.sum(diff*tdiff, axis=0)/2.0)
+    cdef unsigned int j,k
+    cdef double energy
+    cdef unsigned int r_stride = result.strides[0]
+    cdef unsigned int diff_s0 = diff.strides[0]
+    cdef unsigned int diff_s1 = diff.strides[1]
+    cdef unsigned int tdiff_s0 = tdiff.strides[0]
+    cdef unsigned int tdiff_s1 = tdiff.strides[1]
+    cdef char* r_data = result.data
+    cdef char* d_data = diff.data
+    cdef char* t_data = tdiff.data
+    cdef char *d_it, *t_it
+    for j from 0 <= j < m:
+        energy = 0.0
+        d_it = d_data + j*diff_s1
+        t_it = t_data + j*tdiff_s1
+        for k from 0 <= k < d:
+            energy += (<double*>d_it)[0]*(<double*>t_it)[0]
+            d_it += diff_s0
+            t_it += tdiff_s0
+            #energy += diff[k,j]*tdiff[k,j]
+        energy /= 2.0
+        (<double*>r_data)[0] += exp(-energy)
+        r_data += r_stride
+        #result[j] += exp(-energy)
+    return
 
 cdef class SpatialAverage:
     cdef public np.ndarray xdata
@@ -63,21 +133,11 @@ cdef class SpatialAverage:
 
         for i in range(n):
             #diff = xdata[:,i,np.newaxis] - points
-            for j in range(d):
-                for k in range(m):
-                    diff[j,k] = xdata[j,i] - points[j,k]
+            point_diff(d,m,i,diff,xdata,points)
             #tdiff = np.dot(inv_cov, diff)
-            for j in range(d):
-                for k in range(m):
-                    tdiff[j,k] = 0.0
-                    for l in range(d):
-                        tdiff[j,k] += inv_cov[j,l]*diff[l,k]
-            for j in range(m):
-                energy = 0.0
-                for k in range(d):
-                    energy += diff[k,j]*tdiff[k,j]
-                energy /= 2.0
-                result[j] += exp(-energy)
+            tdiff = np.dot(inv_cov, diff)
+            apply_energy(d,m,result,diff,tdiff)
+            #result += np.exp(-np.sum(diff*tdiff, axis=0)/2.0)
 
         for i in range(m):
             result[i] /= self._norm_factor
@@ -97,26 +157,20 @@ cdef class SpatialAverage:
         cdef np.ndarray[DTYPE_t, ndim=1] norm_res = np.zeros((m,), dtype=float)
         cdef unsigned int i, j, k, l
         cdef np.ndarray[DTYPE_t, ndim=2] diff = np.zeros((d,m), dtype=float)
-        cdef np.ndarray[DTYPE_t, ndim=2] tdiff = np.zeros((d,m), dtype=float)
-        #cdef np.nbarray[DTYPE_t, ndim=1] energy = np.zeros((m,), dtype=float)
-        cdef double energy
+        cdef np.ndarray[DTYPE_t, ndim=2] tdiff
+        cdef np.ndarray[DTYPE_t, ndim=1] energy
+        #cdef double energy
         cdef np.ndarray[DTYPE_t, ndim=2] inv_cov = self.inv_cov
         cdef np.ndarray[DTYPE_t, ndim=2] xdata = self.xdata
         cdef np.ndarray[DTYPE_t, ndim=1] ydata = self.ydata
 
         for i in range(n):
             #diff = xdata[:,i,np.newaxis] - points
-            for j in range(d):
-                for k in range(m):
-                    diff[j,k] = xdata[j,i] - points[j,k]
+            point_diff(d,m,i,diff,xdata,points)
             tdiff = np.dot(inv_cov, diff)
-            for j in range(m):
-                energy = 0.0
-                for k in range(d):
-                    energy += diff[k,j]*tdiff[k,j]
-                energy /= 2.0
-                result[j] += ydata[i]*exp(-energy)
-                norm_res[j] += exp(-energy)
+            energy = np.exp(-np.sum(diff*tdiff, axis=0)/2.0)
+            result += ydata[i]*energy
+            norm_res += energy
 
         for i in range(m):
             if norm_res[i] > eps:

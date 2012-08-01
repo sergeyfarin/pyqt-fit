@@ -85,11 +85,11 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), *ls
             p1 = array(p_save)
             p1[change_params] = p
             y0 = fct(xdata,p1,*args)
-            return residuals(y0, ydata)
+            return residuals(ydata, y0)
     else:
         def f(*args):
             y0 = fct(xdata,*args)
-            return residuals(y0, ydata)
+            return residuals(ydata, y0)
     popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, None, 1, 0, *lsq_args, **lsq_kword)
 
     if fix_params:
@@ -99,7 +99,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), *ls
     if not ier in [1,2,3,4]:
         raise RuntimeError("Unable to determine number of fit parameters. Error returned by scipy.optimize.leastsq:\n%s" % (mesg,))
 
-    res = residuals(fct(xdata, popt, *args), ydata)
+    res = residuals(ydata, fct(xdata, popt, *args))
     if (len(res) > len(p0)) and pcov is not None:
         s_sq = (res**2).sum()/(len(ydata)-len(p0))
         pcov = pcov * s_sq

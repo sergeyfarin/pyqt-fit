@@ -10,6 +10,7 @@ xr = arange(-5, 4, 0.001)
 import cy_kernel_smoothing
 est = cy_kernel_smoothing.SpatialAverage(x,y)
 xdens = est.density(xr)
+print "DONE"
 figure()
 #plot(x, y, '+')
 plot(xr, xdens)
@@ -32,3 +33,9 @@ plot(xr, xdens2, 'r--')
 
 # 100 loops, best of 3: 12.6 ms per loop
 # 
+# profiling
+import pstats, cProfile
+cProfile.runctx('xdens = est.density(xr)', globals(), locals(), 'Profile.prof')
+#cProfile.runctx('yr = est(xr)', globals(), locals(), 'Profile.prof')
+p = pstats.Stats('Profile.prof')
+print "DONE"

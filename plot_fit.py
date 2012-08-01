@@ -37,20 +37,20 @@ def plot_residuals(xname, xdata, res_desc, res):
     title("Residuals (%s) vs. fitted" % (res_desc,))
     return p_res, p_smooth
 
-def scaled_location_plot(xname, xdata, scaled_res):
+def scaled_location_plot(yname, ydata, scaled_res):
     """
     Plot the scaled location, given the X and scaled residuals
     """
-    ydata = sqrt(abs(scaled_res))
-    p_scaled = plot(xdata, ydata, '+')[0]
-    av = SpatialAverage(xdata, ydata)
-    xr = arange(xdata.min(), xdata.max(), (xdata.max() - xdata.min())/1024)
+    scr = sqrt(abs(scaled_res))
+    p_scaled = plot(ydata, scr, '+')[0]
+    av = SpatialAverage(ydata, scr)
+    xr = arange(ydata.min(), ydata.max(), (ydata.max() - ydata.min())/1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g')[0]
     expected_mean = 2**(1/4)*gamma(3/4)/sqrt(pi)
-    plot([xdata.min(), xdata.max()], [expected_mean, expected_mean], 'r--')
+    plot([ydata.min(), ydata.max()], [expected_mean, expected_mean], 'r--')
     title('Scale-location')
-    xlabel(xname)
+    xlabel(yname)
     ylabel('$|$Normalized residuals$|^{1/2}$')
     gca().set_yticks([0,1,2])
     return [p_scaled, p_smooth]
@@ -207,7 +207,8 @@ def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
     IX = argsort(res)
     scaled_res = res[IX]/std(res)
     sorted_x = xdata[...,IX]
-    p_scaled = scaled_location_plot(xname, sorted_x, scaled_res)
+    sorted_y = ydata[...,IX]
+    p_scaled = scaled_location_plot(yname, sorted_y, scaled_res)
 
     subplot(2,2,3)
 # Q-Q plot
