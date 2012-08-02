@@ -9,6 +9,7 @@ import functions
 import residuals
 from path import path
 from curve_fit import curve_fit
+from plot_fit import fit
 from plot_fit import plot_fit as _plot_fit
 from plot_fit import write_fit as _write_fit
 import bootstrap
@@ -206,31 +207,42 @@ class QtFitDlg(QtGui.QDialog):
                 self.residuals.setCurrentIndex(self.residuals.findText(res.name))
     res = property(_getRes, _setRes)
 
+    @pyqtSignature("const QString&")
+    def on_inputFile_textChanged(self, txt):
+        txt = str(txt)
+        self.input = txt
+
     def _getInput(self):
         return self._input
     def _setInput(self, txt):
         txt = path(txt)
-        if txt != self._input:
+        if txt != self._input and txt.isfile():
             try:
                 data = None
                 header = None
                 with file(txt, "rb") as f:
-                    r = csv_reader(f)
-                    header = r.next()
-                    if len(header) < 2:
-                        QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
-                        return
-                    data = [[float(f) if f else nan for f in line] for line in r if r]
-                    max_length = max(len(l) for l in data)
-                    data = array([l + [nan]*(max_length-len(l)) for l in data], dtype=float)
-                    data = ma.masked_invalid(data)
-                    header = header
-                self._input = txt
-                if self._input != self.inputFile.text():
-                    self.inputFile.setText(self._input)
-                self.setData(header, data)
-            except Exception, ex:
-                QtGui.QMessageBox.critical(self, "Error reading CSV file", str(ex))
+                    try:
+                        r = csv_reader(f)
+                        header = r.next()
+                        if len(header) < 2:
+                            QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
+                            return
+                        data = [[float(f) if f else nan for f in line] for line in r if r]
+                        max_length = max(len(l) for l in data)
+                        data = array([l + [nan]*(max_length-len(l)) for l in data], dtype=float)
+                        data = ma.masked_invalid(data)
+                        header = header
+                    except Exception, ex:
+                        QtGui.QMessageBox.critical(self, "Error reading CSV file", str(ex))
+                        data = None
+                        header = None
+                if data is not None:
+                    self._input = txt
+                    if self._input != self.inputFile.text():
+                        self.inputFile.setText(self._input)
+                    self.setData(header, data)
+            except IOError:
+                pass
     input = property(_getInput, _setInput)
 
     def setData(self, header, data):
@@ -414,22 +426,23 @@ class QtFitDlg(QtGui.QDialog):
                 if self.CI is not None:
                     method = self.CI[0]
                     CI = self.CI[1]
-                    result = _plot_fit(fct.fct, xdata, ydata, p0,
+                    result = fit(fct.fct, xdata, ydata, p0,
                             eval_points=eval_points, CI = CI,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                            param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct, loc=loc,
+                            param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct,
                             fit_args={"maxfev": 10000, "fix_params": fixed},
                             shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
                 else:
-                    result = _plot_fit(fct.fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
+                    result = fit(fct.fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
                             eval_points=eval_points,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                            param_names = parm_names, res_name = res.name, loc=loc,
+                            param_names = parm_names, res_name = res.name,
                             residuals = res.fct, maxfev=10000)
             except Exception, ex:
                 QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
                         "%s exception: %s" % (type(ex).__name__, ex.message))
                 return
+            _plot_fit(result, loc=loc)
             if outfile:
                 _write_fit(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
 

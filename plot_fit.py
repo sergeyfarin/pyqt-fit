@@ -55,27 +55,25 @@ def scaled_location_plot(yname, ydata, scaled_res):
     gca().set_yticks([0,1,2])
     return [p_scaled, p_smooth]
 
-def qqplot(scaled_res):
+def qqplot(scaled_res, normq):
     """
     Draw a Q-Q Plot from the sorted, scaled residuals (i.e. residuals sorted
     and normalized by their standard deviation)
     """
-    prob = (arange(len(scaled_res))+0.5) / len(scaled_res)
-    normq = sqrt(2)*erfinv(2*prob-1);
     qqp = []
     qqp += plot(normq, scaled_res, '+');
     qqp += plot(normq, normq, 'r--');
     xlabel('Theoretical quantiles');
     ylabel('Normalized residuals');
     title('Normal Q-Q plot');
-    return normq, qqp
+    return qqp
 
 class ResultStruct(object):
     pass
 
-def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
-             CI=(), xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard',
-             args=(), loc=None, **kwrds):
+def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
+        CI=(), xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard',
+        args=(), **kwrds):
     """
     Fit the function ``fct(xdata, p0, *args)`` using the ``fit`` function
 
@@ -146,8 +144,6 @@ def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
     CIparams: list of pair of ndarray
         For each CI value, a pair of ndarray is provided for the lower and
         upper bound of the parameters
-    plots: dict
-        Dictionnary to access the various plot curves
     extra_output: extra output provided by the fit or bootstrap function
     And also all the arguments that may change the result of the estimation.
     """
@@ -175,56 +171,22 @@ def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
         popt, pcov, res = result[:3]
         extra_output = result[3:]
 
-    figure()
-    clf()
     yopts = fct(xdata, popt, *args)
     yvals = fct(eval_points, popt, *args)
-    p_est = plot(eval_points, yvals, label='estimated')[0]
-    p_data = plot(xdata, ydata, '+', label='data')[0]
-    p_CIs = []
-    if CI:
-        for p, (low, high) in izip(CI,CIs):
-            l = plot(eval_points, low, '--', label='%g%% CI' % (p,))[0]
-            h = plot(eval_points, high, l.get_color()+'--')[0]
-            p_CIs += [l,h]
-    if param_names:
-        param_strs = ", ".join("%s=%g" % (n,v) for n,v in izip(param_names, popt))
-    else:
-        param_strs = ", ".join("%g" % v for v in popt)
-    param_strs = "$%s$" % (param_strs,)
-    title("Estimated function %s with params %s" % (fct_desc, param_strs))
-    xlabel(xname)
-    ylabel(yname)
-    legend(loc=loc)
 
-    figure()
-    plot1 = subplot(2,2,1)
-# First subplot is the residuals
-    p_res = plot_residuals(xname, xdata, res_name, res)
-
-    plot2 = subplot(2,2,2)
 # Scaled location
     IX = argsort(res)
     scaled_res = res[IX]/std(res)
-    sorted_x = xdata[...,IX]
     sorted_y = ydata[...,IX]
-    p_scaled = scaled_location_plot(yname, sorted_y, scaled_res)
+    #p_scaled = scaled_location_plot(yname, sorted_y, scaled_res)
 
-    subplot(2,2,3)
-# Q-Q plot
-    normq, qqp = qqplot(scaled_res)
-
-    subplot(2,2,4)
-# Distribution of residuals
-    plot_dist_residuals(res)
-
-    plots = {"estimate": p_est, "data": p_data, "CIs": p_CIs, "residuals": p_res, "scaled residuals": p_scaled, "qqplot": qqp}
-
-    suptitle("Checks of correctness for function %s with params %s" % (fct_desc, param_strs))
+    prob = (arange(len(scaled_res))+0.5) / len(scaled_res)
+    normq = sqrt(2)*erfinv(2*prob-1);
 
     result = ResultStruct()
     result.fct = fct
     result.fct_desc = fct_desc
+    result.param_names = param_names
     result.xdata = xdata
     result.ydata = ydata
     result.xname = xname
@@ -237,13 +199,66 @@ def plot_fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
     result.yopts = yopts
     result.eval_points = eval_points
     result.interpolation = yvals
-    result.residuals_evaluation = (sorted_x, scaled_res, normq)
+    result.sorted_y = sorted_y
+    result.scaled_res = scaled_res
+    result.normq = normq
+    result.residuals_evaluation = (sorted_y, scaled_res, normq)
     result.CI = CI
     result.CIs = CIs
     result.CIparams = CIparams
-    result.plots = plots
     result.extra_output = extra_output
     return result
+
+def plot_fit(result, loc=0):
+    """
+    Use matplotlib to display the result of a fit, and return the list of plots used
+    """
+    figure()
+    clf()
+
+    p_est = plot(result.eval_points, result.interpolation, label='estimated')[0]
+    p_data = plot(result.xdata, result.ydata, '+', label='data')[0]
+    p_CIs = []
+    if result.CI:
+        for p, (low, high) in izip(result.CI,result.CIs):
+            l = plot(result.eval_points, low, '--', label='%g%% CI' % (p,))[0]
+            h = plot(result.eval_points, high, l.get_color()+'--')[0]
+            p_CIs += [l,h]
+    if result.param_names:
+        param_strs = ", ".join("%s=%g" % (n,v) for n,v in izip(result.param_names, result.popt))
+    else:
+        param_strs = ", ".join("%g" % v for v in result.popt)
+    param_strs = "$%s$" % (param_strs,)
+
+    title("Estimated function %s with params %s" % (result.fct_desc, param_strs))
+
+    xlabel(result.xname)
+    ylabel(result.yname)
+    legend(loc=loc)
+
+    figure()
+    suptitle("Checks of correctness for function %s with params %s" % (result.fct_desc, param_strs))
+    clf()
+
+    plot1 = subplot(2,2,1)
+# First subplot is the residuals
+    p_res = plot_residuals(result.xname, result.xdata, result.res_name, result.res)
+
+
+    plot2 = subplot(2,2,2)
+    p_scaled = scaled_location_plot(result.yname, result.sorted_y, result.scaled_res)
+
+    subplot(2,2,3)
+# Q-Q plot
+    qqp = qqplot(result.scaled_res, result.normq)
+
+    subplot(2,2,4)
+# Distribution of residuals
+    plot_dist_residuals(result.res)
+
+    plots = {"estimate": p_est, "data": p_data, "CIs": p_CIs, "residuals": p_res, "scaled residuals": p_scaled, "qqplot": qqp}
+    return plots
+
 
 def write_fit(outfile, result, res_desc, parm_names, CImethod):
     with file(outfile, "wb") as f:
@@ -260,8 +275,8 @@ def write_fit(outfile, result, res_desc, parm_names, CImethod):
         w.writerows(c_[result.xdata, result.ydata, result.yopts, result.res])
         w.writerow([])
         w.writerow(['Model validation'])
-        w.writerow([result.xname, 'Normalized residuals', 'Theoretical quantiles'])
-        w.writerows(c_[result.residuals_evaluation])
+        w.writerow([result.yname, 'Normalized residuals', 'Theoretical quantiles'])
+        w.writerows(c_[result.sorted_y, result.scaled_res, result.normq])
         if result.eval_points is not result.xdata:
             w.writerow([])
             w.writerow(["Interpolated data"])
@@ -317,3 +332,4 @@ def test():
 if __name__ == "__main__":
     test()
 
+# /home/barbier/prog/python/curve_fitting/test.csv
