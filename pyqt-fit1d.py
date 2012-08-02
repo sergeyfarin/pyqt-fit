@@ -410,21 +410,26 @@ class QtFitDlg(QtGui.QDialog):
             result = None
             loc = str(self.legendLocation.currentText())
             fct_desc = "$%s$" % (fct.description,)
-            if self.CI is not None:
-                method = self.CI[0]
-                CI = self.CI[1]
-                result = _plot_fit(fct.fct, xdata, ydata, p0,
-                        eval_points=eval_points, CI = CI,
-                        xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                        param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct, loc=loc,
-                        fit_args={"maxfev": 10000, "fix_params": fixed},
-                        shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
-            else:
-                result = _plot_fit(fct.fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
-                        eval_points=eval_points,
-                        xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                        param_names = parm_names, res_name = res.name, loc=loc,
-                        residuals = res.fct, maxfev=10000)
+            try:
+                if self.CI is not None:
+                    method = self.CI[0]
+                    CI = self.CI[1]
+                    result = _plot_fit(fct.fct, xdata, ydata, p0,
+                            eval_points=eval_points, CI = CI,
+                            xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
+                            param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct, loc=loc,
+                            fit_args={"maxfev": 10000, "fix_params": fixed},
+                            shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
+                else:
+                    result = _plot_fit(fct.fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
+                            eval_points=eval_points,
+                            xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
+                            param_names = parm_names, res_name = res.name, loc=loc,
+                            residuals = res.fct, maxfev=10000)
+            except Exception, ex:
+                QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
+                        "%s exception: %s" % (type(ex).__name__, ex.message))
+                return
             if outfile:
                 _write_fit(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
 
