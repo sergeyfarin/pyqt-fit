@@ -11,18 +11,19 @@ class SpatialAverage(object):
 
     def evaluate(self, points):
         points = atleast_2d(points).astype(self.xdata.dtype)
-        norm = self.kde(points)
+        #norm = self.kde(points)
         d, m = points.shape
         result = zeros((m,), points.dtype)
+        norm = zeros((m,), points.dtype)
 
         # iterate on the internal points
         for i in range(self.n):
             diff = self.xdata[:,i,newaxis] - points
             tdiff = dot(self.kde.inv_cov, diff)
-            energy = sum(diff*tdiff,axis=0)/2.0
-            result += self.ydata[i]*exp(-energy)
+            energy = exp(-sum(diff*tdiff,axis=0)/2.0)
+            result += self.ydata[i]*energy
+            norm += energy
 
-        result /= self.kde._norm_factor
         result[norm>1e-50] /= norm[norm>1e-50]
 
         return result
