@@ -209,7 +209,7 @@ class QtFitDlg(QtGui.QDialog):
 
     @pyqtSignature("const QString&")
     def on_inputFile_textChanged(self, txt):
-        txt = str(txt)
+        txt = path(txt)
         self.input = txt
 
     def _getInput(self):
@@ -223,21 +223,25 @@ class QtFitDlg(QtGui.QDialog):
                 with file(txt, "rb") as f:
                     try:
                         r = csv_reader(f)
-                        header = r.next()
+                        header = [ t.decode('utf_8') for t in r.next() ]
                         if len(header) < 2:
                             QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
                             return
-                        data = [[float(f) if f else nan for f in line] for line in r if r]
+                        data = []
+                        for line in r:
+                            if not line:
+                                break
+                            data.append([float(f) if f else nan for f in line])
                         max_length = max(len(l) for l in data)
                         data = array([l + [nan]*(max_length-len(l)) for l in data], dtype=float)
                         data = ma.masked_invalid(data)
-                        header = header
                     except Exception, ex:
                         QtGui.QMessageBox.critical(self, "Error reading CSV file", str(ex))
                         data = None
                         header = None
                 if data is not None:
                     self._input = txt
+                    print "input: %s" % (self._input,)
                     if self._input != self.inputFile.text():
                         self.inputFile.setText(self._input)
                     self.setData(header, data)
@@ -299,8 +303,8 @@ class QtFitDlg(QtGui.QDialog):
 
     def updateParameters(self):
         if self._data is not None and self.fct is not None and self.res is not None and self.fieldX is not None and self.fieldY is not None:
-            idxX = self.header.index(self.fieldX)
-            idxY = self.header.index(self.fieldY)
+            idxX = self.header.index(unicode(self.fieldX))
+            idxY = self.header.index(unicode(self.fieldY))
             self.param_model = ParametersModel(self._data, self.fct, self.res, idxX, idxY)
             self.parameters.setModel(self.param_model)
             minx = self._data[:,idxX].min()
@@ -413,9 +417,9 @@ class QtFitDlg(QtGui.QDialog):
                     xmax = float(self.xMax.text())
                 eval_points = arange(xmin, xmax, (xmax-xmin)/1024)
             CImethod = None
-            if str(self.CImethod.currentText()) == "Bootstrapping":
+            if unicode(self.CImethod.currentText()) == u"Bootstrapping":
                 CImethod = bootstrap.bootstrap_regression
-            elif str(self.CImethod.currentText()) == "Residual resampling":
+            elif unicode(self.CImethod.currentText()) == u"Residual resampling":
                 CImethod = bootstrap.bootstrap_residuals
             outfile = self.outputFile.text()
             CI = ()
