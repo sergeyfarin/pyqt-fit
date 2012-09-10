@@ -1,7 +1,7 @@
 __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 import sys
-from path import path
+from ..path import path
 
 sys_modules = "*.so"
 if sys.platform == 'win32' or sys.platform == 'cygwin':
