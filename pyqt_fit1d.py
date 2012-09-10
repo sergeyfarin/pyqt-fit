@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from pyqt_fit import pyqt_fit1d
 from PyQt4 import QtGui
 import matplotlib
