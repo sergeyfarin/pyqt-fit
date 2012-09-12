@@ -71,9 +71,7 @@ def qqplot(scaled_res, normq):
 class ResultStruct(object):
     pass
 
-def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
-        CI=(), xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard',
-        args=(), **kwrds):
+def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=(), **kwrds):
     """
     Fit the function ``fct(xdata, p0, *args)`` using the ``fit`` function
 
@@ -205,13 +203,38 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     """
     print "CI = '%s'" % (CI,)
     if CI:
+<<<<<<< local
+        if not iterable(CI):
+            CI = (CI,)
+        result = bootstrap.bootstrap(fct, xdata, ydata, p0, CI, args=args, eval_points=eval_points, fit=fit, **kwrds)
+        #popt, pcov, res, CIs, CIparams = result[:5]
+        #extra_output = result[5:]
+    else:
+        result = fit(fct, xdata, ydata, p0, args=args, **kwrds)
+        #popt, pcov, res = result[:3]
+        #extra_output = result[3:]
+    return extra_fit(fct, xdata, ydata, result, CI, eval_points=eval_points, **kwords)
+
+def extra_fit(fct, xdata, ydata, result, CI=[], xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard', args=(), eval_points = None):
+    if eval_points is None:
+        eval_points = xdata
+    if CI:
+        popt, pcov, res, CIs, CIparams = result[:5]
+        extra_output = result[5:]
+=======
         popt, pcov, res, CIs, CIparams = fit_result[:5]
         extra_output = fit_result[5:]
+>>>>>>> other
     else:
         CIs = []
         CIparams = []
+<<<<<<< local
+        popt, pcov, res, = result[:3]
+        extra_output = result[3:]
+=======
         popt, pcov, res = fit_result[:3]
         extra_output = fit_result[3:]
+>>>>>>> other
 
     yopts = fct(xdata, popt, *args)
     yvals = fct(eval_points, popt, *args)
