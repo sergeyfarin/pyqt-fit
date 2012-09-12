@@ -18,6 +18,7 @@ from csv import writer as csv_writer
 import sys
 from pylab import close as close_figure
 from itertools import izip, chain
+import traceback
 
 def get_args(*a, **k):
     return a,k
@@ -443,6 +444,7 @@ class QtFitDlg(QtGui.QDialog):
                             param_names = parm_names, res_name = res.name,
                             residuals = res.fct, maxfev=10000)
             except Exception, ex:
+                traceback.print_exc()
                 QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
                         "%s exception: %s" % (type(ex).__name__, ex.message))
                 return

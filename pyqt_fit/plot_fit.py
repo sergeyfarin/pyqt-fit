@@ -111,11 +111,67 @@ def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
         Description of the residuals
     args: tuple
         Extra arguments for fct
-    loc: string or int
-        Location of the legend in the graphs
     kwrds: dict
         Extra named arguments are forwarded to the bootstrap or fit function,
         depending on which is called
+
+    Returns
+    -------
+    The result of fit_evaluation
+    """
+    if residuals is None:
+        residuals = lambda y1,y0: y1-y0
+        res_name = "Standard"
+        res_desc = '$y_0 - y_1$'
+    if 'residuals' in inspect.getargspec(fit).args:
+        if CI:
+            kwrds["fit_args"]["residuals"] = residuals
+        else:
+            kwrds["residuals"] = residuals
+    if eval_points is None:
+        eval_points = sort(xdata)
+    if CI:
+        if not iterable(CI):
+            CI = (CI,)
+        result = bootstrap.bootstrap(fct, xdata, ydata, p0, CI, args=args, eval_points=eval_points, fit=fit, **kwrds)
+    else:
+        result = fit(fct, xdata, ydata, p0, args=args, **kwrds)
+    return fit_evaluation(result, fct, xdata, ydata, eval_points, CI, xname, yname, fct_desc, param_names, residuals, res_name)
+
+
+def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
+        CI=(), xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard',
+        args=()):
+    """
+    Parameters
+    ----------
+    fit_result: tuple of ndarray
+        output of the fit method (i.e. either curve_fit or bootstrap method output)
+    fct: callable
+        Function to fit the call must be ``fct(xdata, p0, *args)``
+    xdata: ndarray of shape (N,) or (k,N) for function with k prefictors
+        The independent variable where the data is measured
+    ydata: ndarray
+        The dependant data
+    eval_points: ndarray or None
+        Contain the list of points on which the result must be expressed. It is
+        used both for plotting and for the bootstrapping.
+    CI: tuple of int
+        List of confidence intervals to calculate. If empty, none are calculated.
+    xname: string
+        Name of the X axis
+    yname: string
+        Name of the Y axis
+    fct_desc: string
+        Formula of the function
+    param_names: tuple of strings
+        Name of the various parameters
+    residuals: callable
+        Residual function
+    res_desc: string
+        Description of the residuals
+    args: tuple
+        Extra arguments for fct
 
     Returns
     -------
@@ -147,29 +203,15 @@ def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None,
     extra_output: extra output provided by the fit or bootstrap function
     And also all the arguments that may change the result of the estimation.
     """
-    CIs = []
-    CIparams = []
-    if residuals is None:
-        residuals = lambda y1,y0: y1-y0
-        res_name = "Standard"
-        res_desc = '$y_0 - y_1$'
-    if 'residuals' in inspect.getargspec(fit).args:
-        if CI:
-            kwrds["fit_args"]["residuals"] = residuals
-        else:
-            kwrds["residuals"] = residuals
-    if eval_points is None:
-        eval_points = xdata
+    print "CI = '%s'" % (CI,)
     if CI:
-        if not iterable(CI):
-            CI = (CI,)
-        result = bootstrap.bootstrap(fct, xdata, ydata, p0, CI, args=args, eval_points=eval_points, fit=fit, **kwrds)
-        popt, pcov, res, CIs, CIparams = result[:5]
-        extra_output = result[5:]
+        popt, pcov, res, CIs, CIparams = fit_result[:5]
+        extra_output = fit_result[5:]
     else:
-        result = fit(fct, xdata, ydata, p0, args=args, **kwrds)
-        popt, pcov, res = result[:3]
-        extra_output = result[3:]
+        CIs = []
+        CIparams = []
+        popt, pcov, res = fit_result[:3]
+        extra_output = fit_result[3:]
 
     yopts = fct(xdata, popt, *args)
     yvals = fct(eval_points, popt, *args)
