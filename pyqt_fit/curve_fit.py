@@ -89,7 +89,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), *ls
         def f(*args):
             y0 = fct(xdata,*args)
             return residuals(ydata, y0)
-    popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, None, 1, 0, *lsq_args, **lsq_kword)
+    popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, *lsq_args, **lsq_kword)
 
     if fix_params:
         p_save[change_params] = popt
