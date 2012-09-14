@@ -1,4 +1,4 @@
-from numpy import exp, argsort, log, zeros, ones, array
+from numpy import exp, argsort, log, zeros, ones, array, log
 
 def linear((a,b), x):
     """
@@ -11,7 +11,7 @@ def linear((a,b), x):
     return a*x + b
 
 def deriv_linear((a,b), x):
-    result = ones((2, x.shape[0]), dtype=float)
+    result = ones((2, x.shape[0]), dtype=x.dtype)
     result[0] = x # d/da
     # d/db = 1
     return result
@@ -27,8 +27,19 @@ def exponential((A,k,x0,y0), x):
     Parameters: A k x_0 y_0
     Name: Exponential
     ParametersEstimate: exponentialParams
+    Dfun: deriv_exponential
     """
     return A*exp(k*(x-x0))+y0
+
+def deriv_exponential((A,k,x0,y0), x):
+    result = ones((4, x.shape[0]), dtype=x.dtype)
+    dx = x-x0
+    ee = exp(k*dx)
+    result[0] = ee # d/dA
+    result[1] = dx*A*ee # d/dk
+    result[2] = -A*ee # d/dx0
+    # d/dy0 = 1
+    return result
 
 def exponentialParams(x, y):
     x0 = (x.max() + x.min())/2
@@ -45,8 +56,21 @@ def power_law((A, x0, k, y0), x):
     Name: Power law
     Parameters: A x_0 k y_0
     ParametersEstimate: power_lawParams
+    Dfun: deriv_power_law
     """
     return A*(x-x0)**k + y0
+
+def deriv_power_law((A, x0, k, y0), x):
+    result = ones((4,x.shape[0]), dtype=x.dtype)
+    dx = x-x0
+    dxk1 = dx**(k-1)
+    dxk = dxk1*dx
+    result[0] = dxk # d/dA
+    result[1] = -A*k*dxk1 # d/dx0
+    result[2] = dxk*A*log(dx) # d/dk
+    # d/dy0 = 1
+    return result
+
 
 def power_lawParams(x, y):
     x0 = x.min()
@@ -65,7 +89,7 @@ def logistic((A, k, x0, y0), x):
     return A/(1+exp(k*(x0-x))) + y0
 
 def deriv_logistic((A, k, x0, y0), x):
-    result = ones((4, x.shape[0]), dtype=float)
+    result = ones((4, x.shape[0]), dtype=x.dtype)
     dx = x0-x
     ee = exp(k*dx)
     ee1 = ee+1.

@@ -437,8 +437,7 @@ class QtFitDlg(QtGui.QDialog):
                             eval_points=eval_points, CI = CI,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct,
-                            Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
-                            fit_args={"maxfev": 10000, "fix_params": fixed},
+                            fit_args={"maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 },
                             shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
                 else:
                     result = fit(fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
@@ -454,10 +453,10 @@ class QtFitDlg(QtGui.QDialog):
                 return
             _plot_fit(result, loc=loc)
             if self.writeResult and outfile:
-                print "output to file '%s'" % (outfile,)
+                #print "output to file '%s'" % (outfile,)
                 _write_fit(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
-            else:
-                print "self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile)
+            #else:
+                #print "self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile)
 
 def main():
     wnd = QtFitDlg()

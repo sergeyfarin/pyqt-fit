@@ -90,9 +90,9 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
         Dres = lambda y1,y0,dy: -dy
 
     use_derivs = (Dres is not None) and (Dfun is not None)
-    print "use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun)
-    f = None
-    df = None
+    #print "use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun)
+    #f = None
+    #df = None
 
     if fix_params:
         fix_params = tuple(fix_params)
@@ -107,7 +107,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
         def f(p, *args):
             p1 = array(p_save)
             p1[change_params] = p
-            y0 = fct(xdata,p1,*args)
+            y0 = fct(p1,xdata,*args)
             return residuals(ydata, y0)
         if use_derivs:
             def df(p, *args):
@@ -133,7 +133,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
 
 
     popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, Dfun=df, col_deriv=col_deriv, *lsq_args, **lsq_kword)
-    infodict['est_jacobian'] = not use_derivs
+    #infodict['est_jacobian'] = not use_derivs
 
     if fix_params:
         p_save[change_params] = popt

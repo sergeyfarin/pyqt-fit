@@ -251,7 +251,7 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     result["CIs"] = CIs
     result["CIparams"] = CIparams
     result["extra_output"] = extra_output
-    print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
+    #print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
     return ResultStruct(**result)
 
 def plot_fit(result, loc=0):

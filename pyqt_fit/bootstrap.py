@@ -4,7 +4,7 @@ from scipy import optimize
 
 def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
     popt, pcov = optimize.curve_fit(fct, x, y, **kwrds)
-    return (popt, pcov, fct(x, popt, *args) - y)
+    return (popt, pcov, fct(popt, x, *args) - y)
 
 def _percentile(array, p):
     n = len(array)*p
@@ -61,7 +61,7 @@ def bootstrap_residuals(fct, xdata, ydata, popt, res, repeats = 3000, args = (),
     if add_residual is None:
         add_residual = lambda y,r: y+r
 
-    yopt = fct(xdata, popt, *args)
+    yopt = fct(popt, xdata, *args)
     modified_ydata = add_residual(yopt,shuffled_res)
 
     return xdata[...,newaxis,:], modified_ydata
@@ -177,11 +177,11 @@ def bootstrap(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, s
     result_array = zeros((repeats+1, len(eval_points)), dtype=float)
     params_array = zeros((repeats+1, len(popt)), dtype=float)
 
-    result_array[0] = fct(eval_points, popt, *args)
+    result_array[0] = fct(popt, eval_points, *args)
     params_array[0] = popt
     for i in xrange(0,repeats):
         new_result = fit(fct, shuffled_x[...,i%nx,:], shuffled_y[i%ny,:], popt, args=args, **fit_args)
-        result_array[i+1] = fct(eval_points, new_result[0], *args)
+        result_array[i+1] = fct(new_result[0], eval_points, *args)
         params_array[i+1] = new_result[0]
 
     CIs, CIparams = getCIs(CI, result_array, params_array)
