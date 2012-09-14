@@ -128,6 +128,7 @@ class QtFitDlg(QtGui.QDialog):
         self._scale = None
         self._header = None
         self._CIchanged = False
+        self._write = False
         self.setData(None, None)
         residuals.load()
         functions.load()
@@ -255,12 +256,29 @@ class QtFitDlg(QtGui.QDialog):
     def _setOutput(self, txt):
         txt = path(txt)
         if self._output != txt:
-            if not txt.endswith(".csv"):
+            if txt and not txt.endswith(".csv"):
                 txt += ".csv"
             self._output = txt
             if self._output != self.outputFile.text():
                 self.outputFile.setText(self._output)
     output = property(_getOutput, _setOutput)
+
+    @pyqtSignature("const QString&")
+    def on_outputFile_textChanged(self, txt):
+        self.output = txt
+
+    def _getWriteResult(self):
+        return self._write
+    def _setWriteResult(self, on):
+        on = bool(on)
+        if on != self._write:
+            self._write = on
+            self.writeOutput.setChecked(on)
+    writeResult = property(_getWriteResult, _setWriteResult)
+
+    @pyqtSignature("bool")
+    def on_writeOutput_toggled(self, on):
+        self.writeResult = on
 
     def _getHeader(self):
         return self._header
@@ -435,8 +453,11 @@ class QtFitDlg(QtGui.QDialog):
                         "%s exception: %s" % (type(ex).__name__, ex.message))
                 return
             _plot_fit(result, loc=loc)
-            if outfile:
+            if self.writeResult and outfile:
+                print "output to file '%s'" % (outfile,)
                 _write_fit(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
+            else:
+                print "self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile)
 
 def main():
     wnd = QtFitDlg()
