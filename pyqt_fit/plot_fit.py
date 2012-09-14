@@ -215,8 +215,8 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
         popt, pcov, res = fit_result[:3]
         extra_output = fit_result[3:]
 
-    yopts = fct(xdata, popt, *args)
-    yvals = fct(eval_points, popt, *args)
+    yopts = fct(popt, xdata, *args)
+    yvals = fct(popt, eval_points, *args)
 
 # Scaled location
     IX = argsort(res)

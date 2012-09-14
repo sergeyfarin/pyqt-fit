@@ -8,7 +8,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
     Parameters
     ----------
     fct: callable
-        Function to optimize. The call will be equivalent to ``fct(xdata, p0, *args)``
+        Function to optimize. The call will be equivalent to ``fct(p0, xdata, *args)``
     xdata: ndarray
         Explaining values
     ydata: ndarray
@@ -25,7 +25,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
         List of indices for the parameters in p0 that shouldn't change
     Dfun: callable
         Function computing the jacobian of fct w.r.t. the parameters. The call
-        will be equivalent to ``Dfun(xdata, p0, *args)``
+        will be equivalent to ``Dfun(p0, xdata, *args)``
     Dres: callable
         Function computing the jacobian of the residuals w.r.t. the parameters.
         The call will be equivalent to ``Dres(y, fct(x), DFun(x))``
@@ -113,8 +113,8 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
             def df(p, *args):
                 p1 = array(p_save)
                 p1[change_params] = p
-                y0 = fct(xdata,p1,*args)
-                dfct = Dfun(xdata,p1,*args)
+                y0 = fct(p1,xdata,*args)
+                dfct = Dfun(p1,xdata,*args)
                 result = Dres(ydata, y0, dfct)
                 if col_deriv != 0:
                     return result[change_params]
@@ -122,13 +122,13 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
                     return result[:,change_params]
                 return result
     else:
-        def f(*args):
-            y0 = fct(xdata,*args)
+        def f(p,*args):
+            y0 = fct(p,xdata,*args)
             return residuals(ydata, y0)
         if use_derivs:
             def df(p, *args):
-                dfct = Dfun(xdata, p, *args)
-                y0 = fct(xdata,p,*args)
+                dfct = Dfun(p, xdata, *args)
+                y0 = fct(p,xdata,*args)
                 return Dres(ydata, y0, dfct)
 
 
@@ -142,7 +142,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
     if not ier in [1,2,3,4]:
         raise RuntimeError("Unable to determine number of fit parameters. Error returned by scipy.optimize.leastsq:\n%s" % (mesg,))
 
-    res = residuals(ydata, fct(xdata, popt, *args))
+    res = residuals(ydata, fct(popt, xdata, *args))
     if (len(res) > len(p0)) and pcov is not None:
         s_sq = (res**2).sum()/(len(ydata)-len(p0))
         pcov = pcov * s_sq

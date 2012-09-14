@@ -1,6 +1,6 @@
 from numpy import exp, argsort, log, zeros, ones, array
 
-def linear(x, (a,b)):
+def linear((a,b), x):
     """
     Function: y = a x + b
     Parameters: a b
@@ -10,7 +10,7 @@ def linear(x, (a,b)):
     """
     return a*x + b
 
-def deriv_linear(x, (a,b)):
+def deriv_linear((a,b), x):
     result = ones((2, x.shape[0]), dtype=float)
     result[0] = x # d/da
     # d/db = 1
@@ -21,7 +21,7 @@ def linearParams(x, y):
     a = (y.max() - y.min())/(x.max() - x.min())
     return (a,b)
 
-def exponential(x, (A,k,x0,y0)):
+def exponential((A,k,x0,y0), x):
     """
     Function: y = A e^{k(x-x_0)} + y_0
     Parameters: A k x_0 y_0
@@ -39,7 +39,7 @@ def exponentialParams(x, y):
     A = ys[-1]/(exp(k*(xs[-1]-x0)))
     return (A,k,x0,ys[0])
 
-def power_law(x, (A, x0, k, y0)):
+def power_law((A, x0, k, y0), x):
     """
     Function: y = A (x-x_0)^k + y_0
     Name: Power law
@@ -54,19 +54,19 @@ def power_lawParams(x, y):
     A = (y.max()-y0)/(x.max()-x0)
     return (A, x0, 1, y0)
 
-def logistic(x, (A, k, x0, y0)):
+def logistic((A, k, x0, y0), x):
     """
     Function: y = A / (1 + e^{-k (x-x_0)}) + y_0
     Parameters: A k x_0 y_0
     Name: Logistic
     ParametersEstimate: logisticParams
-    Dfun1: deriv_logistic
+    Dfun: deriv_logistic
     """
     return A/(1+exp(k*(x0-x))) + y0
 
-def deriv_logistic(x, (A, k, x0, y0)):
+def deriv_logistic((A, k, x0, y0), x):
     result = ones((4, x.shape[0]), dtype=float)
-    dx = x-x0
+    dx = x0-x
     ee = exp(k*dx)
     ee1 = ee+1.
     ee2 = ee1*ee1

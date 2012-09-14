@@ -121,3 +121,36 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
     return result
 
 
+#
+from scipy import sqrt
+from numpy import finfo, asfarray, zeros
+
+_epsilon = sqrt(finfo(float).eps)
+
+def approx_jacobian(x,func,epsilon,*args):
+    """Approximate the Jacobian matrix of callable function func
+    
+       * Parameters
+         x       - The state vector at which the Jacobian matrix is desired        
+         func    - A vector-valued function of the form f(x,*args)
+         epsilon - The peturbation used to determine the partial derivatives
+         *args   - Additional arguments passed to func
+       
+       * Returns
+         An array of dimensions (lenf, lenx) where lenf is the length 
+         of the outputs of func, and lenx is the number of 
+              
+       * Notes
+         The approximation is done using forward differences
+                
+    """
+    x0 = asfarray(x)
+    f0 = func(*((x0,)+args))
+    jac = zeros([len(x0),len(f0)])
+    dx = zeros(len(x0))
+    for i in range(len(x0)):
+       dx[i] = epsilon
+       jac[i] = (func(*((x0+dx,)+args)) - f0)/epsilon
+       dx[i] = 0.0
+    return jac.transpose()
+
