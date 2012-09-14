@@ -12,6 +12,7 @@ from scipy import stats
 from kernel_smoothing import SpatialAverage
 import inspect
 from csv import writer as csv_writer
+from collections import namedtuple
 
 def plot_dist_residuals(res):
     hist(res,normed=True)
@@ -68,10 +69,11 @@ def qqplot(scaled_res, normq):
     title('Normal Q-Q plot');
     return qqp
 
-class ResultStruct(object):
-    pass
+ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname res_name residuals args popt res yopts eval_points interpolation sorted_y scaled_res normq residuals_evaluation CI CIs CIparams extra_output")
 
-def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=(), **kwrds):
+def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=(),
+        xname = "X", yname = "Y", fct_desc = None, param_names=(), residuals = None,
+        res_name = None, res_desc = None, **kwrds):
     """
     Fit the function ``fct(xdata, p0, *args)`` using the ``fit`` function
 
@@ -95,6 +97,8 @@ def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=()
         used both for plotting and for the bootstrapping.
     CI: tuple of int
         List of confidence intervals to calculate. If empty, none are calculated.
+    args: tuple
+        Extra arguments for fct
     xname: string
         Name of the X axis
     yname: string
@@ -105,10 +109,10 @@ def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=()
         Name of the various parameters
     residuals: callable
         Residual function
+    res_name: string
+        Name of the residual
     res_desc: string
         Description of the residuals
-    args: tuple
-        Extra arguments for fct
     kwrds: dict
         Extra named arguments are forwarded to the bootstrap or fit function,
         depending on which is called
@@ -223,31 +227,32 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     prob = (arange(len(scaled_res))+0.5) / len(scaled_res)
     normq = sqrt(2)*erfinv(2*prob-1);
 
-    result = ResultStruct()
-    result.fct = fct
-    result.fct_desc = fct_desc
-    result.param_names = param_names
-    result.xdata = xdata
-    result.ydata = ydata
-    result.xname = xname
-    result.yname = yname
-    result.res_name = res_name
-    result.residuals = residuals
-    result.args = args
-    result.popt = popt
-    result.res = res
-    result.yopts = yopts
-    result.eval_points = eval_points
-    result.interpolation = yvals
-    result.sorted_y = sorted_y
-    result.scaled_res = scaled_res
-    result.normq = normq
-    result.residuals_evaluation = (sorted_y, scaled_res, normq)
-    result.CI = CI
-    result.CIs = CIs
-    result.CIparams = CIparams
-    result.extra_output = extra_output
-    return result
+    result = {}
+    result["fct"] = fct
+    result["fct_desc"] = fct_desc
+    result["param_names"] = param_names
+    result["xdata"] = xdata
+    result["ydata"] = ydata
+    result["xname"] = xname
+    result["yname"] = yname
+    result["res_name"] = res_name
+    result["residuals"] = residuals
+    result["args"] = args
+    result["popt"] = popt
+    result["res"] = res
+    result["yopts"] = yopts
+    result["eval_points"] = eval_points
+    result["interpolation"] = yvals
+    result["sorted_y"] = sorted_y
+    result["scaled_res"] = scaled_res
+    result["normq"] = normq
+    result["residuals_evaluation"] = (sorted_y, scaled_res, normq)
+    result["CI"] = CI
+    result["CIs"] = CIs
+    result["CIparams"] = CIparams
+    result["extra_output"] = extra_output
+    print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
+    return ResultStruct(**result)
 
 def plot_fit(result, loc=0):
     """

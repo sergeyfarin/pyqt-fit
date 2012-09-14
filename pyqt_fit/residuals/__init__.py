@@ -2,6 +2,7 @@ __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 import sys
 from ..path import path
+from ..utils import namedtuple
 
 sys_modules = "*.so"
 if sys.platform == 'win32' or sys.platform == 'cygwin':
@@ -9,15 +10,7 @@ if sys.platform == 'win32' or sys.platform == 'cygwin':
 elif sys.platform == 'darwin':
     sys_modules = "*.dylib"
 
-class Residual(object):
-    def __init__(self, fct, name, desc, invert):
-        self.fct = fct
-        self.name = name
-        self.description = desc
-        self.invert = invert
-
-    def __call__(self, *args, **kwords):
-        return self.fct(*args, **kwords)
+Residual = namedtuple('Residual', ['fct', 'name', 'description', 'invert', 'Dfun', '__call__'])
 
 def find_functions(module):
     content = dir(module)
@@ -32,6 +25,7 @@ def find_functions(module):
             name = None
             desc = None
             invert = None
+            dfun = None
             for l in doc:
                 l = l.strip()
                 fields = l.split(':', 1)
@@ -46,8 +40,14 @@ def find_functions(module):
                                 invert = None
                     elif fields[0] == 'Formula':
                         desc = fields[1].strip()
-            if name and desc and invert:
-                result[name] = Residual(attr, name, desc, invert)
+                    elif fields[0] == 'Dfun':
+                        dfun_name = fields[1].strip()
+                        if hasattr(module, dfun_name):
+                            dfun = getattr(module, dfun_name)
+                            if not callable(dfun):
+                                dfun = None
+            if name and desc and invert: # dfun is optional
+                result[name] = Residual(attr, name, desc, invert, dfun, attr)
     return result
 
 def load():

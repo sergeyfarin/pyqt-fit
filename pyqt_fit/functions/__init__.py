@@ -2,6 +2,8 @@ __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 import sys
 from ..path import path
+import traceback
+from ..utils import namedtuple
 
 sys_modules = "*.so"
 if sys.platform == 'win32' or sys.platform == 'cygwin':
@@ -9,16 +11,7 @@ if sys.platform == 'win32' or sys.platform == 'cygwin':
 elif sys.platform == 'darwin':
     sys_modules = "*.dylib"
 
-class Function(object):
-    def __init__(self, fct, name, desc, args, init_args):
-        self.fct = fct
-        self.name = name
-        self.description = desc
-        self.args = args
-        self.init_args = init_args
-
-    def __call__(self, *args, **kwords):
-        return self.fct(*args, **kwords)
+Function = namedtuple('Function', ['fct', 'name', 'description', 'args', 'init_args', 'Dfun', '__call__'])
 
 def find_functions(module):
     content = dir(module)
@@ -33,6 +26,7 @@ def find_functions(module):
             name = None
             desc = None
             args = None
+            dfun = None
             init_args = None
             for l in doc:
                 l = l.strip()
@@ -50,8 +44,14 @@ def find_functions(module):
                             init_args = getattr(module, params_name)
                             if not callable(init_args):
                                 init_args = None
-            if name and desc and args and init_args:
-                result[name] = Function(attr, name, desc, args, init_args)
+                    elif fields[0] == 'Dfun':
+                        dfun_name = fields[1].strip()
+                        if hasattr(module, dfun_name):
+                            dfun = getattr(module, dfun_name)
+                            if not callable(dfun):
+                                dfun = None
+            if name and desc and args and init_args: # dfun is optional
+                result[name] = Function(attr, name, desc, args, init_args, dfun, attr)
     return result
 
 def load():
@@ -96,8 +96,8 @@ def get(name):
 
     Returns
     -------
-    fct: callable object
-        Function of interest. The callable also has the following properties:
+    fct: namedtuple
+        Function of interest. The named tuple also has the following fields:
         fct: callable
             The function itself
         name: string
@@ -108,8 +108,14 @@ def get(name):
             List of argument names
         init_args: callable
             Function used to estimate initial parameters from dataset
+        Dfun: callable
+            Jacobian of the function (in column, so call leastsq with col_deriv=1)
     """
-    return functions.get(name, None)
+    f = functions.get(name, None)
+    print "Getting function '%s'" % name
+    if f is not None:
+        print "  Dfun = %s" % f.Dfun
+    return f
 
 def names():
     """

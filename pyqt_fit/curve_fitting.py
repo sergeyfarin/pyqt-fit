@@ -1,7 +1,7 @@
 from scipy import optimize
 from numpy import array, inf
 
-def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfun=None, col_deriv=0, constraints = None, *lsq_args, **lsq_kword):
+def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfun=None, Dres = None, col_deriv=0, constraints = None, *lsq_args, **lsq_kword):
     """
     Fit a curve using the optimize.leastsq function
 
@@ -18,13 +18,18 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
     args: tuple
         Additional arguments for the function
     residuals: callable or None
-        Function computing the residuals. The call is equivalent to ``residuals(y,y)``
-        and it should return a ndarray
+        Function computing the residuals. The call is equivalent to ``residuals(y, fct(x))``
+        and it should return a ndarray. If None, residuals are simply the
+        difference between the computed and expected values.
     fix_params: tuple of int
         List of indices for the parameters in p0 that shouldn't change
     Dfun: callable
         Function computing the jacobian of fct w.r.t. the parameters. The call
         will be equivalent to ``Dfun(xdata, p0, *args)``
+    Dres: callable
+        Function computing the jacobian of the residuals w.r.t. the parameters.
+        The call will be equivalent to ``Dres(y, fct(x), DFun(x))``
+        If None, residuals must also be None.
     col_deriv: int
         Define if Dfun returns the derivatives by row or column. With n = len(xdata)
         and m = len(p0), the shape of output of Dfun must be:
@@ -66,6 +71,8 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
             - 'CI'   : list of tuple of parameters, each being the lower and
                      upper bounds for the confidence interval in the CI
                      argument at the same position.
+            - 'est_jacobian' : True if the jacobian is estimated, false if the
+                     user-provided functions have been used
 
     Notes
     -----
@@ -79,8 +86,11 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
     Confidence interval are estimated using the bootstrap method.
     """
     if residuals is None:
-        residuals = lambda x,y: (y-x)
+        residuals = lambda x,y: (x-y)
+        Dres = lambda y1,y0,dy: -dy
 
+    use_derivs = (Dres is not None) and (Dfun is not None)
+    print "use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun)
     f = None
     df = None
 
@@ -99,11 +109,13 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
             p1[change_params] = p
             y0 = fct(xdata,p1,*args)
             return residuals(ydata, y0)
-        if Dfun is not None:
+        if use_derivs:
             def df(p, *args):
                 p1 = array(p_save)
                 p1[change_params] = p
-                result = Dfun(xdata,p1,*args)
+                y0 = fct(xdata,p1,*args)
+                dfct = Dfun(xdata,p1,*args)
+                result = Dres(ydata, y0, dfct)
                 if col_deriv != 0:
                     return result[change_params]
                 else:
@@ -113,11 +125,15 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
         def f(*args):
             y0 = fct(xdata,*args)
             return residuals(ydata, y0)
-        if Dfun is not None:
+        if use_derivs:
             def df(p, *args):
-                return Dfun(xdata, p, *args)
+                dfct = Dfun(xdata, p, *args)
+                y0 = fct(xdata,p,*args)
+                return Dres(ydata, y0, dfct)
+
 
     popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, Dfun=df, col_deriv=col_deriv, *lsq_args, **lsq_kword)
+    infodict['est_jacobian'] = not use_derivs
 
     if fix_params:
         p_save[change_params] = popt

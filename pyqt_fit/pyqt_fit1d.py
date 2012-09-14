@@ -26,22 +26,6 @@ def get_args(*a, **k):
 def find(array):
     return arange(len(array))[array]
 
-def plot_fit(fct_name, xdata, ydata, p0, fit = curve_fit, eval_points=None,
-             CI=(), residuals_name = 'Standard',
-             xname="X", yname="Y", 
-             args=(), loc=None, **kwrds):
-    """
-    The parameters are the same as for plot_fit.plot_fit but functions and residuals are given by name
-    """
-    fct_desc, param_names, fct = functions.get(fct_name)
-    if fct is None:
-        raise ValueError("Unknown function: '%s'" % fct_name)
-    res_desc, invert, res = residuals.get(residuals_name)
-    if res is None:
-        raise ValueError("Unknown residuals: '%s'" % residuals_name)
-    return _plot_fit(fct.fct, xdata, ydata, p0, fit, eval_points, CI, bootstrap,
-                     xname, yname, fct_desc, param_names, res_name, args, loc)
-
 class ParametersModel(QtCore.QAbstractTableModel):
     def __init__(self, data, function, res, idxX, idxY, parent = None):
         QtCore.QAbstractTableModel.__init__(self, parent)
@@ -422,7 +406,7 @@ class QtFitDlg(QtGui.QDialog):
                 CImethod = bootstrap.bootstrap_regression
             elif unicode(self.CImethod.currentText()) == u"Residual resampling":
                 CImethod = bootstrap.bootstrap_residuals
-            outfile = self.outputFile.text()
+            outfile = self.output
             CI = ()
             result = None
             loc = str(self.legendLocation.currentText())
@@ -431,16 +415,18 @@ class QtFitDlg(QtGui.QDialog):
                 if self.CI is not None:
                     method = self.CI[0]
                     CI = self.CI[1]
-                    result = fit(fct.fct, xdata, ydata, p0,
+                    result = fit(fct, xdata, ydata, p0,
                             eval_points=eval_points, CI = CI,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct,
+                            Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
                             fit_args={"maxfev": 10000, "fix_params": fixed},
                             shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
                 else:
-                    result = fit(fct.fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
+                    result = fit(fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
                             eval_points=eval_points,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
+                            Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
                             param_names = parm_names, res_name = res.name,
                             residuals = res.fct, maxfev=10000)
             except Exception, ex:
