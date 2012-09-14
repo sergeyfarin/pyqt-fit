@@ -1,5 +1,5 @@
 from __future__ import division
-from curve_fit import curve_fit
+from curve_fitting import curve_fit
 from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
 from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, clf, ylim, hist, suptitle, gca
 import bootstrap

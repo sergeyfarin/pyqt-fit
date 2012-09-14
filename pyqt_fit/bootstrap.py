@@ -212,7 +212,7 @@ def test():
     import quad
     from numpy.random import rand, randn
     from pylab import plot, savefig, clf, legend, arange, figure, title, show
-    from curve_fit import curve_fit
+    from curve_fitting import curve_fit
     import residuals
 
     def quadratic(x,(p0,p1,p2)):

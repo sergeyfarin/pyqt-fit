@@ -8,7 +8,7 @@ from numpy import nan, array, ma, isnan, arange, c_
 import functions
 import residuals
 from path import path
-from curve_fit import curve_fit
+from curve_fitting import curve_fit
 from plot_fit import fit
 from plot_fit import plot_fit as _plot_fit
 from plot_fit import write_fit as _write_fit

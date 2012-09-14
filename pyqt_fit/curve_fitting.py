@@ -1,7 +1,7 @@
 from scipy import optimize
 from numpy import array, inf
 
-def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), *lsq_args, **lsq_kword):
+def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfun=None, col_deriv=0, constraints = None, *lsq_args, **lsq_kword):
     """
     Fit a curve using the optimize.leastsq function
 
@@ -22,6 +22,18 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), *ls
         and it should return a ndarray
     fix_params: tuple of int
         List of indices for the parameters in p0 that shouldn't change
+    Dfun: callable
+        Function computing the jacobian of fct w.r.t. the parameters. The call
+        will be equivalent to ``Dfun(xdata, p0, *args)``
+    col_deriv: int
+        Define if Dfun returns the derivatives by row or column. With n = len(xdata)
+        and m = len(p0), the shape of output of Dfun must be:
+         - if 0: (n,m)
+         - if non 0: (m,n)
+    constraints: callable
+        If not None, this is a function that should always return a list of
+        values (the same), to add penalties for bad parameters. The function
+        call is equivalent to: ``constraints(p0)``
     lsq_args: tuple
         List of unnamed arguments passed to ``optimize.leastsq``, starting with ``ftol``
     lsq_kword: dict
@@ -70,8 +82,10 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), *ls
         residuals = lambda x,y: (y-x)
 
     f = None
+    df = None
 
     if fix_params:
+        fix_params = tuple(fix_params)
         p_save = array(p0, dtype=float)
         change_params = range(len(p0))
         try:
@@ -85,11 +99,25 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), *ls
             p1[change_params] = p
             y0 = fct(xdata,p1,*args)
             return residuals(ydata, y0)
+        if Dfun is not None:
+            def df(p, *args):
+                p1 = array(p_save)
+                p1[change_params] = p
+                result = Dfun(xdata,p1,*args)
+                if col_deriv != 0:
+                    return result[change_params]
+                else:
+                    return result[:,change_params]
+                return result
     else:
         def f(*args):
             y0 = fct(xdata,*args)
             return residuals(ydata, y0)
-    popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, *lsq_args, **lsq_kword)
+        if Dfun is not None:
+            def df(p, *args):
+                return Dfun(xdata, p, *args)
+
+    popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, Dfun=df, col_deriv=col_deriv, *lsq_args, **lsq_kword)
 
     if fix_params:
         p_save[change_params] = popt
