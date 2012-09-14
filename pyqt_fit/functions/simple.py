@@ -72,7 +72,7 @@ def deriv_logistic((A, k, x0, y0), x):
     ee2 = ee1*ee1
     result[0] = 1./ee1 # d/dA
     result[1] = -dx*A*ee/ee2 # d/dk
-    result[2] = A*k*ee/ee2 # d/dx0
+    result[2] = -A*k*ee/ee2 # d/dx0
     # d/dy0 = 1
     return result
 
