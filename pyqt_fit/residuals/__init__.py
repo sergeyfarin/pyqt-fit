@@ -1,14 +1,7 @@
 __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
-import sys
-from ..path import path
 from ..utils import namedtuple
-
-sys_modules = "*.so"
-if sys.platform == 'win32' or sys.platform == 'cygwin':
-    sys_modules = "*.dll"
-elif sys.platform == 'darwin':
-    sys_modules = "*.dylib"
+from .. import loader
 
 Residual = namedtuple('Residual', ['fct', 'name', 'description', 'invert', 'Dfun', '__call__'])
 
@@ -51,32 +44,9 @@ def find_functions(module):
     return result
 
 def load():
-    system_files = [ __file__ ]
-    sys_files = set()
-    for f in system_files:
-        if f.endswith(".pyo") or f.endswith(".pyc"):
-            f = f[:-3]+"py"
-        sys_files.add(path(f).abspath())
-    search_path = path(__file__).abspath().dirname()
-    fcts = {}
-    for f in (search_path.files("*.py") + search_path.files("*.pyx") + search_path.files(sys_modules)):
-        if f not in sys_files:
-            module_name = f.namebase
-            pack_name = 'residuals.%s' % module_name
-            try:
-                mod = sys.modules.get(pack_name)
-                if mod:
-                    reload(mod)
-                else:
-                    exec "import %s" % module_name in globals()
-                    mod = sys.modules.get(pack_name)
-                mod = eval(module_name)
-                fcts.update(find_functions(mod))
-            except ImportError:
-                print "Warning, cannot import module '%s'" % (module_name,)
     global residuals
-    residuals = fcts
-    return fcts
+    residuals = loader.load(find_functions)
+    return residuals
 
 load()
 
