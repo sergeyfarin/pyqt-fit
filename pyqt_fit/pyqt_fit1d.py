@@ -3,7 +3,6 @@ import cyth
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt
 import matplotlib
-matplotlib.use('Qt4Agg')
 from numpy import nan, array, ma, isnan, arange, c_
 import functions
 import residuals
