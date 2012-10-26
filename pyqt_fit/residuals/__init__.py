@@ -1,14 +1,8 @@
 __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
-import sys
-from ..path import path
 from ..utils import namedtuple
-
-sys_modules = "*.so"
-if sys.platform == 'win32' or sys.platform == 'cygwin':
-    sys_modules = "*.dll"
-elif sys.platform == 'darwin':
-    sys_modules = "*.dylib"
+import collections
+from .. import loader
 
 Residual = namedtuple('Residual', ['fct', 'name', 'description', 'invert', 'Dfun', '__call__'])
 
@@ -36,7 +30,7 @@ def find_functions(module):
                         inv_name = fields[1].strip()
                         if hasattr(module, inv_name):
                             invert = getattr(module, inv_name)
-                            if not callable(invert):
+                            if not isinstance(invert, collections.Callable):
                                 invert = None
                     elif fields[0] == 'Formula':
                         desc = fields[1].strip()
@@ -44,39 +38,16 @@ def find_functions(module):
                         dfun_name = fields[1].strip()
                         if hasattr(module, dfun_name):
                             dfun = getattr(module, dfun_name)
-                            if not callable(dfun):
+                            if not isinstance(dfun, collections.Callable):
                                 dfun = None
             if name and desc and invert: # dfun is optional
                 result[name] = Residual(attr, name, desc, invert, dfun, attr)
     return result
 
 def load():
-    system_files = [ __file__ ]
-    sys_files = set()
-    for f in system_files:
-        if f.endswith(".pyo") or f.endswith(".pyc"):
-            f = f[:-3]+"py"
-        sys_files.add(path(f).abspath())
-    search_path = path(__file__).abspath().dirname()
-    fcts = {}
-    for f in (search_path.files("*.py") + search_path.files("*.pyx") + search_path.files(sys_modules)):
-        if f not in sys_files:
-            module_name = f.namebase
-            pack_name = 'residuals.%s' % module_name
-            try:
-                mod = sys.modules.get(pack_name)
-                if mod:
-                    reload(mod)
-                else:
-                    exec "import %s" % module_name in globals()
-                    mod = sys.modules.get(pack_name)
-                mod = eval(module_name)
-                fcts.update(find_functions(mod))
-            except ImportError:
-                print "Warning, cannot import module '%s'" % (module_name,)
     global residuals
-    residuals = fcts
-    return fcts
+    residuals = loader.load(find_functions)
+    return residuals
 
 load()
 
@@ -108,5 +79,5 @@ def names():
     """
     List the names of available residuals
     """
-    return residuals.keys()
+    return list(residuals.keys())
 

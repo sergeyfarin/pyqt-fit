@@ -97,7 +97,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
     if fix_params:
         fix_params = tuple(fix_params)
         p_save = array(p0, dtype=float)
-        change_params = range(len(p0))
+        change_params = list(range(len(p0)))
         try:
             for i in fix_params:
                 change_params.remove(i)

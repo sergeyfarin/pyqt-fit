@@ -179,7 +179,7 @@ def bootstrap(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, s
 
     result_array[0] = fct(popt, eval_points, *args)
     params_array[0] = popt
-    for i in xrange(0,repeats):
+    for i in range(0,repeats):
         new_result = fit(fct, shuffled_x[...,i%nx,:], shuffled_y[i%ny,:], popt, args=args, **fit_args)
         result_array[i+1] = fct(new_result[0], eval_points, *args)
         params_array[i+1] = new_result[0]
@@ -208,33 +208,34 @@ def getCIs(CI, result_array, params_array):
     return CIs, CIparams
 
 def test():
-    import cyth
+    from . import cyth
     import quad
     from numpy.random import rand, randn
     from pylab import plot, savefig, clf, legend, arange, figure, title, show
-    from curve_fitting import curve_fit
-    import residuals
+    from .curve_fitting import curve_fit
+    from . import residuals
 
-    def quadratic(x,(p0,p1,p2)):
+    def quadratic(x, xxx_todo_changeme):
+        (p0,p1,p2) = xxx_todo_changeme
         return p0 + p1*x + p2*x**2
     #test = quadratic
     test = quad.quadratic
 
     init = (10,1,1)
     target = array([10,4,1.2])
-    print "Target parameters: %s" % (target,)
+    print("Target parameters: %s" % (target,))
     x = 6*rand(200) - 3
     y = test(x, target)*(1+0.3*randn(x.shape[0]))
     xr = arange(-3, 3, 0.01)
     yr = test(xr,target)
 
-    print "Estimage best parameters, fixing the first one"
+    print("Estimage best parameters, fixing the first one")
     popt, pcov, _, _ = curve_fit(test, x, y, init, fix_params=(0,))
-    print "Best parameters: %s" % (popt,)
+    print("Best parameters: %s" % (popt,))
 
-    print "Estimate best parameters from data"
+    print("Estimate best parameters from data")
     popt, pcov, _, _ = curve_fit(test, x, y, init)
-    print "Best parameters: %s" % (popt,)
+    print("Best parameters: %s" % (popt,))
 
     figure(1)
     clf()
@@ -242,7 +243,7 @@ def test():
     plot(xr, yr, 'r', label='function')
     legend(loc='upper left')
 
-    print "Residual bootstrap calculation"
+    print("Residual bootstrap calculation")
     result_r = bootstrap(test, x, y, init, (95, 99), shuffle_method=bootstrap_residuals, eval_points = xr, fit=curve_fit)
     popt_r, pcov_r, res_r, CI_r, CIp_r, extra_r = result_r
     yopt_r = test(xr, popt_r)
@@ -258,7 +259,7 @@ def test():
     legend(loc='upper left')
     title('Residual Bootstrapping')
 
-    print "Regression bootstrap calculation"
+    print("Regression bootstrap calculation")
     popt_c, pcov_c, res_c, CI_c, CIp_r, extra_c = bootstrap(test, x, y, init, CI=(95, 99), shuffle_method=bootstrap_regression, eval_points = xr, fit=curve_fit)
     yopt_c = test(xr, popt_c)
 
@@ -273,7 +274,7 @@ def test():
     legend(loc='upper left')
     title('Regression Bootstrapping (also called Case Resampling)')
 
-    print "Done"
+    print("Done")
 
     show()
 

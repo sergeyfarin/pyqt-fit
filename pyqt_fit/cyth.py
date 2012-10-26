@@ -10,13 +10,13 @@ import numpy
 import pyximport
 
 if os.name == 'nt':
-    if os.environ.has_key('CPATH'):
+    if 'CPATH' in os.environ:
         os.environ['CPATH'] = os.environ['CPATH'] + numpy.get_include()
     else:
         os.environ['CPATH'] = numpy.get_include()
 
     # XXX: we're assuming that MinGW is installed in C:\MinGW (default)
-    if os.environ.has_key('PATH'):
+    if 'PATH' in os.environ:
         os.environ['PATH'] = os.environ['PATH'] + ';C:\MinGW\bin'
     else:
         os.environ['PATH'] = 'C:\MinGW\bin'
@@ -26,7 +26,7 @@ if os.name == 'nt':
 
 elif os.name == 'posix':
     extra_flags = ' -I' + numpy.get_include()
-    if os.environ.has_key('CFLAGS'):
+    if 'CFLAGS' in os.environ:
         os.environ['CFLAGS'] = os.environ['CFLAGS'] + extra_flags
     else:
         os.environ['CFLAGS'] = extra_flags

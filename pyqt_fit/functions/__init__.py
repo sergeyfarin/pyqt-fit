@@ -1,15 +1,8 @@
 __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
-import sys
-from ..path import path
-import traceback
 from ..utils import namedtuple
-
-sys_modules = "*.so"
-if sys.platform == 'win32' or sys.platform == 'cygwin':
-    sys_modules = "*.dll"
-elif sys.platform == 'darwin':
-    sys_modules = "*.dylib"
+import collections
+from .. import loader
 
 Function = namedtuple('Function', ['fct', 'name', 'description', 'args', 'init_args', 'Dfun', '__call__'])
 
@@ -42,46 +35,22 @@ def find_functions(module):
                         params_name = fields[1].strip()
                         if hasattr(module, params_name):
                             init_args = getattr(module, params_name)
-                            if not callable(init_args):
+                            if not isinstance(init_args, collections.Callable):
                                 init_args = None
                     elif fields[0] == 'Dfun':
                         dfun_name = fields[1].strip()
                         if hasattr(module, dfun_name):
                             dfun = getattr(module, dfun_name)
-                            if not callable(dfun):
+                            if not isinstance(dfun, collections.Callable):
                                 dfun = None
             if name and desc and args and init_args: # dfun is optional
                 result[name] = Function(attr, name, desc, args, init_args, dfun, attr)
     return result
 
 def load():
-    system_files = [ __file__ ]
-    sys_files = set()
-    for f in system_files:
-        if f.endswith(".pyo") or f.endswith(".pyc"):
-            f = f[:-3]+"py"
-        sys_files.add(path(f).abspath())
-    search_path = path(__file__).abspath().dirname()
-    fcts = {}
-# Search for python, cython and modules
-    for f in (search_path.files("*.py") + search_path.files("*.pyx") + search_path.files(sys_modules)):
-        if f not in sys_files:
-            module_name = f.namebase
-            pack_name = 'functions.%s' % module_name
-            try:
-                mod = sys.modules.get(pack_name)
-                if mod:
-                    reload(mod)
-                else:
-                    exec "import %s" % module_name in globals()
-                    mod = sys.modules.get(pack_name)
-                mod = eval(module_name)
-                fcts.update(find_functions(mod))
-            except ImportError:
-                print "Warning, cannot import module '%s'" % (module_name,)
     global functions
-    functions = fcts
-    return fcts
+    functions = loader.load(find_functions)
+    return functions
 
 load()
 
@@ -112,14 +81,14 @@ def get(name):
             Jacobian of the function (in column, so call leastsq with col_deriv=1)
     """
     f = functions.get(name, None)
-    print "Getting function '%s'" % name
+    print("Getting function '%s'" % name)
     if f is not None:
-        print "  Dfun = %s" % f.Dfun
+        print("  Dfun = %s" % f.Dfun)
     return f
 
 def names():
     """
     Return the list of names for the functions
     """
-    return functions.keys()
+    return list(functions.keys())
 

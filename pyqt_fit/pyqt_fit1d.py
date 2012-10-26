@@ -1,23 +1,23 @@
 #!/usr/bin/env python
-import cyth
+from . import cyth
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt
 import matplotlib
 matplotlib.use('Qt4Agg')
 from numpy import nan, array, ma, isnan, arange, c_
-import functions
-import residuals
-from path import path
-from curve_fitting import curve_fit
-from plot_fit import fit
-from plot_fit import plot_fit as _plot_fit
-from plot_fit import write_fit as _write_fit
-import bootstrap
+from . import functions
+from . import residuals
+from .path import path
+from .curve_fitting import curve_fit
+from .plot_fit import fit
+from .plot_fit import plot_fit as _plot_fit
+from .plot_fit import write_fit as _write_fit
+from . import bootstrap
 from csv import reader as csv_reader
 from csv import writer as csv_writer
 import sys
 from pylab import close as close_figure
-from itertools import izip, chain
+from itertools import chain
 import traceback
 
 def get_args(*a, **k):
@@ -71,15 +71,15 @@ class ParametersModel(QtCore.QAbstractTableModel):
         if 0 <= r < len(self.parm_names) and 0 <= c < 3:
             if c == 0:
                 if role == Qt.DisplayRole:
-                    return QtCore.QVariant(self.parm_names[r])
+                    return self.parm_names[r]
             elif c == 1:
                 if role == Qt.DisplayRole:
-                    return QtCore.QVariant("%g" % (self.parm_values[r],))
+                    return "%g" % (self.parm_values[r],)
                 elif role == Qt.EditRole:
-                    return QtCore.QVariant("%g" % (self.parm_values[r],))
+                    return "%g" % (self.parm_values[r],)
             elif c == 2:
                 if role == Qt.CheckStateRole:
-                    return QtCore.QVariant(self.fixed[r])
+                    return self.fixed[r]
 
     def setData(self, index, value, role = Qt.DisplayRole):
         r = index.row()
@@ -92,7 +92,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
                     self.dataChanged.emit(index, index)
                     return True
                 else:
-                    print "Error, cannot convert value to double"
+                    print("Error, cannot convert value to double")
             elif c == 2 and role == Qt.CheckStateRole:
                 self.fixed[r] = value.toPyObject()
                 self.dataChanged.emit(index, index)
@@ -143,12 +143,12 @@ class QtFitDlg(QtGui.QDialog):
 
     @pyqtSignature("const QString&")
     def on_function_currentIndexChanged(self, txt):
-        print "New function: %s" % txt
+        print("New function: %s" % txt)
         self.fct = functions.get(str(txt))
 
     @pyqtSignature("const QString&")
     def on_residuals_currentIndexChanged(self, txt):
-        print "New residual: %s" % txt
+        print("New residual: %s" % txt)
         self.res = residuals.get(str(txt))
 
     @pyqtSignature("")
@@ -206,10 +206,10 @@ class QtFitDlg(QtGui.QDialog):
             try:
                 data = None
                 header = None
-                with file(txt, "rb") as f:
+                with open(txt, "rt") as f:
                     try:
                         r = csv_reader(f)
-                        header = [ t.decode('utf_8') for t in r.next() ]
+                        header = next(r) # [ t.decode('utf_8') for t in next(r) ]
                         if len(header) < 2:
                             QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
                             return
@@ -221,13 +221,13 @@ class QtFitDlg(QtGui.QDialog):
                         max_length = max(len(l) for l in data)
                         data = array([l + [nan]*(max_length-len(l)) for l in data], dtype=float)
                         data = ma.masked_invalid(data)
-                    except Exception, ex:
+                    except Exception as ex:
                         QtGui.QMessageBox.critical(self, "Error reading CSV file", str(ex))
                         data = None
                         header = None
                 if data is not None:
                     self._input = txt
-                    print "input: %s" % (self._input,)
+                    print("input: %s" % (self._input,))
                     if self._input != self.inputFile.text():
                         self.inputFile.setText(self._input)
                     self.setData(header, data)
@@ -306,8 +306,8 @@ class QtFitDlg(QtGui.QDialog):
 
     def updateParameters(self):
         if self._data is not None and self.fct is not None and self.res is not None and self.fieldX is not None and self.fieldY is not None:
-            idxX = self.header.index(unicode(self.fieldX))
-            idxY = self.header.index(unicode(self.fieldY))
+            idxX = self.header.index(str(self.fieldX))
+            idxY = self.header.index(str(self.fieldY))
             self.param_model = ParametersModel(self._data, self.fct, self.res, idxX, idxY)
             self.parameters.setModel(self.param_model)
             minx = self._data[:,idxX].min()
@@ -329,7 +329,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_computeCI_toggled(self, on):
         if on:
             meth = self.CImethod.currentText()
-            ints = [float(f) for f in unicode(self.CIvalues.text()).split(";")]
+            ints = [float(f) for f in str(self.CIvalues.text()).split(";")]
             self.CI = [meth, ints]
         else:
             self.CI = None
@@ -342,7 +342,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_CIvalues_editingFinished(self):
         if self.CI:
             try:
-                ints = [float(f) for f in unicode(self.CIvalues.text()).split(";")]
+                ints = [float(f) for f in str(self.CIvalues.text()).split(";")]
                 self.setIntervals(ints)
             except:
                 pass
@@ -355,14 +355,14 @@ class QtFitDlg(QtGui.QDialog):
     @pyqtSignature("const QString&")
     def on_CImethod_currentIndexChanged(self, txt):
         if self.CI:
-            meth = unicode(txt)
+            meth = str(txt)
             self.setCIMethod(meth)
 
     def _getCI(self):
         return self._CI
     def _setCI(self, val):
         if val is not None:
-            val = (unicode(val[0]), [float(f) for f in val[1]])
+            val = (str(val[0]), [float(f) for f in val[1]])
         if val != self._CI:
             self._CI = val
             if val is not None:
@@ -420,9 +420,9 @@ class QtFitDlg(QtGui.QDialog):
                     xmax = float(self.xMax.text())
                 eval_points = arange(xmin, xmax, (xmax-xmin)/1024)
             CImethod = None
-            if unicode(self.CImethod.currentText()) == u"Bootstrapping":
+            if str(self.CImethod.currentText()) == "Bootstrapping":
                 CImethod = bootstrap.bootstrap_regression
-            elif unicode(self.CImethod.currentText()) == u"Residual resampling":
+            elif str(self.CImethod.currentText()) == "Residual resampling":
                 CImethod = bootstrap.bootstrap_residuals
             outfile = self.output
             CI = ()
@@ -446,7 +446,7 @@ class QtFitDlg(QtGui.QDialog):
                             Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
                             param_names = parm_names, res_name = res.name,
                             residuals = res.fct, maxfev=10000)
-            except Exception, ex:
+            except Exception as ex:
                 traceback.print_exc()
                 QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
                         "%s exception: %s" % (type(ex).__name__, ex.message))

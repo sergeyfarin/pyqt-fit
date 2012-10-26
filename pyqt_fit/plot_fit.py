@@ -1,15 +1,15 @@
-from __future__ import division
-from curve_fitting import curve_fit
+
+from .curve_fitting import curve_fit
 from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
 from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, clf, ylim, hist, suptitle, gca
-import bootstrap
-from itertools import izip, chain
+from . import bootstrap
+from itertools import chain
 from scipy.special import erfinv, gamma
 from scipy import stats
 #try:
 #    from cy_kernel_smoothing import SpatialAverage
 #except ImportError:
-from kernel_smoothing import SpatialAverage
+from .kernel_smoothing import SpatialAverage
 import inspect
 from csv import writer as csv_writer
 from collections import namedtuple
@@ -205,7 +205,7 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     extra_output: extra output provided by the fit or bootstrap function
     And also all the arguments that may change the result of the estimation.
     """
-    print "CI = '%s'" % (CI,)
+    print("CI = '%s'" % (CI,))
     if CI:
         popt, pcov, res, CIs, CIparams = fit_result[:5]
         extra_output = fit_result[5:]
@@ -265,12 +265,12 @@ def plot_fit(result, loc=0):
     p_data = plot(result.xdata, result.ydata, '+', label='data')[0]
     p_CIs = []
     if result.CI:
-        for p, (low, high) in izip(result.CI,result.CIs):
+        for p, (low, high) in zip(result.CI,result.CIs):
             l = plot(result.eval_points, low, '--', label='%g%% CI' % (p,))[0]
             h = plot(result.eval_points, high, l.get_color()+'--')[0]
             p_CIs += [l,h]
     if result.param_names:
-        param_strs = ", ".join("%s=%g" % (n,v) for n,v in izip(result.param_names, result.popt))
+        param_strs = ", ".join("%s=%g" % (n,v) for n,v in zip(result.param_names, result.popt))
     else:
         param_strs = ", ".join("%g" % v for v in result.popt)
     param_strs = "$%s$" % (param_strs,)
@@ -306,12 +306,12 @@ def plot_fit(result, loc=0):
 
 
 def write_fit(outfile, result, res_desc, parm_names, CImethod):
-    with file(outfile, "wb") as f:
+    with open(outfile, "wt") as f:
         w = csv_writer(f)
         w.writerow(["Function",result.fct.description])
         w.writerow(["Residuals",result.res_name,res_desc])
         w.writerow(["Parameter","Value"])
-        for pn, pv in izip(parm_names, result.popt):
+        for pn, pv in zip(parm_names, result.popt):
             w.writerow([pn, "%.20g" % pv])
         #TODO w.writerow(["Regression Evaluation"])
         w.writerow([])
@@ -333,8 +333,8 @@ def write_fit(outfile, result, res_desc, parm_names, CImethod):
             w.writerow(["Method",CImethod])
             head = ["Parameters"] + list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in result.CI]))
             w.writerow(head)
-            print result.CIparams
-            for cis in izip(parm_names, *chain(*result.CIparams)):
+            print(result.CIparams)
+            for cis in zip(parm_names, *chain(*result.CIparams)):
                 cistr = [cis[0]] + ["%.20g" % v for v in cis[1:]]
                 w.writerow(cistr)
             w.writerow([result.yname])
@@ -343,17 +343,18 @@ def write_fit(outfile, result, res_desc, parm_names, CImethod):
             w.writerows(c_[tuple(chain([result.eval_points], *result.CIs))])
 
 def test():
-    import residuals
+    from . import residuals
     from numpy.random import rand, randn
     from pylab import plot, savefig, clf, legend, arange, figure, title, show
     from curve_fit import curve_fit
 
-    def test(x,(p0,p1,p2)):
+    def test(x, xxx_todo_changeme):
+        (p0,p1,p2) = xxx_todo_changeme
         return p0 + p1*x + p2*x**2
 
     init = (10,1,1)
     target = (10,4,1.2)
-    print "Target parameters: %s" % (target,)
+    print("Target parameters: %s" % (target,))
     x = 6*rand(200) - 3
     y = test(x, target)*(1+0.2*randn(x.shape[0]))
     xr = arange(-3, 3, 0.01)

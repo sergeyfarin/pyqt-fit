@@ -29,7 +29,7 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
 
     # Parse and validate the field names.  Validation serves two purposes,
     # generating informative error messages and preventing template injection attacks.
-    if isinstance(field_names, basestring):
+    if isinstance(field_names, str):
         field_names = field_names.replace(',', ' ').split() # names separated by whitespace and/or commas
     field_names = tuple(map(str, field_names))
     forbidden_fields = {'__init__', '__slots__', '__new__', '__repr__', '__getnewargs__'}
@@ -97,15 +97,15 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
     for i, name in enumerate(field_names):
         template += "        %s = _property(_itemgetter(%d), doc='Alias for field number %d')\n" % (name, i, i)
     if verbose:
-        print template
+        print(template)
 
     # Execute the template string in a temporary namespace and
     # support tracing utilities by setting a value for frame.f_globals['__name__']
     namespace = dict(_itemgetter=_itemgetter, __name__='namedtuple_%s' % typename,
                      OrderedDict=OrderedDict, _property=property, _tuple=tuple)
     try:
-        exec template in namespace
-    except SyntaxError, e:
+        exec(template, namespace)
+    except SyntaxError as e:
         raise SyntaxError(e.message + ':\n' + template)
     result = namespace[typename]
 
