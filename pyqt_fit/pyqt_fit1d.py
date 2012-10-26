@@ -71,15 +71,15 @@ class ParametersModel(QtCore.QAbstractTableModel):
         if 0 <= r < len(self.parm_names) and 0 <= c < 3:
             if c == 0:
                 if role == Qt.DisplayRole:
-                    return QtCore.QVariant(self.parm_names[r])
+                    return self.parm_names[r]
             elif c == 1:
                 if role == Qt.DisplayRole:
-                    return QtCore.QVariant("%g" % (self.parm_values[r],))
+                    return "%g" % (self.parm_values[r],)
                 elif role == Qt.EditRole:
-                    return QtCore.QVariant("%g" % (self.parm_values[r],))
+                    return "%g" % (self.parm_values[r],)
             elif c == 2:
                 if role == Qt.CheckStateRole:
-                    return QtCore.QVariant(self.fixed[r])
+                    return self.fixed[r]
 
     def setData(self, index, value, role = Qt.DisplayRole):
         r = index.row()
