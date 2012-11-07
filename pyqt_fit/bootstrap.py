@@ -156,8 +156,8 @@ def bootstrap(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, s
     CIparams: list of pair of ndarray
         For each CI value, a pair of ndarray is provided for the lower and
         upper bound of the parameters
-    extra_output: tuple
-        Any extra output of fit during the first evaluation
+    extra_output:
+        Any extra output of fit during the first evaluation is appended at the end of the result
 
     Notes
     -----
@@ -165,7 +165,7 @@ def bootstrap(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, s
     """
     result = fit(fct, xdata, ydata, p0, args=args, **fit_args)
     popt, pcov, residuals = result[:3]
-    extra_output = result[3:]
+    extra_output = tuple(result[3:])
 
     shuffled_x, shuffled_y = shuffle_method(fct, xdata, ydata, popt, residuals, repeats=repeats, args=args, **shuffle_args)
     nx = shuffled_x.shape[-2]
@@ -185,7 +185,7 @@ def bootstrap(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, s
         params_array[i+1] = new_result[0]
 
     CIs, CIparams = getCIs(CI, result_array, params_array)
-    return popt, pcov, residuals, CIs, CIparams, extra_output
+    return (popt, pcov, residuals, CIs, CIparams) + extra_output
 
 def getCIs(CI, result_array, params_array):
     sorted_array = sort(result_array, axis=0)
