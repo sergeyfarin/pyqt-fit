@@ -2,9 +2,10 @@
 
 #from distutils.core import setup
 from setuptools import setup
+from pyqt_fit import __version__
 
 setup(name='PyQt-Fit',
-      version='1.0.6',
+      version=__version__,
       description='Last-square fitting of user-defined functions',
       author='Pierre Barbier de Reuille',
       author_email='pierre.barbierdereuille@gmail.com',
