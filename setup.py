@@ -15,3 +15,4 @@ setup(name='PyQt-Fit',
       scripts=['pyqt_fit1d.py'],
       requires=['setuptools', 'scipy', 'numpy', 'cython', 'pylab', 'PyQT4', 'matplotlib'],
      )
+

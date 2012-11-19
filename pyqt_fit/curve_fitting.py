@@ -92,7 +92,7 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfu
     use_derivs = (Dres is not None) and (Dfun is not None)
     #print "use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun)
     #f = None
-    #df = None
+    df = None
 
     if fix_params:
         fix_params = tuple(fix_params)
