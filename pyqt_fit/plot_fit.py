@@ -254,7 +254,7 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     #print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
     return ResultStruct(**result)
 
-def plot_fit(result, loc=0):
+def plot(result, loc=0):
     """
     Use matplotlib to display the result of a fit, and return the list of plots used
     """

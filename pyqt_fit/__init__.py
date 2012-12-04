@@ -1,7 +1,7 @@
-import plot_fit
+#import plot_fit
 import functions
 import residuals
-from curve_fitting import curve_fit
+from plot_fit import fit, plot_fit, write_fit
 
-__version__ = '1.0.9'
+__version__ = '1.0.10'
 

@@ -1,2 +1,3 @@
-v1.0.9, 4/12/2012 - Initial realease with change file
+v1.0.10, 4/12/2012 - First release distributed with pip
+v1.0.9, 4/12/2012 - Last release without pip
 
