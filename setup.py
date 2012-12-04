@@ -2,9 +2,16 @@
 
 import sys
 from setuptools import setup
-from path import path
 
-with (path(__file__).dirname() / 'pyqt_fit' / 'version.txt').open() as f:
+#from path import path
+
+#with (path(__file__).dirname() / 'pyqt_fit' / 'version.txt').open() as f:
+    #__version__ = f.read().strip()
+
+import os.path
+
+version_filename = os.path.join(os.path.dirname(__file__), 'pyqt_fit', 'version.txt')
+with open(version_filename, "r") as f:
     __version__ = f.read().strip()
 
 extra = {}
@@ -13,7 +20,7 @@ if sys.version_info >= (3,):
 
 setup(name='PyQt-Fit',
       version=__version__,
-      description='Last-square fitting of user-defined functions',
+      description='Least-square fitting of user-defined functions',
       author='Pierre Barbier de Reuille',
       author_email='pierre.barbierdereuille@gmail.com',
       url=['https://code.google.com/p/pyqt-fit/'],

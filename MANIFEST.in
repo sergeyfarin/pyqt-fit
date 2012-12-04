@@ -1,3 +1,5 @@
 include *.txt
 recursive-include docs *.txt
+include pyqt_fit/version.txt
+include pyqt_fit/qt_fit.ui
 
