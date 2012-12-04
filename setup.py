@@ -28,14 +28,14 @@ setup(name='PyQt-Fit',
       package_data = {'pyqt_fit': ['qt_fit.ui', 'version.txt']},
       scripts=['bin/pyqt_fit1d.py'],
       requires= [
-          'setup_tools',
-          'scipy',
-          'numpy',
+          'setup_tools >= 0.6',
+          'scipy >= 0.10.0',
+          'numpy >= 1.5.0',
           'cython',
           'pylab',
           'PyQT4',
           'matplotlib',
-          'path.py'
+          'path.py >= 2.4.1'
           ],
       license = 'LICENSE.txt',
       long_description = open('README.txt').read(),
