@@ -1,7 +1,9 @@
-#import plot_fit
+import plot_fit
 import functions
 import residuals
-from plot_fit import fit, plot_fit, write_fit
+from plot_fit import fit, write1d, plot1d
+from path import path
 
-__version__ = '1.0.10'
+with (path(__file__).dirname() / 'version.txt').open() as f:
+    __version__ = f.read().strip()
 

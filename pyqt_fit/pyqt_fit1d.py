@@ -8,9 +8,7 @@ import functions
 import residuals
 from path import path
 from curve_fitting import curve_fit
-from plot_fit import fit
-from plot_fit import plot_fit as _plot_fit
-from plot_fit import write_fit as _write_fit
+from plot_fit import fit, plot1d, write1d
 import bootstrap
 from csv import reader as csv_reader
 from csv import writer as csv_writer
@@ -18,6 +16,15 @@ import sys
 from pylab import close as close_figure
 from itertools import izip, chain
 import traceback
+
+if sys.version_info >= (3,):
+    CSV_READ_FLAGS = "rt"
+    def DECODE_STRING(s):
+        return s
+else:
+    CSV_READ_FLAGS = "rb"
+    def DECODE_STRING(s):
+        return s.decode('utf_8')
 
 def get_args(*a, **k):
     return a,k
@@ -93,7 +100,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
                 else:
                     print "Error, cannot convert value to double"
             elif c == 2 and role == Qt.CheckStateRole:
-                self.fixed[r] = value.toPyObject()
+                self.fixed[r] = value
                 self.dataChanged.emit(index, index)
                 return True
         return False
@@ -205,10 +212,10 @@ class QtFitDlg(QtGui.QDialog):
             try:
                 data = None
                 header = None
-                with file(txt, "rb") as f:
+                with open(txt, CSV_READ_FLAGS) as f:
                     try:
                         r = csv_reader(f)
-                        header = [ t.decode('utf_8') for t in r.next() ]
+                        header = [ DECODE_STRING(t) for t in r.next() ]
                         if len(header) < 2:
                             QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
                             return
@@ -450,10 +457,10 @@ class QtFitDlg(QtGui.QDialog):
                 QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
                         "%s exception: %s" % (type(ex).__name__, ex.message))
                 return
-            _plot_fit(result, loc=loc)
+            plot1d(result, loc=loc)
             if self.writeResult and outfile:
                 #print "output to file '%s'" % (outfile,)
-                _write_fit(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
+                write1d(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
             #else:
                 #print "self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile)
 

@@ -20,7 +20,7 @@ PyQt-Fit can also be used from the python interpreter. Here is a typical session
     ...     return a0 + a1*x + a2*x*x
     >>> result = pyqt_fit.fit(fct, x, y, p0=(0,1,0))
     >>> print result[0] # Display the estimated values
-    >>> pyqt_fit.plot_fit(result)
+    >>> pyqt_fit.plot1d(result)
     >>> pylab.show()
 
 PyQt-Fit is a package that allows you to define a function defined in a

@@ -14,6 +14,12 @@ import inspect
 from csv import writer as csv_writer
 from collections import namedtuple
 
+import sys
+if sys.version_info >= (3,):
+    CSV_WRITE_FLAGS = "wt"
+else:
+    CSV_WRITE_FLAGS = "wb"
+
 def plot_dist_residuals(res):
     hist(res,normed=True)
     xr = arange(res.min(), res.max(), (res.max()-res.min())/1024)
@@ -254,7 +260,7 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     #print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
     return ResultStruct(**result)
 
-def plot(result, loc=0):
+def plot1d(result, loc=0):
     """
     Use matplotlib to display the result of a fit, and return the list of plots used
     """
@@ -305,8 +311,8 @@ def plot(result, loc=0):
     return plots
 
 
-def write_fit(outfile, result, res_desc, parm_names, CImethod):
-    with file(outfile, "wb") as f:
+def write1d(outfile, result, res_desc, parm_names, CImethod):
+    with open(outfile, CSV_WRITE_FLAGS) as f:
         w = csv_writer(f)
         w.writerow(["Function",result.fct.description])
         w.writerow(["Residuals",result.res_name,res_desc])
