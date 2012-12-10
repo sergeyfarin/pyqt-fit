@@ -1,7 +1,15 @@
+"""
+This module specifically implement the curve fitting, wrapping the default
+scipy.optimize.leastsq function. It allows for parameter value fixing,
+different kind of residual and added constraints function.
+"""
+
 from scipy import optimize
 from numpy import array, inf
 
-def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(), Dfun=None, Dres = None, col_deriv=0, constraints = None, *lsq_args, **lsq_kword):
+def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(),
+              Dfun=None, Dres = None, col_deriv=0, constraints = None,
+              *lsq_args, **lsq_kword):
     """
     Fit a curve using the optimize.leastsq function
 
