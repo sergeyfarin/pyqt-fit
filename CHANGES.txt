@@ -1,3 +1,7 @@
+v1.0.20, 17/12/2012
+ - Changed bootstrap method to be more general.
+ - Changed the functions and residuals modules to read from the PYQTFIT_PATH environment variable the list of extra folders to analyse
+ - Added Local Linar Kernel Regression method
 v1.0.19, 10/12/2012 - Corrected dependency specifications.
 v1.0.14, 4/12/2012 - Added version numbers for the requirements
 v1.0.10, 4/12/2012 - First release distributed with pip

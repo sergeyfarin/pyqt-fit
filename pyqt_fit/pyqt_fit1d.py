@@ -444,7 +444,7 @@ class QtFitDlg(QtGui.QDialog):
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct,
                             fit_args={"maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 },
-                            shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
+                            shuffle_method=CImethod, shuffle_kwrds={"add_residual": res.invert, "fit":curve_fit})
                 else:
                     result = fit(fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
                             eval_points=eval_points,

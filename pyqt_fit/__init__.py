@@ -5,6 +5,8 @@ This package is designed to perform n-D least-square fitting of user-defined
 functions. It also provides a GUI that can use pre-defined fitting methods.
 """
 
+__all__ = ['bootstrap', 'plot_fit', 'curve_fitting', 'kernel_smoothing']
+
 import functions
 import residuals
 from plot_fit import fit, write1d, plot1d

@@ -44,18 +44,18 @@ def plot_residuals(xname, xdata, res_desc, res):
     title("Residuals (%s) vs. fitted" % (res_desc,))
     return p_res, p_smooth
 
-def scaled_location_plot(yname, ydata, scaled_res):
+def scaled_location_plot(yname, sorted_yopt, scaled_res):
     """
     Plot the scaled location, given the X and scaled residuals
     """
     scr = sqrt(abs(scaled_res))
-    p_scaled = plot(ydata, scr, '+')[0]
-    av = SpatialAverage(ydata, scr)
-    xr = arange(ydata.min(), ydata.max(), (ydata.max() - ydata.min())/1024)
+    p_scaled = plot(sorted_yopt, scr, '+')[0]
+    av = SpatialAverage(sorted_yopt, scr)
+    xr = arange(sorted_yopt.min(), sorted_yopt.max(), (sorted_yopt.max() - sorted_yopt.min())/1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g')[0]
     expected_mean = 2**(1/4)*gamma(3/4)/sqrt(pi)
-    plot([ydata.min(), ydata.max()], [expected_mean, expected_mean], 'r--')
+    plot([sorted_yopt.min(), sorted_yopt.max()], [expected_mean, expected_mean], 'r--')
     title('Scale-location')
     xlabel(yname)
     ylabel('$|$Normalized residuals$|^{1/2}$')
@@ -75,7 +75,7 @@ def qqplot(scaled_res, normq):
     title('Normal Q-Q plot');
     return qqp
 
-ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname res_name residuals args popt res yopts eval_points interpolation sorted_y scaled_res normq residuals_evaluation CI CIs CIparams extra_output")
+ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname res_name residuals args popt res yopts eval_points interpolation sorted_yopt scaled_res normq residuals_evaluation CI CIs CIparams extra_output")
 
 def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=(),
         xname = "X", yname = "Y", fct_desc = None, param_names=(), residuals = None,
@@ -133,7 +133,7 @@ def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=()
         res_desc = '$y_0 - y_1$'
     if 'residuals' in inspect.getargspec(fit).args:
         if CI:
-            kwrds["fit_args"]["residuals"] = residuals
+            kwrds["fit_kwrds"]["residuals"] = residuals
         else:
             kwrds["residuals"] = residuals
     if eval_points is None:
@@ -141,7 +141,7 @@ def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=()
     if CI:
         if not iterable(CI):
             CI = (CI,)
-        result = bootstrap.bootstrap(fct, xdata, ydata, p0, CI, args=args, eval_points=eval_points, fit=fit, **kwrds)
+        result = bootstrap.bootstrap_fit(fct, xdata, ydata, p0, CI, args=args, eval_points=eval_points, fit=fit, **kwrds)
     else:
         result = fit(fct, xdata, ydata, p0, args=args, **kwrds)
     return fit_evaluation(result, fct, xdata, ydata, eval_points, CI, xname, yname, fct_desc, param_names, residuals, res_name)
@@ -224,14 +224,7 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     yopts = fct(popt, xdata, *args)
     yvals = fct(popt, eval_points, *args)
 
-# Scaled location
-    IX = argsort(res)
-    scaled_res = res[IX]/std(res)
-    sorted_y = ydata[...,IX]
-    #p_scaled = scaled_location_plot(yname, sorted_y, scaled_res)
-
-    prob = (arange(len(scaled_res))+0.5) / len(scaled_res)
-    normq = sqrt(2)*erfinv(2*prob-1);
+    sorted_yopt, scaled_res, prob, normq = residual_measures(res, yopts)
 
     result = {}
     result["fct"] = fct
@@ -249,16 +242,27 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     result["yopts"] = yopts
     result["eval_points"] = eval_points
     result["interpolation"] = yvals
-    result["sorted_y"] = sorted_y
+    result["sorted_yopt"] = sorted_yest
     result["scaled_res"] = scaled_res
     result["normq"] = normq
-    result["residuals_evaluation"] = (sorted_y, scaled_res, normq)
+    result["residuals_evaluation"] = (sorted_yopt, scaled_res, normq)
     result["CI"] = CI
     result["CIs"] = CIs
     result["CIparams"] = CIparams
     result["extra_output"] = extra_output
     #print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
     return ResultStruct(**result)
+
+def residual_measures(res, yest):
+    IX = argsort(res)
+    scaled_res = res[IX]/std(res)
+    sorted_yopt = yest[...,IX]
+
+    prob = (arange(len(scaled_res))+0.5) / len(scaled_res)
+    normq = sqrt(2)*erfinv(2*prob-1);
+
+    return sorted_yopt, scaled_res, prob, normq
+
 
 def plot1d(result, loc=0):
     """
@@ -287,29 +291,39 @@ def plot1d(result, loc=0):
     ylabel(result.yname)
     legend(loc=loc)
 
+    plots = {"estimate": p_est, "data": p_data, "CIs": p_CIs}
+
+    plots.update(plot_residual_tests(fct_name="{0} with params {1}".format(result.fct_desc, param_strs), **result._asdict()))
+
+    return plots
+
+def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', res_name = "residuals",
+                        sorted_yopts = None, scaled_res = None, prob = None, normq = None,
+                        **kwords):
     figure()
-    suptitle("Checks of correctness for function %s with params %s" % (result.fct_desc, param_strs))
     clf()
 
     plot1 = subplot(2,2,1)
 # First subplot is the residuals
-    p_res = plot_residuals(result.xname, result.xdata, result.res_name, result.res)
+    p_res = plot_residuals(xname, xdata, res_name, res)
 
+    if scaled_res is None or sorted_yopts is None or prob is None or normq is None:
+        sorted_yopt, scaled_res, prob, normq = residual_measures(res, yopts)
 
     plot2 = subplot(2,2,2)
-    p_scaled = scaled_location_plot(result.yname, result.sorted_y, result.scaled_res)
+    p_scaled = scaled_location_plot(yname, sorted_yopt, scaled_res)
 
     subplot(2,2,3)
 # Q-Q plot
-    qqp = qqplot(result.scaled_res, result.normq)
+    qqp = qqplot(scaled_res, normq)
 
     subplot(2,2,4)
 # Distribution of residuals
-    plot_dist_residuals(result.res)
+    drp = plot_dist_residuals(res)
 
-    plots = {"estimate": p_est, "data": p_data, "CIs": p_CIs, "residuals": p_res, "scaled residuals": p_scaled, "qqplot": qqp}
-    return plots
+    suptitle("Residual Test for {}".format(fct_name))
 
+    return {"residuals": p_res, "scaled residuals": p_scaled, "qqplot": qqp, "dist_residuals": drp}
 
 def write1d(outfile, result, res_desc, parm_names, CImethod):
     with open(outfile, CSV_WRITE_FLAGS) as f:
@@ -327,7 +341,7 @@ def write1d(outfile, result, res_desc, parm_names, CImethod):
         w.writerow([])
         w.writerow(['Model validation'])
         w.writerow([result.yname, 'Normalized residuals', 'Theoretical quantiles'])
-        w.writerows(c_[result.sorted_y, result.scaled_res, result.normq])
+        w.writerows(c_[result.sorted_yopt, result.scaled_res, result.normq])
         if result.eval_points is not result.xdata:
             w.writerow([])
             w.writerow(["Interpolated data"])

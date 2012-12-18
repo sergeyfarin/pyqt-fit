@@ -2,6 +2,8 @@ __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 from ..utils import namedtuple
 from .. import loader
+from path import path
+import os
 
 Residual = namedtuple('Residual', ['fct', 'name', 'description', 'invert', 'Dfun', '__call__'])
 
@@ -46,6 +48,11 @@ def find_functions(module):
 def load():
     global residuals
     residuals = loader.load(find_functions)
+    extra_path = os.environ.get("PYQTFIT_PATH", "").split(":")
+    for ep in extra_path:
+        ep = path(ep)
+        if ep and (ep/"residuals").exists():
+            residuals.update(loader.load(find_functions, ep/"residuals"))
     return residuals
 
 load()

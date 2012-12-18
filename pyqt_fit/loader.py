@@ -9,7 +9,7 @@ if sys.platform == 'win32' or sys.platform == 'cygwin':
 elif sys.platform == 'darwin':
     sys_modules = "*.dylib"
 
-def load(find_functions):
+def load(find_functions, search_path = None):
     caller_module = inspect.getmodule(inspect.stack()[1][0])
     system_files = [ caller_module.__file__ ]
     sys_files = set()
@@ -17,7 +17,10 @@ def load(find_functions):
         if f.endswith(".pyo") or f.endswith(".pyc"):
             f = f[:-3]+"py"
         sys_files.add(path(f).abspath())
-    search_path = path(caller_module.__file__).abspath().dirname()
+    if search_path is None:
+        search_path = path(caller_module.__file__).abspath().dirname()
+    else:
+        search_path = path(search_path)
     fcts = {}
 # Search for python, cython and modules
     for f in (search_path.files("*.py") + search_path.files("*.pyx") + search_path.files(sys_modules)):
