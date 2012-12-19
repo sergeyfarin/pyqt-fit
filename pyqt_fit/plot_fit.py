@@ -264,12 +264,21 @@ def residual_measures(res, yest):
     return sorted_yopt, scaled_res, prob, normq
 
 
-def plot1d(result, loc=0):
+_restestfields = "res_figure residuals scaled_residuals qqplot dist_residuals"
+ResTestResult = namedtuple("ResTestResult", _restestfields)
+Plot1dResult = namedtuple("Plot1dResult", "figure estimate data CIs " + _restestfields)
+
+def plot1d(result, loc=0, fig = None, res_fig = None):
     """
     Use matplotlib to display the result of a fit, and return the list of plots used
     """
-    figure()
-    clf()
+    if fig is None:
+        fig = figure()
+    else:
+        try:
+            figure(fig)
+        except TypeError:
+            figure(fig.number)
 
     p_est = plot(result.eval_points, result.interpolation, label='estimated')[0]
     p_data = plot(result.xdata, result.ydata, '+', label='data')[0]
@@ -291,17 +300,22 @@ def plot1d(result, loc=0):
     ylabel(result.yname)
     legend(loc=loc)
 
-    plots = {"estimate": p_est, "data": p_data, "CIs": p_CIs}
+    plots = {"figure": fig, "estimate": p_est, "data": p_data, "CIs": p_CIs}
 
-    plots.update(plot_residual_tests(fct_name="{0} with params {1}".format(result.fct_desc, param_strs), **result._asdict()))
+    plots.update(plot_residual_tests(fct_name="{0} with params {1}".format(result.fct_desc, param_strs), fig = res_fig, **result._asdict())._asdict())
 
-    return plots
+    return Plot1dResult(**plots)
 
 def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', res_name = "residuals",
-                        sorted_yopts = None, scaled_res = None, prob = None, normq = None,
+                        sorted_yopts = None, scaled_res = None, prob = None, normq = None, fig = None,
                         **kwords):
-    figure()
-    clf()
+    if fig is None:
+        fig = figure()
+    else:
+        try:
+            figure(fig)
+        except TypeError:
+            figure(fig.number)
 
     plot1 = subplot(2,2,1)
 # First subplot is the residuals
@@ -323,7 +337,7 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
 
     suptitle("Residual Test for {}".format(fct_name))
 
-    return {"residuals": p_res, "scaled residuals": p_scaled, "qqplot": qqp, "dist_residuals": drp}
+    return ResTestResult(fig, p_res, p_scaled, qqp, drp)
 
 def write1d(outfile, result, res_desc, parm_names, CImethod):
     with open(outfile, CSV_WRITE_FLAGS) as f:

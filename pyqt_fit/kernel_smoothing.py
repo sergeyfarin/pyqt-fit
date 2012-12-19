@@ -1,11 +1,13 @@
 from scipy.stats import gaussian_kde
-from numpy import atleast_2d, atleast_1d, zeros, newaxis, dot, sum, exp, broadcast, asarray
+from numpy import atleast_2d, atleast_1d, zeros, newaxis, dot, sum, exp, broadcast, asarray, var, power, sqrt
 
 class SpatialAverage(object):
     def __init__(self, xdata, ydata):
         self.xdata = atleast_2d(xdata)
         self.ydata = ydata
-        self.kde = gaussian_kde(xdata)
+        kde = gaussian_kde(xdata)
+        self.covariance = kde.covariance
+        self.inv_cov = kde.inv_cov
         self.d, self.n = self.xdata.shape
         self.correction = 1.
 
@@ -19,7 +21,7 @@ class SpatialAverage(object):
         # iterate on the internal points
         for i,ci in broadcast(xrange(self.n), xrange(self._correction.shape[0])):
             diff = dot(self._correction[ci], self.xdata[:,i,newaxis] - points)
-            tdiff = dot(self.kde.inv_cov, diff)
+            tdiff = dot(self.inv_cov, diff)
             energy = exp(-sum(diff*tdiff,axis=0)/2.0)
             result += self.ydata[i]*energy
             norm += energy
@@ -49,9 +51,8 @@ class LocalLinearKernel1D(object):
     def __init__(self, xdata, ydata):
         self.xdata = asarray(xdata)
         self.ydata = asarray(ydata)
-        kde = gaussian_kde(xdata)
-        self.inv_cov = kde.inv_cov[0,0]
         self.n = xdata.shape[0]
+        self.compute_bandwidth()
 
     def evaluate(self, points):
         points = asarray(points, dtype=self.xdata.dtype)
@@ -66,6 +67,20 @@ class LocalLinearKernel1D(object):
         Y2 = sum(wy*x0, axis=0)
         W = sum(wi, axis=0)
         return (X2*Y-Y2*X)/(W*X2-X**2)
+
+    def variance_bandwidth(self, factor):
+        self.factor = factor
+        self.sq_bandwidth = var(self.xdata)*self.factor*self.factor
+        self.bandwidth = sqrt(self.sq_bandwidth)
+        self.inv_cov = 1/self.sq_bandwidth
+
+    def silverman_bandwidth(self):
+        self.variance_bandwidth(power(0.75*self.n, -0.2))
+
+    def scotts_bandwidth(self):
+        self.variance_bandwidth(power(self.n, -0.2))
+
+    compute_bandwidth = scotts_bandwidth
 
     __call__ = evaluate
 
