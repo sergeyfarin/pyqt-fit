@@ -1,5 +1,5 @@
 from scipy.stats import gaussian_kde
-from numpy import atleast_2d, atleast_1d, zeros, newaxis, dot, sum, exp, broadcast, asarray, var, power, sqrt
+from numpy import atleast_2d, atleast_1d, zeros, newaxis, dot, sum, exp, broadcast, asarray, var, power, sqrt, divide
 
 class SpatialAverage(object):
     def __init__(self, xdata, ydata):
@@ -11,11 +11,12 @@ class SpatialAverage(object):
         self.d, self.n = self.xdata.shape
         self.correction = 1.
 
-    def evaluate(self, points):
+    def evaluate(self, points, result = None):
         points = atleast_2d(points).astype(self.xdata.dtype)
         #norm = self.kde(points)
         d, m = points.shape
-        result = zeros((m,), points.dtype)
+        if result is None:
+            result = zeros((m,), points.dtype)
         norm = zeros((m,), points.dtype)
 
         # iterate on the internal points
@@ -54,7 +55,7 @@ class LocalLinearKernel1D(object):
         self.n = xdata.shape[0]
         self.compute_bandwidth()
 
-    def evaluate(self, points):
+    def evaluate(self, points, output=None):
         points = asarray(points, dtype=self.xdata.dtype)
         m = points.shape[0]
         x0 = points - self.xdata[:,newaxis]
@@ -66,7 +67,7 @@ class LocalLinearKernel1D(object):
         Y = sum(wy, axis=0)
         Y2 = sum(wy*x0, axis=0)
         W = sum(wi, axis=0)
-        return (X2*Y-Y2*X)/(W*X2-X**2)
+        return divide(X2*Y-Y2*X, W*X2-X*X, output)
 
     def variance_bandwidth(self, factor):
         self.factor = factor
