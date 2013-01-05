@@ -1,4 +1,7 @@
 v1.0.20, 17/12/2012
+ - Made non-parametric bootstrap method parrallel
+ - LocalLinear1D is done in Cython now
+ - Use LocalLinear1D for residual analyses rather than SpatialAverage
  - Changed bootstrap method to be more general.
  - Changed the functions and residuals modules to read from the PYQTFIT_PATH environment variable the list of extra folders to analyse
  - Added Local Linar Kernel Regression method
