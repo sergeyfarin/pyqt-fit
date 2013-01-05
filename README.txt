@@ -2,8 +2,12 @@
 PyQt-Fit
 ========
 
-PyQt-Fit is a least-square curve fitting in Python with simple GUI and
-graphical tools to check your results.
+PyQt-Fit is a least-square regression toolbox in Python with simple GUI and
+graphical tools to check your results. It currently handles regression based on
+user-defined functions with user-defined residuals (i.e. parametric regression)
+or non-parametric regression, either local-constant or local-linear, with the
+option to provide your own. The GUI currently provides an interface only to
+parametric regression.
 
 The GUI for 1D data analysis is invoked with:
 
@@ -23,15 +27,23 @@ PyQt-Fit can also be used from the python interpreter. Here is a typical session
     >>> pyqt_fit.plot1d(result)
     >>> pylab.show()
 
-PyQt-Fit is a package that allows you to define a function defined in a
-vector manner, and find the parameters that best fit some data. It also
-implement bootstrapping methods (either on the samples or on the residuals) to
+PyQt-Fit is a package for regression in Python. There are two set of tools: for
+parametric, or non-parametric regression.
+
+For the parametric regression, the user can define its own vectorized function
+(note that a normal function wrappred into numpy's "vectorize" function is
+perfectly fine here), and find the parameters that best fit some data. It also
+provides bootstrapping methods (either on the samples or on the residuals) to
 estimate confidence intervals on the parameter values and/or the fitted
 functions.
 
-The package also provides with four evaluation functions: the plot of residuals
+The non-parametric regression can currently be either local constant (i.e.
+spatial averaging) in nD or local-linear in 1D only. There is a version of the
+bootstrapping adapted to non-parametric regression too.
+
+The package also provides with four evaluation of the regression: the plot of residuals
 vs. the X axis, the plot of normalized residuals vs. the Y axis, the QQ-plot of
 the residuals and the histogram of the residuals. All this can be output to a
-CSV file, which should be properly labeled for further analysis in your
-favorite software (including most spreadsheet programs).
+CSV file for further analysis in your favorite software (including most
+spreadsheet programs).
 

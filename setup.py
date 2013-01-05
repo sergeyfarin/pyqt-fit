@@ -28,7 +28,7 @@ setup(name='PyQt-Fit',
       package_data = {'pyqt_fit': ['qt_fit.ui', 'version.txt']},
       scripts=['bin/pyqt_fit1d.py'],
       install_requires= [
-          'setuptools >=0.6',
+          'distribute >=0.6',
           'scipy >=0.10.0',
           'numpy >=1.5.0',
           'matplotlib',

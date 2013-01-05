@@ -1,4 +1,7 @@
-v1.0.20, 17/12/2012
+v1.0.21, 5/1/2013
+ - Improved description
+ - Changed dependancy from setuptools to distribute because of a problem with setuptools 0.6
+v1.0.20, 5/1/2013
  - Made non-parametric bootstrap method parrallel
  - LocalLinear1D is done in Cython now
  - Use LocalLinear1D for residual analyses rather than SpatialAverage
