@@ -1,8 +1,12 @@
-from numpy import iterable, zeros, floor, exp, sort, newaxis, array, broadcast
-from numpy.random import rand, randn, randint
+import numpy as np
+from numpy.random import randint
 from scipy import optimize
 from collections import namedtuple
 from itertools import izip
+import kernel_smoothing
+import sharedmem
+import multiprocessing as mp
+import bootstrap_workers
 
 def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
     popt, pcov = optimize.curve_fit(fct, x, y, **kwrds)
@@ -10,7 +14,7 @@ def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
 
 def _percentile(array, p):
     n = len(array)*p
-    n0 = floor(n)
+    n0 = np.floor(n)
     n1 = n0+1
     #print "%g percentile on %d = [%d-%d]" % (p*100, len(array), n0, n1)
     d = n-n0
@@ -18,7 +22,7 @@ def _percentile(array, p):
     v1 = array[n1]
     return v0 + d*(v1-v0)
 
-def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, residuals = None, add_residual = None, **kwrds):
+def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, residuals = None, add_residual = None, correct_bias = False, **kwrds):
     """
     This implements the residual bootstrapping method for non-linear regression.
 
@@ -38,6 +42,8 @@ def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, resi
         Function that add a residual to a value. The call ``add_residual(ydata,
         residual)`` should return the new ydata, with the residuals 'applied'. If
         None, it is considered the residuals should simply be added.
+    correct_bias: boolean
+        If true, the additive bias of the residuals is computed and restored
     kwrds: dict
         Dictionnary present to absorbed unknown named parameters
 
@@ -53,21 +59,28 @@ def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, resi
     TODO explain the method here, as well as how to create add_residual
     """
     if residuals is None:
-        residuals = lambda y1,y0: y1-y0
+        residuals = np.subtract
 
     yopt = fct(xdata)
     res = residuals(ydata, yopt)
+
+    res -= np.mean(res)
 
     shuffle = randint(0, len(ydata), size=(repeats, len(ydata)))
 
     shuffled_res = res[shuffle]
 
+    if correct_bias:
+        kde = kernel_smoothing.LocalLinearKernel1D(xdata, res)
+        bias = kde(xdata)
+        shuffled_res += bias
+
     if add_residual is None:
-        add_residual = lambda y,r: y+r
+        add_residual = np.add
 
     modified_ydata = add_residual(yopt,shuffled_res)
 
-    return xdata[...,newaxis,:], modified_ydata
+    return xdata[...,np.newaxis,:], modified_ydata
 
 def bootstrap_regression(fct, xdata, ydata, residuals, repeats = 3000, **kwrds):
     """
@@ -104,7 +117,7 @@ def bootstrap_regression(fct, xdata, ydata, residuals, repeats = 3000, **kwrds):
     shuffled_y = ydata[shuffle]
     return shuffled_x, shuffled_y
 
-def bootstrap_fit(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, shuffle_args = (), shuffle_kwrds={}, repeats = 3000, eval_points = None, args=(), fit=adapt_curve_fit, fit_args={}):
+def bootstrap_fit(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, shuffle_args = (), shuffle_kwrds={}, repeats = 3000, eval_points = None, args=(), fit=adapt_curve_fit, fit_args=(), fit_kwrds={}):
     """
     Implement the standard bootstrap method applied to a parametric regression function.
 
@@ -137,10 +150,12 @@ def bootstrap_fit(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residual
         Extra arguments for the function ``fct``
     fit: callable
         Function used to estimate a new set of parameters. The call must be
-        ``fit(fct, xdata, ydata, p0, args=args, **fit_args)`` and the
+        ``fit(fct, xdata, ydata, p0, args=args, *fit_args, **fit_kwrds)`` and the
         first returned arguments are the estimated p, their covariance matrix
         and the residuals
-    fit_args: dict
+    fit_args: tuple
+        Extra unnamed arguments for the fit function
+    fit_kwrds: dict
         Extra keyword arguments for the fit function
 
     Returns
@@ -165,7 +180,7 @@ def bootstrap_fit(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residual
     -----
     TODO explain the method here
     """
-    result = fit(fct, xdata, ydata, p0, args=args, **fit_args)
+    result = fit(fct, xdata, ydata, p0, args=args, *fit_args, **fit_kwrds)
     popt, pcov, residuals = result[:3]
     extra_output = tuple(result[3:])
 
@@ -179,13 +194,14 @@ def bootstrap_fit(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residual
     if eval_points is None:
         eval_points = xdata
 
-    result_array = zeros((repeats+1, len(eval_points)), dtype=float)
-    params_array = zeros((repeats+1, len(popt)), dtype=float)
+    result_array = np.zeros((repeats+1, len(eval_points)), dtype=float)
+    params_array = np.zeros((repeats+1, len(popt)), dtype=float)
 
     result_array[0] = _fct(eval_points)
     params_array[0] = popt
-    for i,(ix,iy) in izip(xrange(0,repeats), broadcast(xrange(nx), xrange(ny))):
-        new_result = fit(fct, shuffled_x[...,ix,:], shuffled_y[iy,:], popt, args=args, **fit_args)
+
+    for i,(ix,iy) in izip(xrange(0,repeats), np.broadcast(xrange(nx), xrange(ny))):
+        new_result = fit(fct, shuffled_x[...,ix,:], shuffled_y[iy,:], popt, args=args, *fit_args, **fit_kwrds)
         result_array[i+1] = fct(new_result[0], eval_points, *args)
         params_array[i+1] = new_result[0]
 
@@ -193,12 +209,12 @@ def bootstrap_fit(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residual
     return (popt, pcov, residuals, CIs, CIparams) + extra_output
 
 def getCIs(CI, *arrays):
-    sorted_arrays = [ sort(a, axis=0) for a in arrays ]
+    sorted_arrays = [ np.sort(a, axis=0) for a in arrays ]
 
-    if not iterable(CI):
+    if not np.iterable(CI):
         CI = (CI,)
 
-    CIs = tuple(zeros((len(CI), 2,)+a.shape[1:], dtype=float) for a in arrays)
+    CIs = tuple(np.zeros((len(CI), 2,)+a.shape[1:], dtype=float) for a in arrays)
     for i, ci in enumerate(CI):
         ci = (1-ci/100.0)/2
         for cis, sorted_array in izip(CIs, sorted_arrays):
@@ -208,9 +224,9 @@ def getCIs(CI, *arrays):
 
     return CIs
 
-BootstrapResult = namedtuple('BootstrapResult', 'y_est y_eval CIs')
+BootstrapResult = namedtuple('BootstrapResult', 'y_est y_eval CIs shuffled_xs shuffled_ys full_results')
 
-def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuffle_args = (), shuffle_kwrds = {}, repeats = 3000, eval_points = None, fit_args=(), fit_kwrds={}):
+def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuffle_args = (), shuffle_kwrds = {}, repeats = 3000, eval_points = None, full_results = False, nb_workers = None, fit_args=(), fit_kwrds={}):
     """
     fit: callable
         Method used to compute regression. The call is:
@@ -235,6 +251,8 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuff
         Number of repeats for the bootstraping
     eval_points: ndarray or None
         List of points to evaluate. If None, eval_point is xdata.
+    full_results: bool
+        if True, output also the whole set of evaluations
     fit_args: tuple
         List of extra arguments for the fit callable
     fit_kwrds: dict
@@ -247,6 +265,12 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuff
             Y estimated on eval_points
         CIs: ndarray
             list of estimated confidence interval for each value of eval_points
+        shuffled_xs: ndarray
+            if full_results is True, the shuffled x's used for the bootstrapping
+        shuffled_ys: ndarray
+            if full_results is True, the shuffled y's used for the bootstrapping
+        full_results: ndarray
+            if full_results is True, the estimated y's for each shuffled_ys
     """
     y_fit = fit(xdata, ydata, *fit_args, **fit_kwrds)
     shuffled_x, shuffled_y = shuffle_method(y_fit, xdata, ydata, repeats=repeats, *shuffle_args, **shuffle_kwrds)
@@ -255,16 +279,53 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuff
 
     if eval_points is None:
         eval_points = xdata
+    if nb_workers is None:
+        nb_workers = mp.cpu_count()
 
-    result_array = zeros((repeats+1, len(eval_points)), dtype=float)
+    multiprocess = nb_workers > 1
+
+# Copy everything in shared mem
+    if multiprocess:
+        ra = sharedmem.zeros((repeats+1, len(eval_points)), dtype=float)
+        result_array = ra.np
+        sx = sharedmem.array(shuffled_x)
+        sy = sharedmem.array(shuffled_y)
+        ep = sharedmem.array(eval_points)
+
+        pool = mp.Pool(mp.cpu_count(), bootstrap_workers.initialize_shared, ( nx, ny, ra, sx, sy, ep, fit, fit_args, fit_kwrds))
+    else:
+        result_array = np.empty((repeats+1, len(eval_points)), dtype=float)
+        bootstrap_workers.initialize(nx, ny, result_array, shuffled_x, shuffled_y, eval_points, fit, fit_args, fit_kwrds)
 
     result_array[0] = y_fit(eval_points)
-    for i,(ix,iy) in izip(xrange(0,repeats), broadcast(xrange(nx), xrange(ny))):
-        new_fit = fit(shuffled_x[...,ix,:], shuffled_y[iy,:], *fit_args, **fit_kwrds)
-        result_array[i+1] = new_fit(eval_points)
+
+    base_repeat = repeats / nb_workers
+    if base_repeat*nb_workers < repeats:
+        base_repeat += 1
+
+    for i in xrange(nb_workers):
+        end_repeats = (i+1)*base_repeat
+        if end_repeats > repeats:
+            end_repeats = repeats
+        if multiprocess:
+            pool.apply_async(bootstrap_workers.bootstrap_result, (i, i*base_repeat, end_repeats))
+        else:
+            bootstrap_workers.bootstrap_result(i, i*base_repeat, end_repeats)
+
+    if multiprocess:
+        pool.close()
+        pool.join()
 
     (CIs,) = getCIs(CI, result_array)
-    return BootstrapResult(y_fit(xdata), result_array[0], CIs)
+
+    y_eval = np.array(result_array[0]) # copy the array to not return a view on a larger array
+
+    if not full_results:
+        shuffled_y = shuffled_x = result_array = None
+    elif multiprocess:
+        result_array = result_array.copy() # copy in local memory
+
+    return BootstrapResult(y_fit(xdata), y_eval, CIs, shuffled_x, shuffled_y, result_array)
 
 def test():
     import cyth
@@ -280,7 +341,7 @@ def test():
     test = quad.quadratic
 
     init = (10,1,1)
-    target = array([10,4,1.2])
+    target = np.array([10,4,1.2])
     print "Target parameters: %s" % (target,)
     x = 6*rand(200) - 3
     y = test(x, target)*(1+0.3*randn(x.shape[0]))

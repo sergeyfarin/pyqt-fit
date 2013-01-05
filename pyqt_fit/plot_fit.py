@@ -9,10 +9,12 @@ from scipy import stats
 #try:
 #    from cy_kernel_smoothing import SpatialAverage
 #except ImportError:
-from kernel_smoothing import SpatialAverage
+from kernel_smoothing import SpatialAverage, LocalLinearKernel1D
 import inspect
 from csv import writer as csv_writer
 from collections import namedtuple
+
+smoothing = LocalLinearKernel1D
 
 import sys
 if sys.version_info >= (3,):
@@ -32,7 +34,7 @@ def plot_dist_residuals(res):
 def plot_residuals(xname, xdata, res_desc, res):
     p_res = plot(xdata, res, '+', label='residuals')[0]
     plot([xdata.min(), xdata.max()], [0,0], 'r--')
-    av = SpatialAverage(xdata, res)
+    av = LocalLinearKernel1D(xdata, res)
     xr = arange(xdata.min(), xdata.max(), (xdata.max()-xdata.min())/1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g', label='smoothed residuals')
@@ -50,7 +52,7 @@ def scaled_location_plot(yname, sorted_yopt, scaled_res):
     """
     scr = sqrt(abs(scaled_res))
     p_scaled = plot(sorted_yopt, scr, '+')[0]
-    av = SpatialAverage(sorted_yopt, scr)
+    av = LocalLinearKernel1D(sorted_yopt, scr)
     xr = arange(sorted_yopt.min(), sorted_yopt.max(), (sorted_yopt.max() - sorted_yopt.min())/1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g')[0]
@@ -133,7 +135,7 @@ def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=()
         res_desc = '$y_0 - y_1$'
     if 'residuals' in inspect.getargspec(fit).args:
         if CI:
-            kwrds["fit_kwrds"]["residuals"] = residuals
+            kwrds.setdefault("fit_kwrds", {})["residuals"] = residuals
         else:
             kwrds["residuals"] = residuals
     if eval_points is None:
@@ -242,7 +244,7 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     result["yopts"] = yopts
     result["eval_points"] = eval_points
     result["interpolation"] = yvals
-    result["sorted_yopt"] = sorted_yest
+    result["sorted_yopt"] = sorted_yopt
     result["scaled_res"] = scaled_res
     result["normq"] = normq
     result["residuals_evaluation"] = (sorted_yopt, scaled_res, normq)
@@ -397,12 +399,12 @@ def test():
 
     result = plot_fit(test, x, y, init, eval_points=xr,
                       param_names=("p_0", "p_1", "p_2"), CI=(95,99), fct_desc="$y = p_0 + p_1 x + p_2 x^2$",
-                      loc='upper left', fit_args={"residuals":res}, shuffle_args={"add_residual":res.invert},
+                      loc='upper left', fit_kwrds={"residuals":res}, shuffle_args={"add_residual":res.invert},
                       res_desc=res.name)
 
     result = plot_fit(test, x, y, init, eval_points=xr, shuffle_method=bootstrap.bootstrap_regression,
                       param_names=("p_0", "p_1", "p_2"), CI=(95,99), fct_desc="$y = p_0 + p_1 x + p_2 x^2$",
-                      loc='upper left', fit_args={"residuals":res},
+                      loc='upper left', fit_kwrds={"residuals":res},
                       res_desc=res.name)
 
     show()

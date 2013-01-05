@@ -1,5 +1,7 @@
 from scipy.stats import gaussian_kde
 from numpy import atleast_2d, atleast_1d, zeros, newaxis, dot, sum, exp, broadcast, asarray, var, power, sqrt, divide
+import cyth
+import cy_local_linear
 
 class SpatialAverage(object):
     def __init__(self, xdata, ydata):
@@ -50,24 +52,27 @@ class SpatialAverage(object):
 
 class LocalLinearKernel1D(object):
     def __init__(self, xdata, ydata):
-        self.xdata = asarray(xdata)
-        self.ydata = asarray(ydata)
+        self.xdata = atleast_1d(xdata)
+        self.ydata = atleast_1d(ydata)
         self.n = xdata.shape[0]
         self.compute_bandwidth()
 
     def evaluate(self, points, output=None):
-        points = asarray(points, dtype=self.xdata.dtype)
-        m = points.shape[0]
-        x0 = points - self.xdata[:,newaxis]
-        x02 = x0*x0
-        wi = exp(-self.inv_cov*x02/2.0)
-        X = sum(wi*x0, axis=0)
-        X2 = sum(wi*x02, axis=0)
-        wy = wi*self.ydata[:,newaxis]
-        Y = sum(wy, axis=0)
-        Y2 = sum(wy*x0, axis=0)
-        W = sum(wi, axis=0)
-        return divide(X2*Y-Y2*X, W*X2-X*X, output)
+        li2, output = cy_local_linear.cy_local_linear_1d(self.bandwidth, self.xdata, self.ydata, points, output)
+        self.li2 = li2
+        return output
+        #points = atleast_1d(points).astype(self.xdata.dtype)
+        #m = points.shape[0]
+        #x0 = points - self.xdata[:,newaxis]
+        #x02 = x0*x0
+        #wi = exp(-self.inv_cov*x02/2.0)
+        #X = sum(wi*x0, axis=0)
+        #X2 = sum(wi*x02, axis=0)
+        #wy = wi*self.ydata[:,newaxis]
+        #Y = sum(wy, axis=0)
+        #Y2 = sum(wy*x0, axis=0)
+        #W = sum(wi, axis=0)
+        #return divide(X2*Y-Y2*X, W*X2-X*X, output)
 
     def variance_bandwidth(self, factor):
         self.factor = factor
