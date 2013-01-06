@@ -1,3 +1,5 @@
+v1.0.23, 6/1/2012
+ - Adapted the CurveFitting to fit the new bootstrap
 v1.0.22, 6/1/2013
  - Changed interface to add user functions, using objects now
  - Added start of documentation
