@@ -44,6 +44,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
         self.parm_names = function.args
         self.parm_values = list(function.init_args(self.valuesX, self.valuesY))
         self.fixed = [False]*len(function.args)
+        print "self.parm_names = '{}'".format(self.parm_names)
 
     def rowCount(self, idx = QtCore.QModelIndex()):
         return len(self.parm_names)
@@ -442,7 +443,7 @@ class QtFitDlg(QtGui.QDialog):
                     result = fit(fct, xdata, ydata, p0,
                             eval_points=eval_points, CI = CI,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                            param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct,
+                            param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.__call__,
                             fit_kwrds={"maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 },
                             shuffle_method=CImethod, shuffle_kwrds={"add_residual": res.invert, "fit":curve_fit})
                 else:
@@ -451,7 +452,7 @@ class QtFitDlg(QtGui.QDialog):
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
                             param_names = parm_names, res_name = res.name,
-                            residuals = res.fct, maxfev=10000)
+                            residuals = res.__call__, maxfev=10000)
             except Exception, ex:
                 traceback.print_exc()
                 QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",

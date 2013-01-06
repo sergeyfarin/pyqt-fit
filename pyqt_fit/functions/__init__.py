@@ -4,48 +4,29 @@ from ..utils import namedtuple
 from .. import loader
 import os
 from path import path
+from itertools import izip
 
-Function = namedtuple('Function', ['fct', 'name', 'description', 'args', 'init_args', 'Dfun', '__call__'])
+_fields = ['name', 'description', 'args', 'init_args', 'Dfun', '__call__']
+_tests = [None, None, None, callable, callable, callable]
+
+Function = namedtuple('Function', _fields)
 
 def find_functions(module):
     content = dir(module)
     result = {}
     for c in content:
-        attr = getattr(module, c)
-        if hasattr(attr, '__doc__'):
-            doc = getattr(attr, '__doc__')
-            if doc is None:
-                continue
-            doc = doc.split('\n')
-            name = None
-            desc = None
-            args = None
-            dfun = None
-            init_args = None
-            for l in doc:
-                l = l.strip()
-                fields = l.split(':', 1)
-                if len(fields) == 2:
-                    if fields[0] == 'Name':
-                        name = fields[1].strip()
-                    elif fields[0] == 'Parameters':
-                        args = fields[1].strip().split()
-                    elif fields[0] == 'Function':
-                        desc = fields[1].strip()
-                    elif fields[0] == 'ParametersEstimate':
-                        params_name = fields[1].strip()
-                        if hasattr(module, params_name):
-                            init_args = getattr(module, params_name)
-                            if not callable(init_args):
-                                init_args = None
-                    elif fields[0] == 'Dfun':
-                        dfun_name = fields[1].strip()
-                        if hasattr(module, dfun_name):
-                            dfun = getattr(module, dfun_name)
-                            if not callable(dfun):
-                                dfun = None
-            if name and desc and args and init_args: # dfun is optional
-                result[name] = Function(attr, name, desc, args, init_args, dfun, attr)
+        obj = getattr(module, c)
+        try:
+            if isinstance(obj, type):
+                obj = obj()
+            for attr, test in izip(_fields, _tests):
+                if not hasattr(obj, attr) or not (test is None or test(getattr(obj, attr))):
+                    break
+            else:
+                result[obj.name] = obj
+        except Exception, ex: # Silently ignore any exception
+            print "Error: '{}'".format(ex)
+            pass
     return result
 
 def load():
