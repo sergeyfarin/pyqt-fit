@@ -44,7 +44,6 @@ class ParametersModel(QtCore.QAbstractTableModel):
         self.parm_names = function.args
         self.parm_values = list(function.init_args(self.valuesX, self.valuesY))
         self.fixed = [False]*len(function.args)
-        print "self.parm_names = '{}'".format(self.parm_names)
 
     def rowCount(self, idx = QtCore.QModelIndex()):
         return len(self.parm_names)

@@ -2,6 +2,7 @@ v1.0.22, 6/1/2013
  - Changed interface to add user functions, using objects now
  - Added start of documentation
  - Changed function and residual module loader to avoir name conflicts
+ - Corrected the loading of user-defined functions
 v1.0.21, 5/1/2013
  - Improved description
  - Changed dependancy from setuptools to distribute because of a problem with setuptools 0.6

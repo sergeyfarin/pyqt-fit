@@ -7,7 +7,6 @@ from path import path
 from itertools import izip
 
 _fields = ['name', 'description', 'args', 'init_args', 'Dfun', '__call__']
-_tests = [None, None, None, callable, callable, callable]
 
 Function = namedtuple('Function', _fields)
 
@@ -19,8 +18,8 @@ def find_functions(module):
         try:
             if isinstance(obj, type):
                 obj = obj()
-            for attr, test in izip(_fields, _tests):
-                if not hasattr(obj, attr) or not (test is None or test(getattr(obj, attr))):
+            for attr in _fields:
+                if not hasattr(obj, attr):
                     break
             else:
                 result[obj.name] = obj

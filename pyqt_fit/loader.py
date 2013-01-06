@@ -24,7 +24,7 @@ def load(find_functions, search_path = None):
     if search_path is None:
         search_path = module_path
     else:
-        search_path = path(search_path)
+        search_path = path(search_path).abspath()
     fcts = {}
 # Search for python, cython and modules
     for f in (search_path.files("*.py") + search_path.files("*.pyx") + search_path.files(sys_modules)):
@@ -32,7 +32,7 @@ def load(find_functions, search_path = None):
             module_name = f.namebase
             pack_name = '%s.%s_%s' % (caller_module.__name__,bad_chars.sub('_', module_path),module_name)
             try:
-                mod_desc = imp.find_module(module_name, [module_path])
+                mod_desc = imp.find_module(module_name, [search_path])
                 mod = imp.load_module(pack_name, *mod_desc)
                 fcts.update(find_functions(mod))
             except ImportError as ex:
