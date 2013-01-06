@@ -1,19 +1,17 @@
-========
-PyQt-Fit
-========
+.. Introduction to PyQt-Fit, created on Sun 6 06:42 2013.
 
-PyQt-Fit is a regression toolbox in Python with simple GUI and graphical tools
-to check your results. It currently handles regression based on user-defined
-functions with user-defined residuals (i.e. parametric regression) or
-non-parametric regression, either local-constant or local-linear, with the
-option to provide your own. The GUI currently provides an interface only to
-parametric regression.
+Introduction to PyQt-Fit
+========================
 
 The GUI for 1D data analysis is invoked with:
+
+::
 
     $ pyqt_fit1d.py
 
 PyQt-Fit can also be used from the python interpreter. Here is a typical session:
+
+::
 
     >>> import pyqt_fit
     >>> import numpy as np
@@ -46,4 +44,5 @@ vs. the X axis, the plot of normalized residuals vs. the Y axis, the QQ-plot of
 the residuals and the histogram of the residuals. All this can be output to a
 CSV file for further analysis in your favorite software (including most
 spreadsheet programs).
+
 

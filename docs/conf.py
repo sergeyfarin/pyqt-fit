@@ -25,7 +25,7 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.pngmath', 'sphinx.ext.jsmath', 'sphinx.ext.viewcode']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.pngmath', 'sphinx.ext.mathjax', 'sphinx.ext.viewcode']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -37,7 +37,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'main'
+master_doc = 'index'
 
 # General information about the project.
 project = u'PyQt-Fit'
@@ -178,7 +178,7 @@ htmlhelp_basename = 'PyQt-Fitdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('main', 'PyQt-Fit.tex', u'PyQt-Fit Documentation',
+  ('index', 'PyQt-Fit.tex', u'PyQt-Fit Documentation',
    u'Barbier de Reuille, Pierre', 'manual'),
 ]
 
@@ -203,7 +203,7 @@ latex_documents = [
 #latex_appendices = []
 
 # If false, no module index is generated.
-#latex_domain_indices = True
+#latex_doindex = True
 
 
 # -- Options for manual page output --------------------------------------------
@@ -211,6 +211,6 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('main', 'pyqt-fit', u'PyQt-Fit Documentation',
+    ('index', 'pyqt-fit', u'PyQt-Fit Documentation',
      [u'Barbier de Reuille, Pierre'], 1)
 ]
