@@ -8,7 +8,7 @@ Using the interface
 
 The script is starting from the command line with:
 
-.. code-block:: shell
+::
 
   $ pyqt_fit1d.py
 
@@ -77,6 +77,9 @@ boostrapping implemented:
     new pairs :math:`(x,\hat{y}+r')` are recreated, :math:`r'` being the
     resampled residual.
 
+The intervals ought to be a list of semi-colon separated values of percentages.
+At last, the number of repeats will define how many re-sampling there will be.
+
 Defining your own function
 --------------------------
 First, you need to define the environment variable ``PYQTFIT_PATH`` and add a
@@ -98,19 +101,89 @@ properties:
   args
     List of arguments
 
-  ``init_args(x,y)``
-    Function guessing some initial arguments from the data. It must return a
-    list or tuple of values, one per argument to the function.
-
   ``__call__(args, x)``
     Compute the function. The ``args`` argument is a tuple or list with as many
     elements are in the ``args`` attribute of the function.
 
+  ``init_args(x,y)``
+    Function guessing some initial arguments from the data. It must return a
+    list or tuple of values, one per argument to the function.
+
   ``Dfun(args, x)``
-    Compute the jacobian of the residuals. If the function is not provided, the
-    attribute should be set to None, and the jacobian will be estimated
-    numerically.
+    Compute the jacobian of the function at the points ``c``. If the function
+    is not provided, the attribute should be set to None, and the jacobian will
+    be estimated numerically.
+
+As an example, here is the definition of the cosine function::
+
+  import numpy as np
+
+  class Cosine(object):
+    name = "Cosine"
+    args = "y0 C phi t".split()
+    description = "y = y0 + X cos(phi x + t)"
+
+    @staticmethod
+    def __call__((y0,C,phi,t), x):
+      return y0 + C*np.cos(phi*x+t)
+
+    Dfun = None
+
+    @staticmethod
+    def init_args(x, y):
+      C = y.ptp()/2
+      y0 = y.min() + C
+      phi = 2*np.pi/x.ptp()
+      t = 0
+      return (y0, C, phi, t)
+
 
 Defining your own residual
 --------------------------
+
+Similarly to the functions, it is possible to implement your own residual. The
+rediduals need to be in a ``residuals`` folder. And they need to be object or
+classes with the following properties:
+
+  name
+    Name of the residuals
+
+  description
+    Formula used to compute the residuals
+
+  ``__call__(y1, y0)``
+    Function computing the residuals, ``y1`` being the original data and ``y0``
+    the estimated data.
+
+  ``invert(y, res)``
+    Function applying the residual to the estimated data.
+
+  ``Dfun(y1, y0, dy)``
+    Compute the jacobian of the residuals. ``y1`` is the original data, ``y0``
+    the estaimted data and ``dy`` the jacobian of the function at ``y0``.
+
+As an example, here is the definition of the log-residuals::
+
+  class LogResiduals(object):
+    name = "Difference of the logs"
+    description = "log(y1/y0)"
+
+    @staticmethod
+    def __call__(y1, y0):
+      return log(y1/y0)
+
+    @staticmethod
+    def Dfun(y1, y0, dy):
+      """
+      J(log(y1/y0)) = -J(y0)/y0
+      where J is the jacobian and division is element-wise (per row)
+      """
+      return -dy/y0[newaxis,:]
+
+    @staticmethod
+    def invert(y, res):
+      """
+      Multiply the value by the exponential of the residual
+      """
+      return y*exp(res)
 

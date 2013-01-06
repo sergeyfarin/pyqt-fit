@@ -9,8 +9,8 @@ __all__ = ['bootstrap', 'plot_fit', 'curve_fitting', 'kernel_smoothing']
 
 import functions
 import residuals
-from plot_fit import fit, write1d, plot1d
-from curve_fitting import curve_fit
+from plot_fit import write1d, plot1d
+from curve_fitting import CurveFitting
 from path import path
 
 with (path(__file__).dirname() / 'version.txt').open() as f:

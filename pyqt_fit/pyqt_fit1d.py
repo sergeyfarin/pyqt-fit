@@ -7,8 +7,8 @@ from numpy import nan, array, ma, isnan, arange, c_
 import functions
 import residuals
 from path import path
-from curve_fitting import curve_fit
-from plot_fit import fit, plot1d, write1d
+from curve_fitting import CurveFitting
+import plot_fit
 import bootstrap
 from csv import reader as csv_reader
 from csv import writer as csv_writer
@@ -439,28 +439,29 @@ class QtFitDlg(QtGui.QDialog):
                 if self.CI is not None:
                     method = self.CI[0]
                     CI = self.CI[1]
-                    result = fit(fct, xdata, ydata, p0,
-                            eval_points=eval_points, CI = CI,
+                    bs = bootstrap.bootstrap(CurveFitting, xdata, ydata, CI,
+                            shuffle_method = CImethod, shuffle_kwrds = { "add_residual": res.invert, "fit": CurveFitting},
+                            fit_args = (p0, fct), extra_attrs = ('popt',), eval_points=eval_points,
+                            fit_kwrds = {"maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 })
+                    result = plot_fit.fit_evaluation(bs.y_fit, xdata, ydata, eval_points=eval_points,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                            param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.__call__,
-                            fit_kwrds={"maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 },
-                            shuffle_method=CImethod, shuffle_kwrds={"add_residual": res.invert, "fit":curve_fit})
+                            param_names = parm_names, res_name = res.name, CI=CI, CIresults = bs)
                 else:
-                    result = fit(fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
-                            eval_points=eval_points,
-                            xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
+                    fit = CurveFitting(xdata, ydata, p0, fct, fix_params=fixed,
                             Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
-                            param_names = parm_names, res_name = res.name,
                             residuals = res.__call__, maxfev=10000)
+                    result = plot_fit.fit_evaluation(fit, xdata, ydata, eval_points=eval_points,
+                            xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
+                            param_names = parm_names, res_name = res.name)
             except Exception, ex:
                 traceback.print_exc()
                 QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
                         "%s exception: %s" % (type(ex).__name__, ex.message))
                 return
-            plot1d(result, loc=loc)
+            plot_fit.plot1d(result, loc=loc)
             if self.writeResult and outfile:
                 #print "output to file '%s'" % (outfile,)
-                write1d(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
+                plot_fit.write1d(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
             #else:
                 #print "self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile)
 

@@ -1,5 +1,5 @@
 from __future__ import division
-from curve_fitting import curve_fit
+from curve_fitting import CurveFitting
 from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
 from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, clf, ylim, hist, suptitle, gca
 import bootstrap
@@ -77,88 +77,15 @@ def qqplot(scaled_res, normq):
     title('Normal Q-Q plot');
     return qqp
 
-ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname res_name residuals args popt res yopts eval_points interpolation sorted_yopt scaled_res normq residuals_evaluation CI CIs CIparams extra_output")
+ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname res_name residuals popt res yopts eval_points interpolation sorted_yopt scaled_res normq residuals_evaluation CI CIs CIresults")
 
-def fit(fct, xdata, ydata, p0, fit = curve_fit, eval_points=None, CI=(), args=(),
-        xname = "X", yname = "Y", fct_desc = None, param_names=(), residuals = None,
-        res_name = None, res_desc = None, **kwrds):
-    """
-    Fit the function ``fct(xdata, p0, *args)`` using the ``fit`` function
-
-    Parameters
-    ----------
-    fct: callable
-        Function to fit the call must be ``fct(xdata, p0, *args)``
-    xdata: ndarray of shape (N,) or (k,N) for function with k prefictors
-        The independent variable where the data is measured
-    ydata: ndarray
-        The dependant data
-    p0: ndarray
-        Initial estimate of the parameters
-    fit: callable
-        Function to use for the estimation. The call is ``fit(fct, xdata,
-        ydata, p0, args=args, **kwrds)``. The three first returned values
-        must be: the best parameters found, the covariance of the parameters,
-        and the residuals with these parameters
-    eval_points: ndarray or None
-        Contain the list of points on which the result must be expressed. It is
-        used both for plotting and for the bootstrapping.
-    CI: tuple of int
-        List of confidence intervals to calculate. If empty, none are calculated.
-    args: tuple
-        Extra arguments for fct
-    xname: string
-        Name of the X axis
-    yname: string
-        Name of the Y axis
-    fct_desc: string
-        Formula of the function
-    param_names: tuple of strings
-        Name of the various parameters
-    residuals: callable
-        Residual function
-    res_name: string
-        Name of the residual
-    res_desc: string
-        Description of the residuals
-    kwrds: dict
-        Extra named arguments are forwarded to the bootstrap or fit function,
-        depending on which is called
-
-    Returns
-    -------
-    The result of fit_evaluation
-    """
-    if residuals is None:
-        residuals = lambda y1,y0: y1-y0
-        res_name = "Standard"
-        res_desc = '$y_0 - y_1$'
-    if 'residuals' in inspect.getargspec(fit).args:
-        if CI:
-            kwrds.setdefault("fit_kwrds", {})["residuals"] = residuals
-        else:
-            kwrds["residuals"] = residuals
-    if eval_points is None:
-        eval_points = sort(xdata)
-    if CI:
-        if not iterable(CI):
-            CI = (CI,)
-        result = bootstrap.bootstrap_fit(fct, xdata, ydata, p0, CI, args=args, eval_points=eval_points, fit=fit, **kwrds)
-    else:
-        result = fit(fct, xdata, ydata, p0, args=args, **kwrds)
-    return fit_evaluation(result, fct, xdata, ydata, eval_points, CI, xname, yname, fct_desc, param_names, residuals, res_name)
-
-
-def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
-        CI=(), xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard',
-        args=()):
+def fit_evaluation(fit, xdata, ydata, eval_points=None,
+        CI=(), CIresults = None, xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard'):
     """
     Parameters
     ----------
-    fit_result: tuple of ndarray
-        output of the fit method (i.e. either curve_fit or bootstrap method output)
-    fct: callable
-        Function to fit the call must be ``fct(xdata, p0, *args)``
+    fit: fitting object
+        object configured for the fitting
     xdata: ndarray of shape (N,) or (k,N) for function with k prefictors
         The independent variable where the data is measured
     ydata: ndarray
@@ -180,8 +107,6 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
         Residual function
     res_desc: string
         Description of the residuals
-    args: tuple
-        Extra arguments for fct
 
     Returns
     -------
@@ -207,29 +132,28 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     CIs: list of pairs of array
         For each element of the CI argument, return a pair of array: the lower
         and upper bounds of this confidence interval
-    CIparams: list of pair of ndarray
-        For each CI value, a pair of ndarray is provided for the lower and
-        upper bound of the parameters
-    extra_output: extra output provided by the fit or bootstrap function
+    CIresults: results of the confidence interval calculations
     And also all the arguments that may change the result of the estimation.
     """
     print "CI = '%s'" % (CI,)
+
+    popt = fit.popt
+    pcov = fit.pcov
+    res = fit.res
+    infodict = fit.infodict
+
     if CI:
-        popt, pcov, res, CIs, CIparams = fit_result[:5]
-        extra_output = fit_result[5:]
+        CIs = CIresults.CIs
     else:
         CIs = []
-        CIparams = []
-        popt, pcov, res = fit_result[:3]
-        extra_output = fit_result[3:]
 
-    yopts = fct(popt, xdata, *args)
-    yvals = fct(popt, eval_points, *args)
+    yopts = fit(xdata)
+    yvals = fit(eval_points)
 
     sorted_yopt, scaled_res, prob, normq = residual_measures(res, yopts)
 
     result = {}
-    result["fct"] = fct
+    result["fct"] = fit
     result["fct_desc"] = fct_desc
     result["param_names"] = param_names
     result["xdata"] = xdata
@@ -238,7 +162,7 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     result["yname"] = yname
     result["res_name"] = res_name
     result["residuals"] = residuals
-    result["args"] = args
+    #result["args"] = fit.args
     result["popt"] = popt
     result["res"] = res
     result["yopts"] = yopts
@@ -250,8 +174,8 @@ def fit_evaluation(fit_result, fct, xdata, ydata, eval_points=None,
     result["residuals_evaluation"] = (sorted_yopt, scaled_res, normq)
     result["CI"] = CI
     result["CIs"] = CIs
-    result["CIparams"] = CIparams
-    result["extra_output"] = extra_output
+    #result["CIparams"] = CIparams
+    result["CIresults"] = CIresults
     #print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
     return ResultStruct(**result)
 
@@ -286,7 +210,7 @@ def plot1d(result, loc=0, fig = None, res_fig = None):
     p_data = plot(result.xdata, result.ydata, '+', label='data')[0]
     p_CIs = []
     if result.CI:
-        for p, (low, high) in izip(result.CI,result.CIs):
+        for p, (low, high) in izip(result.CI,result.CIs[0]):
             l = plot(result.eval_points, low, '--', label='%g%% CI' % (p,))[0]
             h = plot(result.eval_points, high, l.get_color()+'--')[0]
             p_CIs += [l,h]
@@ -344,7 +268,7 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
 def write1d(outfile, result, res_desc, parm_names, CImethod):
     with open(outfile, CSV_WRITE_FLAGS) as f:
         w = csv_writer(f)
-        w.writerow(["Function",result.fct.description])
+        w.writerow(["Function",result.fct.fct.description])
         w.writerow(["Residuals",result.res_name,res_desc])
         w.writerow(["Parameter","Value"])
         for pn, pv in izip(parm_names, result.popt):
@@ -369,14 +293,14 @@ def write1d(outfile, result, res_desc, parm_names, CImethod):
             w.writerow(["Method",CImethod])
             head = ["Parameters"] + list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in result.CI]))
             w.writerow(head)
-            print result.CIparams
-            for cis in izip(parm_names, *chain(*result.CIparams)):
+            print result.CIs[1]
+            for cis in izip(parm_names, *chain(*result.CIs[1])):
                 cistr = [cis[0]] + ["%.20g" % v for v in cis[1:]]
                 w.writerow(cistr)
             w.writerow([result.yname])
             head[0] = result.xname
             w.writerow(head)
-            w.writerows(c_[tuple(chain([result.eval_points], *result.CIs))])
+            w.writerows(c_[tuple(chain([result.eval_points], result.CIs[0][0]))])
 
 def test():
     import residuals

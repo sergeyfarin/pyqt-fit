@@ -7,9 +7,7 @@ different kind of residual and added constraints function.
 from scipy import optimize
 from numpy import array, inf
 
-def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(),
-              Dfun=None, Dres = None, col_deriv=0, constraints = None,
-              *lsq_args, **lsq_kword):
+class CurveFitting(object):
     """
     Fit a curve using the optimize.leastsq function
 
@@ -93,69 +91,79 @@ def curve_fit(fct, xdata, ydata, p0, args=(), residuals=None, fix_params=(),
 
     Confidence interval are estimated using the bootstrap method.
     """
-    if residuals is None:
-        residuals = lambda x,y: (x-y)
-        Dres = lambda y1,y0,dy: -dy
+    def __init__(self, xdata, ydata, p0, fct, args=(), residuals=None, fix_params=(),
+                  Dfun=None, Dres = None, col_deriv=0, constraints = None,
+                  *lsq_args, **lsq_kword):
+        self.fct = fct
+        if residuals is None:
+            residuals = lambda x,y: (x-y)
+            Dres = lambda y1,y0,dy: -dy
 
-    use_derivs = (Dres is not None) and (Dfun is not None)
-    #print "use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun)
-    #f = None
-    df = None
+        use_derivs = (Dres is not None) and (Dfun is not None)
+        #print "use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun)
+        #f = None
+        df = None
 
-    if fix_params:
-        fix_params = tuple(fix_params)
-        p_save = array(p0, dtype=float)
-        change_params = range(len(p0))
-        try:
-            for i in fix_params:
-                change_params.remove(i)
-        except ValueError:
-            raise ValueError("List of parameters to fix is incorrect: contains either duplicates or values out of range.")
-        p0 = p_save[change_params]
-        def f(p, *args):
-            p1 = array(p_save)
-            p1[change_params] = p
-            y0 = fct(p1,xdata,*args)
-            return residuals(ydata, y0)
-        if use_derivs:
-            def df(p, *args):
+        if fix_params:
+            fix_params = tuple(fix_params)
+            p_save = array(p0, dtype=float)
+            change_params = range(len(p0))
+            try:
+                for i in fix_params:
+                    change_params.remove(i)
+            except ValueError:
+                raise ValueError("List of parameters to fix is incorrect: contains either duplicates or values out of range.")
+            p0 = p_save[change_params]
+            def f(p, *args):
                 p1 = array(p_save)
                 p1[change_params] = p
                 y0 = fct(p1,xdata,*args)
-                dfct = Dfun(p1,xdata,*args)
-                result = Dres(ydata, y0, dfct)
-                if col_deriv != 0:
-                    return result[change_params]
-                else:
-                    return result[:,change_params]
-                return result
-    else:
-        def f(p,*args):
-            y0 = fct(p,xdata,*args)
-            return residuals(ydata, y0)
-        if use_derivs:
-            def df(p, *args):
-                dfct = Dfun(p, xdata, *args)
+                return residuals(ydata, y0)
+            if use_derivs:
+                def df(p, *args):
+                    p1 = array(p_save)
+                    p1[change_params] = p
+                    y0 = fct(p1,xdata,*args)
+                    dfct = Dfun(p1,xdata,*args)
+                    result = Dres(ydata, y0, dfct)
+                    if col_deriv != 0:
+                        return result[change_params]
+                    else:
+                        return result[:,change_params]
+                    return result
+        else:
+            def f(p,*args):
                 y0 = fct(p,xdata,*args)
-                return Dres(ydata, y0, dfct)
+                return residuals(ydata, y0)
+            if use_derivs:
+                def df(p, *args):
+                    dfct = Dfun(p, xdata, *args)
+                    y0 = fct(p,xdata,*args)
+                    return Dres(ydata, y0, dfct)
 
+        popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, Dfun=df, col_deriv=col_deriv, *lsq_args, **lsq_kword)
+        #infodict['est_jacobian'] = not use_derivs
 
-    popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, Dfun=df, col_deriv=col_deriv, *lsq_args, **lsq_kword)
-    #infodict['est_jacobian'] = not use_derivs
+        if fix_params:
+            p_save[change_params] = popt
+            popt = p_save
 
-    if fix_params:
-        p_save[change_params] = popt
-        popt = p_save
+        if not ier in [1,2,3,4]:
+            raise RuntimeError("Unable to determine number of fit parameters. Error returned by scipy.optimize.leastsq:\n%s" % (mesg,))
 
-    if not ier in [1,2,3,4]:
-        raise RuntimeError("Unable to determine number of fit parameters. Error returned by scipy.optimize.leastsq:\n%s" % (mesg,))
+        res = residuals(ydata, fct(popt, xdata, *args))
+        if (len(res) > len(p0)) and pcov is not None:
+            s_sq = (res**2).sum()/(len(ydata)-len(p0))
+            pcov = pcov * s_sq
+        else:
+            pcov = inf
 
-    res = residuals(ydata, fct(popt, xdata, *args))
-    if (len(res) > len(p0)) and pcov is not None:
-        s_sq = (res**2).sum()/(len(ydata)-len(p0))
-        pcov = pcov * s_sq
-    else:
-        pcov = inf
+        self.popt = popt
+        self.pcov = pcov
+        self.res = res
+        self.infodict = infodict
 
-    return popt, pcov, res, infodict
+    def __call__(self, xdata):
+        return self.fct(self.popt, xdata)
+
 

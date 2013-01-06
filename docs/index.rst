@@ -14,7 +14,6 @@ parametric regression.
 Contents:
 
 .. toctree::
-   :maxdepth: 2
 
   intro
   GUI_tut
