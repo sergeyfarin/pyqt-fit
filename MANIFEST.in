@@ -1,5 +1,9 @@
 include *.txt
+recursive-include docs *.rst
 recursive-include docs *.txt
+recursive-include docs *.html
+include docs/Makefile
+include docs/conf.py
 include pyqt_fit/version.txt
 include pyqt_fit/qt_fit.ui
 
