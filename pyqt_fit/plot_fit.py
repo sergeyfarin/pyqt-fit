@@ -135,8 +135,6 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     CIresults: results of the confidence interval calculations
     And also all the arguments that may change the result of the estimation.
     """
-    print "CI = '%s'" % (CI,)
-
     popt = fit.popt
     pcov = fit.pcov
     res = fit.res
@@ -147,8 +145,13 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     else:
         CIs = []
 
+
     yopts = fit(xdata)
-    yvals = fit(eval_points)
+    if eval_points is None:
+        yvals = yopts
+        eval_points = xdata
+    else:
+        yvals = fit(eval_points)
 
     sorted_yopt, scaled_res, prob, normq = residual_measures(res, yopts)
 

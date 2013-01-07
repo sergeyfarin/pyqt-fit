@@ -20,8 +20,9 @@ PyQt-Fit can also be used from the python interpreter. Here is a typical session
     >>> y = 2*x + 4*x**2 + np.random.randn(*x.shape)
     >>> def fct((a0, a1, a2), x):
     ...     return a0 + a1*x + a2*x*x
-    >>> result = pyqt_fit.fit(fct, x, y, p0=(0,1,0))
-    >>> print result[0] # Display the estimated values
+    >>> fit = pyqt_fit.CurveFitting(x, y, (0,1,0), fct)
+    >>> result = pyqt_fit.fit_evaluation(fit, x, y)
+    >>> print fit(x) # Display the estimated values
     >>> pyqt_fit.plot1d(result)
     >>> pylab.show()
 
@@ -44,5 +45,4 @@ vs. the X axis, the plot of normalized residuals vs. the Y axis, the QQ-plot of
 the residuals and the histogram of the residuals. All this can be output to a
 CSV file for further analysis in your favorite software (including most
 spreadsheet programs).
-
 
