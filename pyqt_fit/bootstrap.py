@@ -13,7 +13,7 @@ def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
     return (popt, pcov, fct(popt, x, *args) - y)
 
 def _percentile(array, p):
-    n = len(array)*p
+    n = (len(array)-1)*p
     n0 = np.floor(n)
     n1 = n0+1
     #print "%g percentile on %d = [%d-%d]" % (p*100, len(array), n0, n1)
