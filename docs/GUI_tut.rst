@@ -41,7 +41,8 @@ the list below. The value presented are estimated are a quick estimation from
 the data. You can edit them by double-clicking. It is also where you can
 specify if the parameter is of known value, and should therefore be fixed.
 
-If needed, you can also change the computation of the residuals. By default there are two kind of residuals:
+If needed, you can also change the computation of the residuals. By default
+there are two kind of residuals:
 
   Standard
     residuals are simply the difference between the estimated and observed value.
@@ -56,6 +57,31 @@ By default, the output consists in the data points, and the fitted function,
 interpolated on the whole range of the input data. If is, however, possible to
 both change the range of data, or even evaluate the function on the existing
 data points rather than interpolated ones.
+
+The output also presents a window to evaluate the quality of the fitting:
+
+.. image:: PyQt-residuals.png
+
+In general, the dashed red line is the target to achieve for a good fitting.
+When present the green line is the estimates that should match the red line.
+
+The top-left graph presents the distribution of the residuals against the
+explaining variable. The green line shows a local-linear regression of the
+residuals. It should be aligned with the dashed red line.
+
+The top-right graph presents the distribution of the square root of the
+standardized residuals against the explained variable. The purpose of this
+graph is to test the uniformity of the distribution. The green line is again a
+local-linear regression of the points. The line should be as flat and
+horizontal as possible. If the distribution is normal, the green line should
+match the dashed red line.
+
+The bottom right graph presents a histogram of the residuals. For parametric
+fitting, the residuals should globally be normal.
+
+The bottom left graph presents a QQ-plot, matching the theoretical quantiles
+and the standardized residuals. If the residuals are normally distributed, the
+points should be on the dashed red line.
 
 The result of the fitting can also be output. What is written correspond
 exactly to what is displayed. The output is also a CSV file, and is meant to be
