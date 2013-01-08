@@ -101,7 +101,7 @@ tuples that can be accessed by name.
 
     Interpolated function on ``eval_points`` (may be equal to ``yopt``)
 
-  .. py:attribute:: sorted_yopt
+  .. py:attribute:: sorted_yopts
 
     Evaluated function for each data points, sorted in increasing residual order
 

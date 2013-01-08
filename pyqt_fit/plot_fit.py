@@ -113,7 +113,8 @@ def qqplot(scaled_res, normq):
     title('Normal Q-Q plot');
     return qqp
 
-ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname res_name residuals popt res yopts eval_points interpolation sorted_yopt scaled_res normq CI CIs CIresults")
+ResultStruct = namedtuple('ResultStruct', """fct fct_desc param_names xdata ydata xname yname res_name residuals popt res
+        yopts eval_points interpolation sorted_yopts scaled_res normq CI CIs CIresults""")
 
 def fit_evaluation(fit, xdata, ydata, eval_points=None,
         CI=(), CIresults = None, xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard'):
@@ -177,7 +178,7 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
         yvals = fit(eval_points)
 
     scaled_res, res_IX, prob, normq = residual_measures(res)
-    sorted_yopt = topts[res_IX]
+    sorted_yopts = yopts[res_IX]
 
     result = {}
     result["fct"] = fit
@@ -195,7 +196,7 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     result["yopts"] = yopts
     result["eval_points"] = eval_points
     result["interpolation"] = yvals
-    result["sorted_yopt"] = sorted_yopt
+    result["sorted_yopts"] = sorted_yopts
     result["scaled_res"] = scaled_res
     result["normq"] = normq
     result["CI"] = CI
@@ -264,12 +265,18 @@ def plot1d(result, loc=0, fig = None, res_fig = None):
 
     plots = {"figure": fig, "estimate": p_est, "data": p_data, "CIs": p_CIs}
 
-    plots.update(plot_residual_tests(fct_name="{0} with params {1}".format(result.fct_desc, param_strs), fig = res_fig, **result._asdict())._asdict())
+    prt = plot_residual_tests(
+            result.xdata, result.yopts, result.res,
+            "{0} with params {1}".format(result.fct_desc, param_strs),
+            result.xname, result.yname, result.res_name, result.sorted_yopts, result.scaled_res,
+            result.normq, res_fig)
+
+    plots.update(prt._asdict())
 
     return Plot1dResult(**plots)
 
 def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', res_name = "residuals",
-        sorted_yopts = None, scaled_res = None, prob = None, normq = None, fig = None):
+        sorted_yopts = None, scaled_res = None, normq = None, fig = None):
     """
     Plot, in a single figure, all four residuals evaluation plots: :py:func:`plot_residuals`,
     :py:func:`plot_dist_residuals`, :py:func:`scaled_location_plot` and :py:func:`qqplot`.
@@ -282,7 +289,6 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
     :param str     res_name:     Name of the residuals
     :param ndarray sorted_yopts: ``yopt``, sorted to match the scaled residuals
     :param ndarray scaled_res:   Scaled residuals
-    :param ndarray prob:         Quantile of the scaled residuals
     :param ndarray normq:        Estimated value of the quantiles for a normal distribution
 
     :type  fig: handle or None
@@ -303,12 +309,12 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
 # First subplot is the residuals
     p_res = plot_residuals(xname, xdata, res_name, res)
 
-    if scaled_res is None or sorted_yopts is None or prob is None or normq is None:
-        scaled_res, res_IX, prob, normq = residual_measures(res)
-        sorted_yopt = yopts[res_IX]
+    if scaled_res is None or sorted_yopts is None or normq is None:
+        scaled_res, res_IX, _, normq = residual_measures(res)
+        sorted_yopts = yopts[res_IX]
 
     plot2 = subplot(2,2,2)
-    p_scaled = scaled_location_plot(yname, sorted_yopt, scaled_res)
+    p_scaled = scaled_location_plot(yname, sorted_yopts, scaled_res)
 
     subplot(2,2,3)
 # Q-Q plot
@@ -346,7 +352,7 @@ def write1d(outfile, result, res_desc, CImethod):
         w.writerow([])
         w.writerow(['Model validation'])
         w.writerow([result.yname, 'Normalized residuals', 'Theoretical quantiles'])
-        w.writerows(c_[result.sorted_yopt, result.scaled_res, result.normq])
+        w.writerows(c_[result.sorted_yopts, result.scaled_res, result.normq])
         if result.eval_points is not result.xdata:
             w.writerow([])
             w.writerow(["Interpolated data"])

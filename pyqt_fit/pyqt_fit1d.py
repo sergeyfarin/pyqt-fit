@@ -442,7 +442,7 @@ class QtFitDlg(QtGui.QDialog):
                     bs = bootstrap.bootstrap(CurveFitting, xdata, ydata, CI,
                             shuffle_method = CImethod, shuffle_kwrds = { "add_residual": res.invert, "fit": CurveFitting},
                             fit_args = (p0, fct), extra_attrs = ('popt',), eval_points=eval_points,
-                            fit_kwrds = {"maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 })
+                            fit_kwrds = {"residuals": res.__call__, "maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 })
                     result = plot_fit.fit_evaluation(bs.y_fit, xdata, ydata, eval_points=eval_points,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             param_names = parm_names, res_name = res.name, CI=CI, CIresults = bs)
