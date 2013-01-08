@@ -13,44 +13,77 @@ class CurveFitting(object):
     """
     Fit a curve using the optimize.leastsq function
 
-    Parameters
-    ----------
-    fct: callable
-        Function to optimize. The call will be equivalent to ``fct(p0, xdata, *args)``
-    xdata: ndarray
-        Explaining values
-    ydata: ndarray
-        Target values
-    p0: tuple
-        Initial estimates for the parameters of fct
-    args: tuple
-        Additional arguments for the function
-    residuals: callable or None
-        Function computing the residuals. The call is equivalent to ``residuals(y, fct(x))``
-        and it should return a ndarray. If None, residuals are simply the
-        difference between the computed and expected values.
-    fix_params: tuple of int
-        List of indices for the parameters in p0 that shouldn't change
-    Dfun: callable
-        Function computing the jacobian of fct w.r.t. the parameters. The call
-        will be equivalent to ``Dfun(p0, xdata, *args)``
-    Dres: callable
-        Function computing the jacobian of the residuals w.r.t. the parameters.
-        The call will be equivalent to ``Dres(y, fct(x), DFun(x))``
-        If None, residuals must also be None.
-    col_deriv: int
-        Define if Dfun returns the derivatives by row or column. With n = len(xdata)
-        and m = len(p0), the shape of output of Dfun must be:
-         - if 0: (n,m)
-         - if non 0: (m,n)
-    constraints: callable
-        If not None, this is a function that should always return a list of
-        values (the same), to add penalties for bad parameters. The function
-        call is equivalent to: ``constraints(p0)``
-    lsq_args: tuple
-        List of unnamed arguments passed to ``optimize.leastsq``, starting with ``ftol``
-    lsq_kword: dict
-        Dictionnary of named arguments passed to ``optional.leastsq`, starting with ``ftol``
+    +------------+----------------------------------------------------------------+
+    | Parameter  | Type/description                                               |
+    +============+================================================================+
+    | fct        | ``callable``                                                   |
+    +------------+----------------------------------------------------------------+
+    |            | Function to optimize. The call will be equivalent to ``fct(p0, |
+    |            | xdata, *args)``                                                |
+    +------------+----------------------------------------------------------------+
+    | xdata      | ``ndarray``                                                    |
+    +------------+----------------------------------------------------------------+
+    |            | Explaining values                                              |
+    +------------+----------------------------------------------------------------+
+    | ydata      | ``ndarray``                                                    |
+    +------------+----------------------------------------------------------------+
+    |            |  Target values                                                 |
+    +------------+----------------------------------------------------------------+
+    | p0         | ``tuple``                                                      |
+    +------------+----------------------------------------------------------------+
+    |            | Initial estimates for the parameters of fct                    |
+    +------------+----------------------------------------------------------------+
+    | args       | ``tuple``                                                      |
+    +------------+----------------------------------------------------------------+
+    |            |  Additional arguments for the function                         |
+    +------------+----------------------------------------------------------------+
+    | residuals  | ``callable`` or ``None``                                       |
+    +------------+----------------------------------------------------------------+
+    |            | Function computing the residuals. The call is equivalent to    |
+    |            | ``residuals(y, fct(x))`` and it should return a ndarray. If    |
+    |            | None, residuals are simply the difference between the          |
+    |            | computed and expected values.                                  |
+    +------------+----------------------------------------------------------------+
+    | fix_params | ``tuple of int``                                               |
+    +------------+----------------------------------------------------------------+
+    |            | List of indices for the parameters in p0 that shouldn't change |
+    +------------+----------------------------------------------------------------+
+    | Dfun       | ``callable``                                                   |
+    +------------+----------------------------------------------------------------+
+    |            | Function computing the jacobian of fct w.r.t. the parameters.  |
+    |            | The call will be equivalent to ``Dfun(p0, xdata, *args)``      |
+    +------------+----------------------------------------------------------------+
+    | Dres       | ``callable``                                                   |
+    +------------+----------------------------------------------------------------+
+    |            | Function computing the jacobian of the residuals w.r.t. the    |
+    |            | parameters. The call will be equivalent to                     |
+    |            |  ``Dres(y, fct(x), DFun(x))``. If None, residuals must also be |
+    |            | None.                                                          |
+    +------------+----------------------------------------------------------------+
+    | col_deriv  | ``int``                                                        |
+    +------------+----------------------------------------------------------------+
+    |            | Define if Dfun returns the derivatives by row or column. With  |
+    |            | n = len(xdata) and m = len(p0), the shape of output of Dfun    |
+    |            | must be:                                                       |
+    |            |  - if 0: (n,m)                                                 |
+    |            |  - if non 0: (m,n)                                             |
+    +------------+----------------------------------------------------------------+
+    | constraints| callable                                                       |
+    +------------+----------------------------------------------------------------+
+    |            | If not None, this is a function that should always return a    |
+    |            | list ofvalues (the same), to add penalties for bad parameters. |
+    |            | The function call is equivalent to: ``constraints(p0)``        |
+    +------------+----------------------------------------------------------------+
+    | lsq_args   | tuple                                                          |
+    +------------+----------------------------------------------------------------+
+    |            | List of unnamed arguments passed to ``optimize.leastsq``,      |
+    |            | starting with ``ftol``                                         |
+    +------------+----------------------------------------------------------------+
+    | lsq_kword  | dict                                                           |
+    +------------+----------------------------------------------------------------+
+    |            | Dictionnary of named arguments passed to                       |
+    |            | py:func:`scipy.optimize.leastsq`, starting with ``ftol``       |
+    +------------+----------------------------------------------------------------+
 
     Returns
     -------
@@ -166,6 +199,9 @@ class CurveFitting(object):
         self.infodict = infodict
 
     def __call__(self, xdata):
+        """
+        Return the value of the fitted function for each of the points in ``xdata``
+        """
         return self.fct(self.popt, xdata)
 
 
