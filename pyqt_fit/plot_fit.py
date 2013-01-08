@@ -41,7 +41,7 @@ def plot_dist_residuals(res):
     xlabel('Residuals')
     ylabel('Frequency')
     title('Distributions of the residuals')
-    return p
+    return ph, pn
 
 def plot_residuals(xname, xdata, res_desc, res):
     """
@@ -221,7 +221,7 @@ def residual_measures(res):
     prob = (arange(len(scaled_res))+0.5) / len(scaled_res)
     normq = sqrt(2)*erfinv(2*prob-1);
 
-    return ResidualMeadures(scaled_res, IX, prob, normq)
+    return ResidualMeasures(scaled_res, IX, prob, normq)
 
 _restestfields = "res_figure residuals scaled_residuals qqplot dist_residuals"
 ResTestResult = namedtuple("ResTestResult", _restestfields)

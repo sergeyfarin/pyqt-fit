@@ -110,7 +110,7 @@ class SpatialAverage(object):
     @covariance.setter
     def covariance(self, cov):
         if callable(cov):
-            _cov = np.atleast_2d(bw(self.cdata, self.ydata))
+            _cov = np.atleast_2d(bw(self.xdata, self.ydata))
         else:
             _cov = np.atleast_2d(bw)
         self._bw = None
@@ -229,11 +229,11 @@ class LocalLinearKernel1D(object):
     @covariance.setter
     def covariance(self, cov):
         if callable(cov):
-            _cov = float(cov(self.cdata, self.ydata))
+            _cov = float(cov(self.xdata, self.ydata))
         else:
             _cov = float(cov)
         self._covariance = _cov
-        self._bw = np.sqrt(cov)
+        self._bw = np.sqrt(_cov)
 
     def evaluate(self, points, output=None):
         """
