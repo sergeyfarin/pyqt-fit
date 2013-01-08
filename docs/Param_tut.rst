@@ -26,6 +26,12 @@ parameters, :math:`\hat{\theta}` using the least square estimator, which is:
 
   \hat{\theta} = \argmin_{\theta \in \R^q} \left( f(\theta,x_i) - y_i \right)^2
 
+The method is based on the SciPy function ``scipy.optimize.leastsq``, which
+relies on the MINPACK's functions ``lmdif`` and ``lmder``. Both functions
+implement a modified Levenberg-Marquardt algorithm to solve the least-square
+problem. Most of the output of the main curve fitting option will be the output
+of the least-square function in scipy.
+
 A simple example
 ----------------
 
@@ -56,7 +62,7 @@ To perform the analysis, we first need to define the function to be fitted::
   >>> def f((a0,a1,a2), x):
   >>>   return a0 + a1*x+ a2*x**2
 
-Then, we construct a `CurveFitting` object, which computes and stores the
+Then, we construct a :py:class:`CurveFitting` object, which computes and stores the
 optimal parameters, and also behaves as a function for the fitted data::
 
   >>> import pyqt_fit
@@ -65,23 +71,78 @@ optimal parameters, and also behaves as a function for the fitted data::
   The parameters are: a0 = -0.181581108848, a1 = 2.21486197906, a2 = 3.97872283269
   >>> yfitted = fit(x)
 
+The ``fit`` object, beside being a callable object to evaluate the fitting
+function as some points, contain the following properties:
+
+  ``fct``
+    Function being fitted (e.g. the one given as argument)
+
+  ``popt``
+    Optimal parameters for the function
+
+  ``res``
+    Residuals of the fitted data
+
+  ``pcov``
+    Covariance of the parameters around the optimal values.
+
+  ``infodict``
+    Additional estimation outputs, as given by :py:func:`scipy.optimize.leastsq`
+
+Fitting analysis
+^^^^^^^^^^^^^^^^
+
 PyQt-Fit also has tools to evaluate your fitting. You can use them as a whole::
 
   >>> result= pyqt_fit.fit_evaluation(fit, x, y,
   ...                                 fct_desc = "$y = a_0 + a_1 x + a_2 x^2$",
   ...                                 param_names=['a_0', 'a_1', 'a_2'])
 
+You can then examine the ``result`` variable. But you can also perform only the
+analysis you need. For example, you can compute the data needed for the
+residual analysis with::
+
+  >>> rm = pyqt_fit.plot_fit.residual_measures(fit.res, fit(x))
+
+``rm`` is a named tuple with the following fields:
+
+  ``scaled_res``
+    Scaled residuals, sorted in ascending values for residuals. The scaled
+    residuals are computed as :math:`sr_i = \frac{r_i}{\sigma_r}`, where
+    :math:`\sigma_r` is the variance of the residuals.
+
+  ``res_IX``
+    Ordering indices for the residuals in scaled_res. This orders the residuals
+    in an ascending manner.
+
+  ``prob``
+    List of quantiles used to compute the normalized quantiles.
+
+  ``normq``
+    Value expected for the quantiles in ``prob`` if the distribution is normal.
+    The foluma is: :math:`\DeclareMathOperator{\erf}{erf} \Phi(p) = \sqrt{2}
+    \erf^{-1}(2p-1), p\in[0;1]`
+
+Plotting the results
+^^^^^^^^^^^^^^^^^^^^
+
 At last, you can use the display used for the GUI::
 
-  >>> pyqt_fit.plot1d(result)
+  >>> handles = pyqt_fit.plot1d(result)
 
 What you will obtain are these two graphs:
 
 .. image:: Parm_tut_est_function.png
 .. image:: Parm_tut_residuals.png
 
+Do not hesitate to look at the code for :py:func:`pyqt_fit.plot_fit.plot1d` to examine
+how things are plotted. The function should return all the handles you may need
+to tune the presentation of the various curves.
+
 Confidence Intervals
 --------------------
+
+PyQt-Fit provides bootstrapping methods to compute confidence intervals.
 
 Defining the functions and residuals
 ------------------------------------

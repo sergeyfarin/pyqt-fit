@@ -1,4 +1,6 @@
 """
+:Author: Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>
+
 This module specifically implement the curve fitting, wrapping the default
 scipy.optimize.leastsq function. It allows for parameter value fixing,
 different kind of residual and added constraints function.

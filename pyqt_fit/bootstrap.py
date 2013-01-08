@@ -1,3 +1,9 @@
+"""
+:Author: Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>
+
+This modules provides function for bootstrapping a regression method.
+"""
+
 import numpy as np
 from numpy.random import randint
 from scipy import optimize

@@ -6,15 +6,21 @@ Regression using the GUI - tutorial
 Using the interface
 -------------------
 
+
 The script is starting from the command line with:
 
-::
+.. code-block:: console
 
   $ pyqt_fit1d.py
 
 Once starting the script, the interface will look like this:
 
-.. image:: PyQt-GUI.png
+.. _GUI-tut-GUI:
+.. figure:: PyQt-GUI.png
+  :alt: Main GUI of PyQt-Fit
+  :align: center
+
+  Main GUI of PyQt-Fit
 
 The interface is organised in 4 sections:
 
@@ -61,6 +67,7 @@ data points rather than interpolated ones.
 The output also presents a window to evaluate the quality of the fitting:
 
 .. image:: PyQt-residuals.png
+  :align: center
 
 In general, the dashed red line is the target to achieve for a good fitting.
 When present the green line is the estimates that should match the red line.
@@ -118,13 +125,13 @@ Which module will be loaded, and the functions defined in it will be added in
 the interface. A function is a class or an object with the following
 properties:
 
-  name
+  ``name``
     Name of the function
 
-  description
+  ``description``
     Equation of the function
 
-  args
+  ``args``
     List of arguments
 
   ``__call__(args, x)``
@@ -171,10 +178,10 @@ Similarly to the functions, it is possible to implement your own residual. The
 rediduals need to be in a ``residuals`` folder. And they need to be object or
 classes with the following properties:
 
-  name
+  ``name``
     Name of the residuals
 
-  description
+  ``description``
     Formula used to compute the residuals
 
   ``__call__(y1, y0)``

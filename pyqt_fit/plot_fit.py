@@ -1,3 +1,9 @@
+"""
+:Author: Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>
+
+This modules implement functions to test and plot parametric regression.
+"""
+
 from __future__ import division
 from curve_fitting import CurveFitting
 from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
@@ -153,7 +159,8 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     else:
         yvals = fit(eval_points)
 
-    sorted_yopt, scaled_res, prob, normq = residual_measures(res, yopts)
+    scaled_res, res_IX, prob, normq = residual_measures(res)
+    sorted_yopt = topts[res_IX]
 
     result = {}
     result["fct"] = fit
@@ -182,16 +189,16 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     #print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
     return ResultStruct(**result)
 
-def residual_measures(res, yest):
+ResidualMeadures = namedtuple("ResidualMeadures", "scaled_res res_IX prob normq")
+
+def residual_measures(res):
     IX = argsort(res)
     scaled_res = res[IX]/std(res)
-    sorted_yopt = yest[...,IX]
 
     prob = (arange(len(scaled_res))+0.5) / len(scaled_res)
     normq = sqrt(2)*erfinv(2*prob-1);
 
-    return sorted_yopt, scaled_res, prob, normq
-
+    return ResidualMeadures(scaled_res, IX, prob, normq)
 
 _restestfields = "res_figure residuals scaled_residuals qqplot dist_residuals"
 ResTestResult = namedtuple("ResTestResult", _restestfields)
@@ -251,7 +258,8 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
     p_res = plot_residuals(xname, xdata, res_name, res)
 
     if scaled_res is None or sorted_yopts is None or prob is None or normq is None:
-        sorted_yopt, scaled_res, prob, normq = residual_measures(res, yopts)
+        scaled_res, res_IX, prob, normq = residual_measures(res)
+        sorted_yopt = yopts[res_IX]
 
     plot2 = subplot(2,2,2)
     p_scaled = scaled_location_plot(yname, sorted_yopt, scaled_res)

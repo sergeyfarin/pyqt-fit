@@ -14,11 +14,13 @@ parametric regression.
 Contents:
 
 .. toctree::
+  :maxdepth: 2
 
   intro
   GUI_tut
   Param_tut
   NonParam_tut
+  modules
 
 Indices and tables
 ==================
