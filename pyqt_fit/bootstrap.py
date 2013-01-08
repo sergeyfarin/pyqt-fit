@@ -32,37 +32,43 @@ def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, resi
     """
     This implements the residual bootstrapping method for non-linear regression.
 
-    Parameters
-    ----------
-    fct: callable
-        Function evaluating the function on xdata at least with ``fct(xdata)``
-    xdata: ndarray of shape (N,) or (k,N) for function with k predictors
-        The independent variable where the data is measured
-    ydata: ndarray
-        The dependant data
-    residuals: ndarray
-        Residuals for the estimation on each xdata
-    repeats: int
-        Number of repeats for the bootstrapping
-    add_residual: callable or None
-        Function that add a residual to a value. The call ``add_residual(ydata,
+    :type  fct: callable
+    :param fct: Function evaluating the function on xdata at least with ``fct(xdata)``
+
+    :type  xdata: ndarray of shape (N,) or (k,N) for function with k predictors
+    :param xdata: The independent variable where the data is measured
+
+    :type  ydata: ndarray
+    :param ydata: The dependant data
+
+    :type  residuals: ndarray
+    :param residuals: Residuals for the estimation on each xdata
+
+    :type  repeats: int
+    :param repeats: Number of repeats for the bootstrapping
+
+    :type  add_residual: callable or None
+    :param add_residual: Function that add a residual to a value. The call ``add_residual(ydata,
         residual)`` should return the new ydata, with the residuals 'applied'. If
         None, it is considered the residuals should simply be added.
-    correct_bias: boolean
-        If true, the additive bias of the residuals is computed and restored
-    kwrds: dict
-        Dictionnary present to absorbed unknown named parameters
 
-    Returns
-    -------
-    shuffled_x: ndarray
-        Return xdata, with a new axis at position -2.
-    shuffled_y: ndarray
-        Return the shuffled ydata. There is a line per repeat, each line is shuffled independently.
+    :type  correct_bias: boolean
+    :param correct_bias: If true, the additive bias of the residuals is computed and restored
 
-    Notes
-    -----
-    TODO explain the method here, as well as how to create add_residual
+    :type  kwrds: dict
+    :param kwrds: Dictionnary present to absorbed unknown named parameters
+
+    :rtype: (ndarray, ndarray)
+    :returns:
+
+        1. xdata, with a new axis at position -2. This correspond to the 'shuffled' xdata (as they are *not* shuffled
+        here)
+
+        2.Second item is the shuffled ydata. There is a line per repeat, each line is shuffled independently.
+
+    .. todo::
+
+        explain the method here, as well as how to create add_residual
     """
     if residuals is None:
         residuals = np.subtract
@@ -92,31 +98,32 @@ def bootstrap_regression(fct, xdata, ydata, residuals, repeats = 3000, **kwrds):
     """
     This implements the shuffling of standard bootstrapping method for non-linear regression.
 
-    Parameters
-    ----------
-    fct: callable
-        This is the function to optimize
-    xdata: ndarray of shape (N,) or (k,N) for function with k predictors
-        The independent variable where the data is measured
-    ydata: ndarray
-        The dependant data
-    residuals: ndarray
-        Residuals for the estimation on each xdata
-    repeats: int
-        Number of repeats for the bootstrapping
-    kwrds: dict
-        Dictionnary to absorbed unknown named parameters
+    :type  fct: callable
+    :param fct: This is the function to optimize
 
-    Returns
-    -------
-    shuffled_x: ndarray
-        Return the shuffled x data. The axis -2 has one element per repeat, the other axis are shuffled independently.
-    shuffled_y: ndarray
-        Return the shuffled ydata. There is a line per repeat, each line is shuffled independently.
+    :type  xdata: ndarray of shape (N,) or (k,N) for function with k predictors
+    :param xdata: The independent variable where the data is measured
 
-    Notes
-    -----
-    TODO explain the method here
+    :type  ydata: ndarray
+    :param ydata: The dependant data
+
+    :type  residuals: ndarray
+    :param residuals: Residuals for the estimation on each xdata
+
+    :type  repeats: int
+    :param repeats: Number of repeats for the bootstrapping
+
+    :type  kwrds: dict
+    :param kwrds: Dictionnary to absorbed unknown named parameters
+
+    :rtype: (ndarray, ndarray)
+    :returns:
+        1. The shuffled x data. The axis -2 has one element per repeat, the other axis are shuffled independently.
+        2. The shuffled ydata. There is a line per repeat, each line is shuffled independently.
+
+    .. todo::
+
+        explain the method here
     """
     shuffle = randint(0, len(ydata), size=(repeats, len(ydata)))
     shuffled_x = xdata[...,shuffle]
@@ -143,51 +150,67 @@ BootstrapResult = namedtuple('BootstrapResult', 'y_fit y_est y_eval CIs shuffled
 
 def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuffle_args = (), shuffle_kwrds = {}, repeats = 3000, eval_points = None, full_results = False, nb_workers = None, extra_attrs = (), fit_args=(), fit_kwrds={}):
     """
-    fit: callable
-        Method used to compute regression. The call is:
-            ``f = fit(xdata, ydata, *fit_args, **fit_kwrds)``
-        Fit should return an object that would evaluate the regression on a set of points. The next call will be:
-            ``f(eval_points)``
-    xdata: ndarray of shape (N,) or (k,N) for function with k predictors
-        The independent variable where the data is measured
-    ydata: ndarray
-        The dependant data
-    CI: tuple of float
-        List of percentiles to extract
-    shuffle_method: callable
-        Create shuffled dataset. The call is:
-        ``shuffle_method(xdata, ydata, y_est, repeat=repeats, *shuffle_args, **shuffle_kwrds)``
-        where ``y_est`` is the estimated dependant variable on the xdata.
-    shuffle_args: tuple
-        List of arguments for the shuffle method
-    shuffle_kwrds: dict
-        Dictionnary of arguments for the shuffle method
-    repeats: int
-        Number of repeats for the bootstraping
-    eval_points: ndarray or None
-        List of points to evaluate. If None, eval_point is xdata.
-    full_results: bool
-        if True, output also the whole set of evaluations
-    extra_attrs: tuple of str
-        List of attributes of the fitting method to extract on top of the y values for confidence intervals
-    fit_args: tuple
-        List of extra arguments for the fit callable
-    fit_kwrds: dict
-        Dictionnary of extra named arguments for the fit callable
+    This function implement the bootstrap algorithm for a regression algorithm. It is capable of spreading the load
+    across many threads using shared memory and the :py:mod:`multiprocess` module.
 
-    :Returns:
-        y_est: ndarray
-            Y estimated on xdata
-        y_est: ndarray
-            Y estimated on eval_points
-        CIs: ndarray
-            list of estimated confidence interval for each value of eval_points
-        shuffled_xs: ndarray
-            if full_results is True, the shuffled x's used for the bootstrapping
-        shuffled_ys: ndarray
-            if full_results is True, the shuffled y's used for the bootstrapping
-        full_results: ndarray
-            if full_results is True, the estimated y's for each shuffled_ys
+    :type  fit: callable
+    :param fit:
+        Method used to compute regression. The call is::
+
+            f = fit(xdata, ydata, *fit_args, **fit_kwrds)
+
+        Fit should return an object that would evaluate the regression on a set of points. The next call will be::
+
+            f(eval_points)
+
+    :type  xdata: ndarray of shape (N,) or (k,N) for function with k predictors
+    :param xdata: The independent variable where the data is measured
+
+    :type  ydata: ndarray
+    :param ydata: The dependant data
+
+    :type  CI: tuple of float
+    :param CI: List of percentiles to extract
+
+    :type  shuffle_method: callable
+    :param shuffle_method:
+        Create shuffled dataset. The call is::
+
+          shuffle_method(xdata, ydata, y_est, repeat=repeats, *shuffle_args, **shuffle_kwrds)
+
+        where ``y_est`` is the estimated dependant variable on the xdata.
+
+    :type  shuffle_args: tuple
+    :param shuffle_args: List of arguments for the shuffle method
+
+    :type  shuffle_kwrds: dict
+    :param shuffle_kwrds: Dictionnary of arguments for the shuffle method
+
+    :type  repeats: int
+    :param repeats: Number of repeats for the bootstraping
+
+    :type  eval_points: ndarray or None
+    :param eval_points: List of points to evaluate. If None, eval_point is xdata.
+
+    :type  full_results: bool
+    :param full_results: if True, output also the whole set of evaluations
+
+    :type  nb_workers: int or None
+    :param nb_worders: Number of worker threads. If None, the number of detected CPUs will be used. And if 1 or less,
+        a single thread will be used.
+
+    :type  extra_attrs: tuple of str
+    :param extra_attrs: List of attributes of the fitting method to extract on top of the y values for confidence intervals
+
+    :type  fit_args: tuple
+    :param fit_args: List of extra arguments for the fit callable
+
+    :type  fit_kwrds: dict
+    :param fit_kwrds: Dictionnary of extra named arguments for the fit callable
+
+    :rtype: :py:class:`BootstrapResult`
+    :return: Estimated y on the data, on the evaluation points, the requested confidence intervals and, if requested,
+        the shuffled X, Y and the full estimated distributions.
     """
     y_fit = fit(xdata, ydata, *fit_args, **fit_kwrds)
     shuffled_x, shuffled_y = shuffle_method(y_fit, xdata, ydata, repeats=repeats, *shuffle_args, **shuffle_kwrds)

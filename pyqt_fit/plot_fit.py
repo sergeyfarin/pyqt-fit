@@ -29,15 +29,33 @@ else:
     CSV_WRITE_FLAGS = "wb"
 
 def plot_dist_residuals(res):
-    hist(res,normed=True)
+    """
+    Plot the distribution of the residuals.
+
+    :returns: the handle toward the histogram and the plot of the fitted normal distribution
+    """
+    ph = hist(res,normed=True)
     xr = arange(res.min(), res.max(), (res.max()-res.min())/1024)
     yr = stats.norm(0, res.std()).pdf(xr)
-    plot(xr, yr, 'r--')
+    pn = plot(xr, yr, 'r--')
     xlabel('Residuals')
     ylabel('Frequency')
     title('Distributions of the residuals')
+    return p
 
 def plot_residuals(xname, xdata, res_desc, res):
+    """
+    Plot the residuals against the X axis
+
+    :param str     xname:    Name of the X axis
+    :param ndarray xdata:    1D array with the X data
+    :param str     res_desc: Name of the Y axis
+    :param ndarray res: 1D   array with the residuals
+
+    The shapes of ``xdata`` and ``res`` must be the same
+
+    :returns: The handles of the the plots of the residuals and of the smoothed residuals.
+    """
     p_res = plot(xdata, res, '+', label='residuals')[0]
     plot([xdata.min(), xdata.max()], [0,0], 'r--')
     av = LocalLinearKernel1D(xdata, res)
@@ -52,18 +70,25 @@ def plot_residuals(xname, xdata, res_desc, res):
     title("Residuals (%s) vs. fitted" % (res_desc,))
     return p_res, p_smooth
 
-def scaled_location_plot(yname, sorted_yopt, scaled_res):
+def scaled_location_plot(yname, yopt, scaled_res):
     """
-    Plot the scaled location, given the X and scaled residuals
+    Plot the scaled location, given the dependant values and scaled residuals.
+
+    :param str     yname:      Name of the Y axis
+    :param ndarray yopt:       Estimated values
+    :param ndarray scaled_res: Scaled residuals
+
+    :returns: the handles for the data and the smoothed curve
     """
+
     scr = sqrt(abs(scaled_res))
-    p_scaled = plot(sorted_yopt, scr, '+')[0]
-    av = LocalLinearKernel1D(sorted_yopt, scr)
-    xr = arange(sorted_yopt.min(), sorted_yopt.max(), (sorted_yopt.max() - sorted_yopt.min())/1024)
+    p_scaled = plot(yopt, scr, '+')[0]
+    av = LocalLinearKernel1D(yopt, scr)
+    xr = arange(yopt.min(), yopt.max(), (yopt.max() - yopt.min())/1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g')[0]
     expected_mean = 2**(1/4)*gamma(3/4)/sqrt(pi)
-    plot([sorted_yopt.min(), sorted_yopt.max()], [expected_mean, expected_mean], 'r--')
+    plot([yopt.min(), yopt.max()], [expected_mean, expected_mean], 'r--')
     title('Scale-location')
     xlabel(yname)
     ylabel('$|$Normalized residuals$|^{1/2}$')
@@ -74,6 +99,11 @@ def qqplot(scaled_res, normq):
     """
     Draw a Q-Q Plot from the sorted, scaled residuals (i.e. residuals sorted
     and normalized by their standard deviation)
+
+    :param ndarray scaled_res: Scaled residuals
+    :param ndarray normq:      Expected value for each scaled residual, based on its quantile.
+
+    :returns: handle to the data plot
     """
     qqp = []
     qqp += plot(normq, scaled_res, '+');
@@ -83,63 +113,50 @@ def qqplot(scaled_res, normq):
     title('Normal Q-Q plot');
     return qqp
 
-ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname res_name residuals popt res yopts eval_points interpolation sorted_yopt scaled_res normq residuals_evaluation CI CIs CIresults")
+ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname res_name residuals popt res yopts eval_points interpolation sorted_yopt scaled_res normq CI CIs CIresults")
 
 def fit_evaluation(fit, xdata, ydata, eval_points=None,
         CI=(), CIresults = None, xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard'):
     """
-    Parameters
-    ----------
-    fit: fitting object
-        object configured for the fitting
-    xdata: ndarray of shape (N,) or (k,N) for function with k prefictors
-        The independent variable where the data is measured
-    ydata: ndarray
-        The dependant data
-    eval_points: ndarray or None
-        Contain the list of points on which the result must be expressed. It is
-        used both for plotting and for the bootstrapping.
-    CI: tuple of int
-        List of confidence intervals to calculate. If empty, none are calculated.
-    xname: string
-        Name of the X axis
-    yname: string
-        Name of the Y axis
-    fct_desc: string
-        Formula of the function
-    param_names: tuple of strings
-        Name of the various parameters
-    residuals: callable
-        Residual function
-    res_desc: string
-        Description of the residuals
+    This function takes the output of a curve fitting experiment and store all the relevant information for evaluating
+    its success in the result.
 
-    Returns
-    -------
-    This function returns an object with the following attributes:
-    popt: ndarray
-        Optimal values for the parameters as returns by the ``fit`` function
-    res: ndarray
-        Residuals for the optimal values
-    yopts: ndarray
-        Evaluation of the function with popt on xdata
-    interpolated data: tuple
-        eval_points: ndarray
-            Values on which the function is evaluated
-        yvals: ndarray
-            Values of the function on these points
-    residuals_evaluation: tuple
-        X_sorted: ndarray
-            x values sorted from the smallest to largest residual
-        scaled_res: ndarray
-            residuals sorted and scaled to be of variance 1
-        normq: ndarray
-            normalized quantile for the residuals
-    CIs: list of pairs of array
-        For each element of the CI argument, return a pair of array: the lower
-        and upper bounds of this confidence interval
-    CIresults: results of the confidence interval calculations
-    And also all the arguments that may change the result of the estimation.
+    :type  fit: fitting object
+    :param fit: object configured for the fitting
+
+    :type  xdata: ndarray of shape (N,) or (k,N) for function with k prefictors
+    :param xdata: The independent variable where the data is measured
+
+    :type  ydata: ndarray
+    :param ydata: The dependant data
+
+    :type  eval_points: ndarray or None
+    :param eval_points: Contain the list of points on which the result must be expressed. It is
+        used both for plotting and for the bootstrapping.
+
+    :type  CI: tuple of int
+    :param CI: List of confidence intervals to calculate. If empty, none are calculated.
+
+    :type  xname: string
+    :param xname: Name of the X axis
+
+    :type  yname: string
+    :param yname: Name of the Y axis
+
+    :type  fct_desc: string
+    :param fct_desc: Formula of the function
+
+    :type  param_names: tuple of strings
+    :param param_names: Name of the various parameters
+
+    :type  residuals: callable
+    :param residuals: Residual function
+
+    :type  res_desc: string
+    :param res_desc: Description of the residuals
+
+    :rtype: :py:class:`ResultStruct`
+    :returns: Data structure summarising the fitting and its evaluation
     """
     popt = fit.popt
     pcov = fit.pcov
@@ -181,7 +198,6 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     result["sorted_yopt"] = sorted_yopt
     result["scaled_res"] = scaled_res
     result["normq"] = normq
-    result["residuals_evaluation"] = (sorted_yopt, scaled_res, normq)
     result["CI"] = CI
     result["CIs"] = CIs
     #result["CIparams"] = CIparams
@@ -189,9 +205,16 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     #print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
     return ResultStruct(**result)
 
-ResidualMeadures = namedtuple("ResidualMeadures", "scaled_res res_IX prob normq")
+ResidualMeasures = namedtuple("ResidualMeasures", "scaled_res res_IX prob normq")
 
 def residual_measures(res):
+    """
+    Compute quantities needed to evaluate the quality of the estimation, based solely on the residuals.
+
+    :rtype: :py:class:`ResidualMeasures`
+    :returns: the scaled residuals, their ordering, the theoretical quantile for each residuals, and the expected value
+        for each quantile.
+    """
     IX = argsort(res)
     scaled_res = res[IX]/std(res)
 
@@ -207,6 +230,9 @@ Plot1dResult = namedtuple("Plot1dResult", "figure estimate data CIs " + _restest
 def plot1d(result, loc=0, fig = None, res_fig = None):
     """
     Use matplotlib to display the result of a fit, and return the list of plots used
+
+    :rtype: :py:class:`Plot1dResult`
+    :returns: hangles to the various figures and plots
     """
     if fig is None:
         fig = figure()
@@ -243,8 +269,28 @@ def plot1d(result, loc=0, fig = None, res_fig = None):
     return Plot1dResult(**plots)
 
 def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', res_name = "residuals",
-                        sorted_yopts = None, scaled_res = None, prob = None, normq = None, fig = None,
-                        **kwords):
+        sorted_yopts = None, scaled_res = None, prob = None, normq = None, fig = None):
+    """
+    Plot, in a single figure, all four residuals evaluation plots: :py:func:`plot_residuals`,
+    :py:func:`plot_dist_residuals`, :py:func:`scaled_location_plot` and :py:func:`qqplot`.
+
+    :param ndarray xdata:        Explaining variables
+    :param ndarray yopt:         Optimized explained variables
+    :param str     fct_name:     Name of the fitted function
+    :param str     xname:        Name of the explaining variables
+    :param str     yname:        Name of the dependant variables
+    :param str     res_name:     Name of the residuals
+    :param ndarray sorted_yopts: ``yopt``, sorted to match the scaled residuals
+    :param ndarray scaled_res:   Scaled residuals
+    :param ndarray prob:         Quantile of the scaled residuals
+    :param ndarray normq:        Estimated value of the quantiles for a normal distribution
+
+    :type  fig: handle or None
+    :param fig: Handle of the figure to put the plots in, or None to create a new figure
+
+    :rtype: :py:class:`ResTestResult`
+    :returns: The handles to all the plots
+    """
     if fig is None:
         fig = figure()
     else:
@@ -276,13 +322,21 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
 
     return ResTestResult(fig, p_res, p_scaled, qqp, drp)
 
-def write1d(outfile, result, res_desc, parm_names, CImethod):
+def write1d(outfile, result, res_desc, CImethod):
+    """
+    Write the result of a fitting and its evaluation to a CSV file.
+
+    :param str          outfile:  Name of the file to write to
+    :param ResultStruct result:   Result of the fitting evaluation (e.g. output of :py:func:`fit_evaluation`)
+    :param str          res_desc: Description of the residuals (in more details than just the name of the residuals)
+    :param str          CImethod: Description of the confidence interval estimation method
+    """
     with open(outfile, CSV_WRITE_FLAGS) as f:
         w = csv_writer(f)
         w.writerow(["Function",result.fct.fct.description])
         w.writerow(["Residuals",result.res_name,res_desc])
         w.writerow(["Parameter","Value"])
-        for pn, pv in izip(parm_names, result.popt):
+        for pn, pv in izip(result.param_names, result.popt):
             w.writerow([pn, "%.20g" % pv])
         #TODO w.writerow(["Regression Evaluation"])
         w.writerow([])

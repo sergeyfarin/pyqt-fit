@@ -1,3 +1,9 @@
+"""
+:Author: Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>
+
+Module contained a variety of small useful functions.
+"""
+
 from collections import OrderedDict
 from keyword import iskeyword as _iskeyword
 from operator import itemgetter as _itemgetter, eq as _eq
@@ -128,21 +134,21 @@ from numpy import finfo, asfarray, zeros
 _epsilon = sqrt(finfo(float).eps)
 
 def approx_jacobian(x,func,epsilon,*args):
-    """Approximate the Jacobian matrix of callable function func
-    
-       * Parameters
-         x       - The state vector at which the Jacobian matrix is desired        
-         func    - A vector-valued function of the form f(x,*args)
-         epsilon - The peturbation used to determine the partial derivatives
-         *args   - Additional arguments passed to func
-       
-       * Returns
-         An array of dimensions (lenf, lenx) where lenf is the length 
-         of the outputs of func, and lenx is the number of 
-              
-       * Notes
+    """
+    Approximate the Jacobian matrix of callable function func
+
+    :param ndarray x: The state vector at which the Jacobian matrix is desired
+    :param callable func: A vector-valued function of the form f(x,*args)
+    :param ndarray epsilon: The peturbation used to determine the partial derivatives
+    :param tuple args: Additional arguments passed to func
+
+    :returns: An array of dimensions (lenf, lenx) where lenf is the length
+         of the outputs of func, and lenx is the number of
+
+    .. note::
+
          The approximation is done using forward differences
-                
+
     """
     x0 = asfarray(x)
     f0 = func(*((x0,)+args))
