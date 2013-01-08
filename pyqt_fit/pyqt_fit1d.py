@@ -436,20 +436,23 @@ class QtFitDlg(QtGui.QDialog):
             loc = str(self.legendLocation.currentText())
             fct_desc = "$%s$" % (fct.description,)
             try:
+                cf_args = (p0, fct)
+                cf_kwrds = {"residuals": res.__call__, "maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 }
                 if self.CI is not None:
                     method = self.CI[0]
                     CI = self.CI[1]
                     bs = bootstrap.bootstrap(CurveFitting, xdata, ydata, CI,
                             shuffle_method = CImethod, shuffle_kwrds = { "add_residual": res.invert, "fit": CurveFitting},
-                            fit_args = (p0, fct), extra_attrs = ('popt',), eval_points=eval_points,
-                            fit_kwrds = {"residuals": res.__call__, "maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 })
+                            extra_attrs = ('popt',), eval_points=eval_points,
+                            fit_args = cf_args, fit_kwrds = cf_kwrds)
                     result = plot_fit.fit_evaluation(bs.y_fit, xdata, ydata, eval_points=eval_points,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             param_names = parm_names, res_name = res.name, CI=CI, CIresults = bs)
                 else:
-                    fit = CurveFitting(xdata, ydata, p0, fct, fix_params=fixed,
-                            Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
-                            residuals = res.__call__, maxfev=10000)
+                    fit = CurveFitting(xdata, ydata, *cf_args, **cf_kwrds)
+                            #p0, fct, fix_params=fixed,
+                            #Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
+                            #residuals = res.__call__, maxfev=10000)
                     result = plot_fit.fit_evaluation(fit, xdata, ydata, eval_points=eval_points,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             param_names = parm_names, res_name = res.name)
