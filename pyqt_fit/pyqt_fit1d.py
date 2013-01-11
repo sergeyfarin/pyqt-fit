@@ -450,9 +450,6 @@ class QtFitDlg(QtGui.QDialog):
                             param_names = parm_names, res_name = res.name, CI=CI, CIresults = bs)
                 else:
                     fit = CurveFitting(xdata, ydata, *cf_args, **cf_kwrds)
-                            #p0, fct, fix_params=fixed,
-                            #Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
-                            #residuals = res.__call__, maxfev=10000)
                     result = plot_fit.fit_evaluation(fit, xdata, ydata, eval_points=eval_points,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             param_names = parm_names, res_name = res.name)

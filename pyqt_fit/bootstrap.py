@@ -236,12 +236,11 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuff
         ep = sharedmem.array(eval_points)
         eas = [ sharedmem.zeros((repeats+1, len(ev)), dtype=float) for ev in extra_values ]
         extra_arrays = [ ea.np for ea in eas ]
-
         pool = mp.Pool(mp.cpu_count(), bootstrap_workers.initialize_shared, ( nx, ny, ra, eas, sx, sy, ep, extra_attrs, fit, fit_args, fit_kwrds))
     else:
         result_array = np.empty((repeats+1, len(eval_points)), dtype=float)
-        bootstrap_workers.initialize(nx, ny, result_array, extra_arrays, shuffled_x, shuffled_y, eval_points, extra_attrs, fit, fit_args, fit_kwrds)
         extra_arrays = [ np.empty((repeats+1, len(ev)), dtype=float) for ev in extra_values ]
+        bootstrap_workers.initialize(nx, ny, result_array, extra_arrays, shuffled_x, shuffled_y, eval_points, extra_attrs, fit, fit_args, fit_kwrds)
 
     result_array[0] = y_fit(eval_points)
 

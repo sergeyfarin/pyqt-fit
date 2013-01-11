@@ -6,4 +6,5 @@ include docs/Makefile
 include docs/conf.py
 include pyqt_fit/version.txt
 include pyqt_fit/qt_fit.ui
+include pyqt_fit/cy_local_linear.pyx
 

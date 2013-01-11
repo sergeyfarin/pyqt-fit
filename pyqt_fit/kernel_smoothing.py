@@ -4,8 +4,9 @@
 Module implementing non-parametric regressions using kernel smoothing methods.
 """
 
-from scipy.linalg import sqrtm
-from scipy.stats import gaussian_kde
+from scipy import stats
+from scipy.special import gamma
+from scipy.linalg import sqrtm, solve
 import numpy as np
 import cyth
 import cy_local_linear
@@ -62,7 +63,7 @@ class SpatialAverage(object):
 
     .. math::
 
-        f_n(X) \triangleq \frac{\sum_i K\left(\frac{x-X_i}{h}\right) Y_i}{\sum_i K\left(\frac{x-X_i}{h}\right)}
+        f_n(x) \triangleq \frac{\sum_i K\left(\frac{x-X_i}{h}\right) Y_i}{\sum_i K\left(\frac{x-X_i}{h}\right)}
 
     Where :math:`K(x)` is the kernel and must be such that :math:`E(K(x)) = 0` and :math:`h` is the bandwidth of the
     method.
@@ -166,7 +167,7 @@ class SpatialAverage(object):
         """
         Add a correction coefficient depending on the density of the input
         """
-        kde = gaussian_kde(xdata)
+        kde = stats.gaussian_kde(xdata)
         dens = kde(xdata)
         dm = dens.max()
         dens[dens < 1e-50] = dm
@@ -181,7 +182,7 @@ class LocalLinearKernel1D(object):
     .. math::
 
         \DeclareMathOperator{\argmin}{argmin}
-        f_n(X) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 -
+        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 -
         a_1(x-X_i)\right)^2
 
     Where :math:`K(x)` is the kernel and must be such that :math:`E(K(x)) = 0` and :math:`h` is the bandwidth of the
@@ -264,3 +265,104 @@ class LocalLinearKernel1D(object):
         """
         return self.evaluate(*args, **kwords)
 
+class LocalPolynomialKernel1D(object):
+    r"""
+    Perform a local-polynomial regression using a gaussian kernel.
+
+    The local constant regression is the function that minimises, for each position:
+
+    .. math::
+
+        \DeclareMathOperator{\argmin}{argmin}
+        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 -
+        a_1(x-X_i) - \ldots - a_q \frac{(x-X_i)^q}{q!}\right)^2
+
+    Where :math:`K(x)` is the kernel such that :math:`E(K(x)) = 0`, :math:`q`
+    is the order of the fitted polynomial  and :math:`h` is the bandwidth of
+    the method.
+
+    :param ndarray xdata: Explaining variables (at most 2D array)
+    :param ndarray ydata: Explained variables (should be 1D array)
+    :param int q: Order of the polynomial to fit. **Default:** 3
+    :param callable kernel: Kernel to use for the weights. Call is
+        ``kernel(points)`` and should return an array of values the same size
+        as ``points``. **Default:** ``scipy.stats.norm(0,1).pdf``
+
+    :type  cov: float or callable
+    :param cov: If an float, it should be a variance of the gaussian kernel.
+        Otherwise, it should be a function ``cov(xdata, ydata)`` returning the variance. **Default:** ``scotts_bandwidth``
+
+    """
+    def __init__(self, xdata, ydata, q = 3, cov = scotts_bandwidth, kernel = stats.norm(0,1).pdf):
+        self.xdata = np.atleast_1d(xdata)
+        self.ydata = np.atleast_1d(ydata)
+        self.kernel = kernel
+        self.n = xdata.shape[0]
+        self.q = q
+
+        self._bw = None
+        self._covariance = None
+
+        self.covariance = cov
+
+    @property
+    def bandwidth(self):
+        """
+        Bandwidth of the kernel.
+        """
+        return self._bw
+
+
+    @property
+    def covariance(self):
+        """
+        Covariance of the gaussian kernel.
+        Can be set either as a fixed value or using a bandwith calculator, that is a function
+        of signature ``w(xdata, ydata)`` that returns a single value.
+
+        .. note::
+
+            A ndarray with a single value will be converted to a floating point value.
+        """
+        return self._covariance
+
+    @covariance.setter
+    def covariance(self, cov):
+        if callable(cov):
+            _cov = float(cov(self.xdata, self.ydata))
+        else:
+            _cov = float(cov)
+        self._covariance = _cov
+        self._bw = np.sqrt(_cov)
+
+    def evaluate(self, points, output=None):
+        """
+        Evaluate the spatial averaging on a set of points
+
+        :param ndarray points: Points to evaluate the averaging on
+        :param ndarray result: If provided, the result will be put in this array
+        """
+        xdata = self.xdata[:,np.newaxis] # make it a column vector
+        ydata = self.ydata[:,np.newaxis] # make it a column vector
+        q = self.q
+        powers = np.arange(0,q+1).reshape((1,q+1)) # This is a line vector
+        frac = gamma(powers+1) # gamma(x+1) = x! if x is integer
+        bw = self.bandwidth
+        kernel = self.kernel
+        if output is None:
+            output = np.empty(points.shape, dtype=float)
+        for i,p in enumerate(points):
+            dX = (xdata - p)
+            Wx = kernel(dX/bw)
+            Xx = np.power(dX, powers) / frac
+            WxXx = Wx*Xx
+            XWX = np.dot(Xx.T, WxXx)
+            Lx = solve(XWX, WxXx.T)[0]
+            output[i] = np.dot(Lx, ydata)
+        return output
+
+    def __call__(self, *args, **kwords):
+        """
+        This method is an alias for :py:meth:`LocalLinearKernel1D.evaluate`
+        """
+        return self.evaluate(*args, **kwords)

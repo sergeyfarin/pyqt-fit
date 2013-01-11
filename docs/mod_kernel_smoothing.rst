@@ -12,6 +12,9 @@ Kernel Smoothing Methods
 .. autoclass:: LocalLinearKernel1D
   :members: evaluate, __call__, bandwidth, covariance
 
+.. autoclass:: LocalPolynomialKernel1D
+  :members: evaluate, __call__, bandwidth, covariance
+
 Bandwidth Estimation Methods
 ----------------------------
 
