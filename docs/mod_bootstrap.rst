@@ -33,7 +33,12 @@ Main Boostrap Functions
 
   .. py:attribute:: CIs
 
-            list of estimated confidence interval for each value of eval_points
+            List of confidence intervals. The first element is for the estimated values
+            on ``eval_points``. The others are for the extra attributes specified in
+            ``extra_attrs``. Each array is a 3-dimensional array (Q,2,N), where
+            Q is the number of confidence interval and N is the number of data
+            points. Values (x,0,y) give the lower bounds and (x,1,y) the upper
+            bounds of the confidence intervals.
 
   .. py:attribute:: shuffled_xs
 

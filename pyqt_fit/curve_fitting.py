@@ -113,7 +113,7 @@ class CurveFitting(object):
     """
 
     def __init__(self, xdata, ydata, p0, fct, args=(), residuals=None, fix_params=(),
-                  Dfun=None, Dres = None, col_deriv=0, constraints = None,
+                  Dfun=None, Dres = None, col_deriv=1, constraints = None,
                   *lsq_args, **lsq_kword):
         self.fct = fct
         if residuals is None:

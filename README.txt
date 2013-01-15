@@ -39,8 +39,8 @@ estimate confidence intervals on the parameter values and/or the fitted
 functions.
 
 The non-parametric regression can currently be either local constant (i.e.
-spatial averaging) in nD or local-linear in 1D only. There is a version of the
-bootstrapping adapted to non-parametric regression too.
+spatial averaging) in nD or local-polynomial in 1D only. The bootstrapping
+function will also work with the non-parametric regression methods.
 
 The package also provides with four evaluation of the regression: the plot of residuals
 vs. the X axis, the plot of normalized residuals vs. the Y axis, the QQ-plot of
