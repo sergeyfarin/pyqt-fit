@@ -1,3 +1,10 @@
+v1.1.3, 20/1/2013
+ - Added nD local polynomial regression
+v1.1.2, 11/1/2013
+ - Added 1D local polynomial regression
+v1.1.0, 8/1/2013
+ - Curve fitting changed to match non-parametric interface
+ - Unified bootstrap
 v1.0.23, 6/1/2012
  - Adapted the CurveFitting to fit the new bootstrap
 v1.0.22, 6/1/2013
