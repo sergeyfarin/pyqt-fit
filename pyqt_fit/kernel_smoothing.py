@@ -267,6 +267,13 @@ class LocalLinearKernel1D(object):
         return self.evaluate(*args, **kwords)
 
 def normal_kernel(dim):
+    """
+    Returns a function for the PDF of a Normal kernel of variance 1 and average 0.
+
+    If the dimension is greater than 1, then the shape of the array must be
+    (dim,N), for N points. Otherwise the array can be of any shape, and an
+    array of same shape will be returned.
+    """
     factor = 1/np.sqrt(2*np.pi)**dim
     if dim == 1:
         def pdf(xs):
@@ -385,6 +392,18 @@ class LocalPolynomialKernel1D(object):
         return self.evaluate(*args, **kwords)
 
 def designMatrixSize(dim, deg, factors = False):
+    """
+    Compute the size of the design matrix for a n-D problem of order d. Can also
+    compute the Taylors factors (i.e. the factors that would be applied for the
+    taylor decomposition)
+
+    :param int dim: Dimension of the problem
+    :param int deg: Degree of the fitting polynomial
+    :param bool factors: If true, the output includes the Taylor factors
+
+    :returns: The number of columns in the design matrix and, if required, a
+    ndarray with the taylor coefficients for each column of the design matrix.
+    """
     init = 1
     dims = [0] * (dim+1)
     cur = init
@@ -413,7 +432,7 @@ def designMatrix(x, deg, factors = None, out = None):
 
     :param ndarray x: Points to create the design matrix. Shape must be (D,N)
         or (N,), where D is the dimension of the problem, 1 if not there.
-    :param int deg: Maximum degree of the polynomial
+    :param int deg: Degree of the fitting polynomial
     :param ndarray factors: Scaling factor for the columns of the design
         matrix. The shape should be (M,) or (M,1), where M is the number of columns
         of the output. This value can be obtained using the
@@ -454,7 +473,7 @@ class LocalPolynomialKernel(object):
     .. math::
 
         \DeclareMathOperator{\argmin}{argmin}
-        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 - \mathcal{P}_q(X_i-x)}\right)^2
+        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 - \mathcal{P}_q(X_i-x)\right)^2
 
     Where :math:`K(x)` is the kernel such that :math:`E(K(x)) = 0`, :math:`q`
     is the order of the fitted polynomial, :math:`\mathcal{P}_q(x)` is a

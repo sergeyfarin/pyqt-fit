@@ -15,6 +15,9 @@ Kernel Smoothing Methods
 .. autoclass:: LocalPolynomialKernel1D
   :members: evaluate, __call__, bandwidth, covariance
 
+.. autoclass:: LocalPolynomialKernel
+  :members: evaluate, __call__, bandwidth, covariance
+
 Bandwidth Estimation Methods
 ----------------------------
 
@@ -23,4 +26,13 @@ Bandwidth Estimation Methods
 .. autofunction:: silverman_bandwidth
 
 .. autofunction:: scotts_bandwidth
+
+Utility functions
+-----------------
+
+.. autofunction:: designMatrix
+
+.. autofunction:: designMatrixSize
+
+.. autofunction:: normal_kernel
 
