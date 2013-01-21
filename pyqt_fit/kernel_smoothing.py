@@ -9,52 +9,12 @@ from scipy.special import gamma
 from scipy.linalg import sqrtm, solve
 import scipy
 import numpy as np
+
 import cyth
 import cy_local_linear
 
-def variance_bandwidth(factor, xdata):
-    r"""
-    Returns the covariance matrix:
-
-    .. math::
-
-        \mathcal{C} = \tau^2 cov(X)
-
-    where :math:`\tau` is a correcting factor that depends on the method.
-    """
-    data_covariance = np.atleast_2d(np.cov(xdata, rowvar=1, bias=False))
-    sq_bandwidth = data_covariance*factor*factor
-    return sq_bandwidth
-
-def silverman_bandwidth(xdata, ydata):
-    r"""
-    The Silverman bandwidth is defined as a variance bandwidth with factor:
-
-    .. math::
-
-        \tau = \left( n \frac{d+2}{4} \right)^\frac{-1}{d+4}
-    """
-    n = ydata.shape[0]
-    if len(xdata.shape) == 2:
-        d = float(xdata.shape[0])
-    else:
-        d = 1.
-    return variance_bandwidth(np.power(n*(d+2.)/4., -1./(d+4.)), xdata)
-
-def scotts_bandwidth(xdata, ydata):
-    r"""
-    The Scotts bandwidth is defined as a variance bandwidth with factor:
-
-    .. math::
-
-        \tau = n^\frac{-1}{d+4}
-    """
-    n = ydata.shape[0]
-    if len(xdata.shape) == 2:
-        d = float(xdata.shape[0])
-    else:
-        d = 1.
-    return variance_bandwidth(np.power(n, -1./(d+4.)), xdata)
+from kde import scotts_bandwidth
+from kernels import normal_kernel
 
 class SpatialAverage(object):
     r"""
@@ -266,24 +226,6 @@ class LocalLinearKernel1D(object):
         """
         return self.evaluate(*args, **kwords)
 
-def normal_kernel(dim):
-    """
-    Returns a function for the PDF of a Normal kernel of variance 1 and average 0.
-
-    If the dimension is greater than 1, then the shape of the array must be
-    (dim,N), for N points. Otherwise the array can be of any shape, and an
-    array of same shape will be returned.
-    """
-    factor = 1/np.sqrt(2*np.pi)**dim
-    if dim == 1:
-        def pdf(xs):
-            return factor*np.exp(-0.5*(xs*xs))
-    else:
-        def pdf(xs):
-            xs = np.atleast_2d(xs)
-            return factor*np.exp(-0.5*np.sum(xs*xs, axis=0))
-    return pdf
-
 class LocalPolynomialKernel1D(object):
     r"""
     Perform a local-polynomial regression using a user-provided kernel (Gaussian by default).
@@ -402,7 +344,7 @@ def designMatrixSize(dim, deg, factors = False):
     :param bool factors: If true, the output includes the Taylor factors
 
     :returns: The number of columns in the design matrix and, if required, a
-    ndarray with the taylor coefficients for each column of the design matrix.
+        ndarray with the taylor coefficients for each column of the design matrix.
     """
     init = 1
     dims = [0] * (dim+1)
@@ -432,11 +374,12 @@ def designMatrix(x, deg, factors = None, out = None):
 
     :param ndarray x: Points to create the design matrix. Shape must be (D,N)
         or (N,), where D is the dimension of the problem, 1 if not there.
+
     :param int deg: Degree of the fitting polynomial
+
     :param ndarray factors: Scaling factor for the columns of the design
         matrix. The shape should be (M,) or (M,1), where M is the number of columns
-        of the output. This value can be obtained using the
-        :py:func:`designMatrixSize` function.
+        of the output. This value can be obtained using the :py:func:`designMatrixSize` function.
 
     :returns: The design matrix as a (M,N) matrix.
     """
@@ -538,7 +481,7 @@ class LocalPolynomialKernel(object):
         """
         Covariance of the gaussian kernel.
         Can be set either as a fixed value or using a bandwith calculator, that is a function
-        of signature ``w(xdata, ydata)`` that returns a single value.
+        of signature ``w(xdata, ydata)`` that returns a DxD matrix.
 
         .. note::
 

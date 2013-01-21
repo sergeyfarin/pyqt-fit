@@ -1,9 +1,9 @@
-Module ``pyqt_fit.kernel_smoothing``
-====================================
+Module :py:mod:`pyqt_fit.kernel_smoothing`
+==========================================
 
 .. automodule:: pyqt_fit.kernel_smoothing
 
-Kernel Smoothing Methods
+Kernel Estimation Methods
 ------------------------
 
 .. autoclass:: SpatialAverage
@@ -18,21 +18,10 @@ Kernel Smoothing Methods
 .. autoclass:: LocalPolynomialKernel
   :members: evaluate, __call__, bandwidth, covariance
 
-Bandwidth Estimation Methods
-----------------------------
-
-.. autofunction:: variance_bandwidth
-
-.. autofunction:: silverman_bandwidth
-
-.. autofunction:: scotts_bandwidth
-
 Utility functions
 -----------------
 
 .. autofunction:: designMatrix
 
 .. autofunction:: designMatrixSize
-
-.. autofunction:: normal_kernel
 
