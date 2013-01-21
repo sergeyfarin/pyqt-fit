@@ -477,8 +477,23 @@ class LocalPolynomialKernel(object):
 
     Where :math:`K(x)` is the kernel such that :math:`E(K(x)) = 0`, :math:`q`
     is the order of the fitted polynomial, :math:`\mathcal{P}_q(x)` is a
-    polynomial of order :math:`d` in :math`x` and :math:`h` is the bandwidth of
+    polynomial of order :math:`d` in :math:`x` and :math:`h` is the bandwidth of
     the method.
+
+    The polynomial :math:`\mathcal{P}_q(x)` is of the form:
+
+    .. math::
+
+        \newcommand{\n}{\boldsymbol{n}}
+        \mathcal{F}_d(k) = \left\{ \n \in \mathbb{N}^d \middle| \sum_{i=1}^d n_i = k \right\}
+
+        \mathcal{P}_q(x_1,\ldots,x_d) = \sum_{k=1}^q \sum_{\n\in\mathcal{F}_d(k)} a_{k,\n} \prod_{i=1}^d x_i^{n_i}
+
+    For example we have:
+
+    .. math::
+
+        \mathcal{P}_2(x,y) = a_{110} x + a_{101} y + a_{220} x^2 + a_{211} xy + a_{202} y^2
 
     :param ndarray xdata: Explaining variables (at most 2D array). The shape should be
         (N,D) with D the dimension of the problem and N the number of points.
@@ -553,7 +568,7 @@ class LocalPolynomialKernel(object):
         n = self.n
         q = self.q
         d = self.d
-        dm_size, frac = designMatrixSize(p, d, True)
+        dm_size, frac = designMatrixSize(d, q, True)
         Xx = np.empty((dm_size, n), dtype=xdata.dtype)
         WxXx = np.empty(Xx.shape, dtype=xdata.dtype)
         XWX = np.empty((dm_size,dm_size), dtype=xdata.dtype)
@@ -564,7 +579,7 @@ class LocalPolynomialKernel(object):
         for i in xrange(points.shape[1]):
             dX = (xdata - points[:,i:i+1])
             Wx = kernel(np.dot(inv_bw, dX))
-            designMatrix(dX, d, frac, out = Xx)
+            designMatrix(dX, q, frac, out = Xx)
             np.multiply(Wx, Xx, WxXx)
             np.dot(Xx, WxXx.T, XWX)
             Lx = solve(XWX, WxXx)[0]
