@@ -1,5 +1,6 @@
 v1.1.3, 20/1/2013
  - Added nD local polynomial regression
+ - Added 1D bounded KDE estimation
 v1.1.2, 11/1/2013
  - Added 1D local polynomial regression
 v1.1.0, 8/1/2013

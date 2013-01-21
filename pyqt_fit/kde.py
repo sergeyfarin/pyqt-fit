@@ -57,7 +57,7 @@ class BoundedKDE1D(object):
 
     .. math::
 
-        f(x) \triangleq \frac{1}{\sum_{i=1}^n w_i} \sum_{i=1}^n \frac{w_i}{h} K_r\left(\frac{x-X_1}{h};l,u\right)
+        f(x) \triangleq \frac{1}{n} \sum_{i=1}^n \frac{1}{h} K_r\left(\frac{x-X_1}{h};l,u\right)
 
     where :math:`K_r` is a corrected kernel defined by:
 
@@ -150,7 +150,6 @@ class BoundedKDE1D(object):
         u = (self.upper - points)/bw
 
         kernel = self.kernel
-
 
         dX = (points - xdata) / bw
 

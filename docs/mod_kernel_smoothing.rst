@@ -3,7 +3,7 @@ Module :py:mod:`pyqt_fit.kernel_smoothing`
 
 .. automodule:: pyqt_fit.kernel_smoothing
 
-Kernel Estimation Methods
+Kernel Smoothing Methods
 ------------------------
 
 .. autoclass:: SpatialAverage

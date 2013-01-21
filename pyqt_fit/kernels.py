@@ -14,8 +14,12 @@ class normal_kernel1d(object):
     """
 
     def pdf(self, z, out = None):
-        """
-        Return the probability density of the function.
+        r"""
+        Return the probability density of the function. The formula used is:
+
+        .. math::
+
+            \phi(z) = \frac{1}{\sqrt{2\pi}}e^{-\frac{x^2}{2}}
 
         :param ndarray xs: Array of any shape
         :returns: an array of shape identical to ``xs``
@@ -32,12 +36,12 @@ class normal_kernel1d(object):
     __call__ = pdf
 
     def cdf(self, z, out = None):
-        """
+        r"""
         Cumulative density of probability. The formula used is:
 
         .. math::
 
-            cdf(z) = \frac{1}{2}\text{erf}\left(\frac{z}{\sqrt{2}}\right) + \frac{1}{2}
+            \text{cdf}(z) \triangleq \int_{-\infty}^z \phi(z) dz = \frac{1}{2}\text{erf}\left(\frac{z}{\sqrt{2}}\right) + \frac{1}{2}
         """
         z = np.asarray(z)
         if out is None:
@@ -49,12 +53,12 @@ class normal_kernel1d(object):
         return out
 
     def pm1(self, z, out = None):
-        """
-        Partial moment of order 1. That is, a primitive of :math:`zK(z)`. The formula used is:
+        r"""
+        Partial moment of order 1:
 
         .. math::
 
-            pm1(z) = -\frac{1}{\sqrt{2\pi}}e^{-\frac{z^2}{2}}
+            \text{pm1}(z) \triangleq \int_{-\infty}^z z\phi(z) dz = -\frac{1}{\sqrt{2\pi}}e^{-\frac{z^2}{2}}
         """
         z = np.asarray(z)
         if out is None:
@@ -66,12 +70,12 @@ class normal_kernel1d(object):
         return out
 
     def pm2(self, z, out = None):
-        """
-        Partial moment of order 1. That is, a primitive of :math:`z^2K(z)`. The formula is:
+        r"""
+        Partial moment of order 2:
 
         .. math::
 
-            pm2(z) = \frac{1}{2}\text{erf}\left(\frac(z}{2}\right) - \frac{z}{\sqrt{2\pi}} e^{-\frac{z^2}{2}} + \frac{1}{2}
+            \text{pm2}(z) \triangleq \int_{-\infty}^z z^2\phi(z) dz = \frac{1}{2}\text{erf}\left(\frac{z}{2}\right) - \frac{z}{\sqrt{2\pi}} e^{-\frac{z^2}{2}} + \frac{1}{2}
         """
         z = np.asarray(z)
         if out is None:
@@ -116,5 +120,4 @@ class normal_kernel(object):
         return self.factor*np.exp(-0.5*np.sum(xs*xs, axis=0))
 
     __call__ = pdf
-
 
