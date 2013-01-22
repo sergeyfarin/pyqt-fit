@@ -3,7 +3,8 @@
 
 import numpy as np
 from scipy.special import erf
-#import _kernels
+import _kernels
+from scipy.weave import inline
 
 S2PI = np.sqrt(2*np.pi)
 S2 = np.sqrt(2)
@@ -24,6 +25,12 @@ class normal_kernel1d(object):
         :param ndarray xs: Array of any shape
         :returns: an array of shape identical to ``xs``
         """
+        return _kernels.norm1d_pdf(np.asarray(z, dtype=np.float64), out)
+
+    def _pdf(self, z, out = None):
+        """
+        Full-python implementation of :py:func:`normal_kernel1d.pdf`
+        """
         z = np.asarray(z)
         if out is None:
             out = np.empty(z.shape, dtype = z.dtype)
@@ -43,6 +50,12 @@ class normal_kernel1d(object):
 
             \text{cdf}(z) \triangleq \int_{-\infty}^z \phi(z) dz = \frac{1}{2}\text{erf}\left(\frac{z}{\sqrt{2}}\right) + \frac{1}{2}
         """
+        return _kernels.norm1d_cdf(np.asarray(z, dtype=np.float64), out)
+
+    def _cdf(self, z, out=None):
+        """
+        Full-python implementation of :py:func:`normal_kernel1d.cdf`
+        """
         z = np.asarray(z)
         if out is None:
             out = np.empty(z.shape, dtype = z.dtype)
@@ -59,6 +72,12 @@ class normal_kernel1d(object):
         .. math::
 
             \text{pm1}(z) \triangleq \int_{-\infty}^z z\phi(z) dz = -\frac{1}{\sqrt{2\pi}}e^{-\frac{z^2}{2}}
+        """
+        return _kernels.norm1d_pm1(np.asarray(z, dtype=np.float64), out)
+
+    def _pm1(self, z, out=None):
+        """
+        Full-python implementation of :py:func:`normal_kernel1d.pm1`
         """
         z = np.asarray(z)
         if out is None:
@@ -77,7 +96,13 @@ class normal_kernel1d(object):
 
             \text{pm2}(z) \triangleq \int_{-\infty}^z z^2\phi(z) dz = \frac{1}{2}\text{erf}\left(\frac{z}{2}\right) - \frac{z}{\sqrt{2\pi}} e^{-\frac{z^2}{2}} + \frac{1}{2}
         """
-        z = np.asarray(z)
+        return _kernels.norm1d_pm2(np.asarray(z, dtype=np.float64), out)
+
+    def _pm2(self, z, out=None):
+        """
+        Full-python implementation of :py:func:`normal_kernel1d.pm2`
+        """
+        z = np.asarray(z, dtype=float)
         if out is None:
             out = np.empty(z.shape)
         np.divide(z, S2, out)
