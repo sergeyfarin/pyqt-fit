@@ -6,8 +6,8 @@ Module :py:mod:`pyqt_fit.kde`
 Kernel Density Estimation Methods
 ---------------------------------
 
-.. autoclass:: BoundedKDE1D
-    :members: evaluate, __call__, bandwidth, covariance, method
+.. autoclass:: KDE1D
+    :members: bandwidth, covariance, evaluate, kernel, lambdas, lower, method, upper, weights, __call__
 
 Bandwidth Estimation Methods
 ----------------------------

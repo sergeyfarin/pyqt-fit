@@ -50,8 +50,19 @@ def scotts_bandwidth(xdata, ydata = None):
 
 class KDE1D(object):
     r"""
-    Perform a kernel based density estimation in 1D, but on a bounded domain
-    :math:`[l,u]`.
+    Perform a kernel based density estimation in 1D, possibly on a bounded domain
+    :math:`[L,U]`.
+
+    :param ndarray data: 1D array with the data points
+
+    Any other named argument will be equivalent to setting the property after the fact. For example::
+
+        >>> k = KDE1D(xs, lower=0)
+
+    will be equivalent to::
+
+        >>> k = KDE1D(xs)
+        >>> k.lower = 0
 
     The method rely on an estimator of kernel density given by:
 
@@ -61,53 +72,50 @@ class KDE1D(object):
 
         W = \sum_{i=1}^n w_i
 
-    where :math:`h` is the bandwidth of the kernel, and :math:`K` is the kernel
-    used for the density estimation, :math:`w_i` is the weight of a data point
-    and :math:`\lambda_i` is adaptation of the kernel width. :math:`K` should
-    be a function such that:
+    where :math:`h` is the bandwidth of the kernel (:py:attr:`bandwidth`), and :math:`K` is the kernel
+    used for the density estimation (:py:attr:`kernel`), :math:`w_i` are the
+    weights of the data points (:py:attr:`weights`) and :math:`\lambda_i` are
+    the adaptation factor of the kernel width (:py:attr:`lambdas`). :math:`K`
+    should be a function such that:
 
     .. math::
 
-        \forall z, K(z) > 0
+        \begin{array}{rcl}
+        \int_\mathbb{R} K(z) &=& 1 \\
+        \int_\mathbb{R} zK(z)dz &=& 0 \\
+        \int_\mathbb{R} z^2K(z) dz &<& \infty \quad (\approx 1)
+        \end{array}
 
-        \int_\mathbb{R} K(z) = 1
-
-        \int_\mathbb{R} zK(z)dz = 0
-
-        \int_\mathbb{R} z^2K(z) < \infty
-
-    Which translates into, the function should be positive, and of sum 1 (i.e.
+    Which translates into, the function should be of sum 1 (i.e.
     a valid density of probability), of average 0 (i.e. centered) and of finite
     variance. It is even recommanded that the variance is close to 1 to give
-    uniform meaning to the bandwidth.
+    a uniform meaning to the bandwidth.
 
-    There is a choice of methods:
+    If the domain of the density estimation is bounded to the interval
+    :math:`[L,U]` (i.e. from :py:attr:`lower` to :py:attr:`upper`), the density
+    is then estimated with:
+
+    .. math::
+
+        f(x) \triangleq \frac{1}{hW} \sum_{i=1}^n \frac{w_i}{\lambda_i} \hat{K}(x;X,\lambda_i h,L,U)
+
+    Where :math:`\hat{K}` is a modified kernel that depends on the exact method used.
+
+    To express the various methods, we will refer to the following functions:
+
+    .. math::
+
+        a_0(l,u) = \int_l^u K(z) dz
+
+        a_1(l,u) = \int_l^u zK(z) dz
+
+        a_2(l,u) = \int_l^u z^2K(z) dz
+
+
+    There are currently three methods available:
         - renormalization
         - reflexion
         - linear combination
-
-    :param ndarray data: 1D array with the data points
-    :param float lower: Lower bound of the domain
-    :param float upper: Upper bound of the domain
-    :param kernel: Kernel object. Should provide the following methods:
-
-        ``kernel.pdf(xs)``
-            Density of the kernel
-
-        ``kernel.cdf(z)``
-            Cumulative density of probability
-
-        ``kernel.pm1(z)``
-            A function whose derivative is :math:`zK(z)`. The name stands for
-            'partial moment 1', even though it doesn't need to be the sum from
-            :math:`-\infty`.
-
-        ``kernel.pm2(z)``
-            A function whose derivative is :math:`z^2K(z)`. The name stands for
-            'partial moment 2', even though it doesn't need to be the sum from
-            :math:`-\infty`.
-    :param str method: See :py:func:`BoundedKDE1D.method`
-
 
     1. Renormalization
 
@@ -115,17 +123,11 @@ class KDE1D(object):
         only take into account the part of the kernel within the domain of the
         density [1]_.
 
-        The renormalized estimator is then:
+        The kernel is then replaced with:
 
         .. math::
 
-            f^n(x) \triangleq \frac{1}{hW} \sum_{i=1}^n \frac{w_i}{a_0(l,u) \lambda_i} K\feft((\frac{x-X_i}{h}\right)
-
-            l = \frac{L-x}{h}
-
-            u = \frac{U-x}{h}
-
-            a_0(l,u) = \int_l^u K(z) dz
+            \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0\left(\frac{L-x}{h},\frac{U-x}{h}\right)} K\left(\frac{x-X}{h}\right)
 
     2. Reflexion
 
@@ -135,66 +137,106 @@ class KDE1D(object):
 
         .. math::
 
-            K^r(x; H, h, L, U) = K\left(\frac{x-X}{h}\right) + K\left(\frac{x+X-2L}{h}\right) + K\left(\frc{x+X-2U}{h}\right)
+            \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right) + K\left(\frac{x+X-2L}{h}\right) + K\left(\frac{x+X-2U}{h}\right)
 
     3. Linear Combination
 
         This method uses the linear combination correction published in [1]_.
 
-        The estimation is done with:
+        The estimation is done with a modified kernel given by:
 
         .. math::
 
-            f(x) \triangleq \frac{1}{n} \sum_{i=1}^n \frac{1}{h} K_r\left(\frac{x-X_1}{h};l,u\right)
+            K_r(x;X,h,L,U) = \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u) - a_1(-u,-l)^2} K(z)
 
-        where :math:`K_r` is a corrected kernel defined by:
-
-        .. math::
-
-            K_r(z;l,u) = \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u) - a_1(-u,-l)^2} K(z)
-
-            z = \frac{x-X}{h}
-
-            l = \frac{L-x}{h}
-
-            u = \frac{U-x}{h}
-
-            a_0(l,u) = \int_l^u K(z) dz
-
-            a_1(l,u) = \int_l^u zK(z) dz
-
-            a_2(l,u) = \int_l^u z^2K(z) dz
-
+            z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
 
     .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density estimation. Statistics and Computing 3: 135--146.
+
     """
 
-    def __init__(self, xdata, lower = -np.inf, upper = np.inf, kernel = None, cov = scotts_bandwidth, **kwords):
+    def __init__(self, xdata, **kwords):
         self.xdata = np.atleast_1d(xdata)
         self.n = self.xdata.shape[0]
-        self.upper = float(upper)
-        self.lower = float(lower)
-        if kernel is None:
-            kernel = normal_kernel1d()
-        self.kernel = kernel
+        self._upper = np.inf
+        self._lower = -np.inf
+        self._kernel = normal_kernel1d()
 
         self._bw = None
         self._covariance = None
         self._method = None
-        self._weights = None
-        self._lambda = None
+
+        self.weights = 1.
+        self.lambdas = 1.
 
         attrs = dict(kwords)
         attrs.setdefault('covariance', scotts_bandwidth)
-        attrs.setdefault('method', method)
+        attrs.setdefault('method', 'renormalization')
 
         for n in attrs:
             setattr(self, n, attrs[n])
 
     @property
+    def kernel(self):
+        r"""
+        Kernel object. Should provide the following methods:
+
+        ``kernel.pdf(xs)``
+            Density of the kernel, denoted :math:`K(x)`
+
+        ``kernel.cdf(z)``
+            Cumulative density of probability, that is :math:`F^K(z) = \int_{-\infty}^z K(x) dx`
+
+        ``kernel.pm1(z)``
+            First partial moment, defined by :math:`\mathcal{M}^K_1(z) = \int_{-\infty}^z xK(x)dx`
+
+        ``kernel.pm2(z)``
+            Second partial moment, defined by :math:`\mathcal{M}^K_2(z) = \int_{-\infty}^z x^2K(x)dx`
+
+        By default, the kernel is an instance of :py:class:`kernels.normal_kernel1d`
+        """
+        return self._kernel
+
+    @kernel.setter
+    def kernel(self, val):
+        self._kernel = val
+
+    @property
+    def lower(self):
+        r"""
+        Lower bound of the density domain. If deleted, becomes set to :math:`-\infty`
+        """
+        return self._lower
+
+    @lower.setter
+    def lower(self, val):
+        self._lower = float(val)
+
+    @lower.deleter
+    def lower(self):
+        self._lower = -np.inf
+
+    @property
+    def upper(self):
+        r"""
+        Upper bound of the density domain. If deleted, becomes set to :math:`\infty`
+        """
+        return self._upper
+
+    @upper.setter
+    def upper(self, val):
+        self._upper = float(val)
+
+    @upper.deleter
+    def upper(self):
+        self._upper = np.inf
+
+    @property
     def weights(self):
         """
-        Weigths associated to each data point. Set to ``None`` to remove them (i.e. all weights are 1).
+        Weigths associated to each data point. It can be either a single value,
+        or an array with a value per data point. If a single value is provided,
+        the weights will always be set to 1.
         """
         return self._weights
 
@@ -221,23 +263,26 @@ class KDE1D(object):
 
     @property
     def lambdas(self):
-        return self._lambda
+        """
+        Scaling of the bandwidth, per data point. It can be either a single
+        value or an array with one value per data point.
+
+        When deleted, the lamndas are reset to 1.
+        """
+        return self._lambdas
 
     @lambdas.setter
     def lambdas(self, ls):
-        """
-        Scaling of the bandwidth, per data point. Set to ``None`` to remove them (i.e. all scales are 1).
-        """
         try:
-            self._lambda = float(ls)
+            self._lambdas = float(ls)
         except TypeError:
             ls = np.array(ls, dtype=float)
             ls.shape = self.xdata.shape
-            self._lambda = ls
+            self._lambdas = ls
 
     @lambdas.deleter
     def lambdas(self):
-        self._lambda = 1.
+        self._lambdas = 1.
 
     @property
     def bandwidth(self):
@@ -313,7 +358,6 @@ class KDE1D(object):
 
         bw = self.bandwidth * self.lambdas
 
-        n = self.n
         l = (self.lower - points)/bw
         u = (self.upper - points)/bw
         z = (points - xdata) / bw
@@ -335,7 +379,6 @@ class KDE1D(object):
 
         bw = self.bandwidth * self.lambdas
 
-        n = self.n
         z = (points - xdata) / bw
         z1 = (points + xdata) / bw
         L = self.lower
@@ -363,7 +406,6 @@ class KDE1D(object):
 
         bw = self.bandwidth * self.lambdas
 
-        n = self.n
         l = (self.lower - points)/bw
         u = (self.upper - points)/bw
         z = (points - xdata)/bw
@@ -378,12 +420,10 @@ class KDE1D(object):
         upper = a2 - a1*z
 
         upper /= denom
-        upper *= kernel(z)
-
-        upper *= self.weights / self.lambdas
+        upper *= (self.weights / bw) * kernel(z)
 
         output = upper.sum(axis=1, out=output)
-        output /= n*bw
+        output /= self.total_weights
 
         return output
 
@@ -409,8 +449,13 @@ class KDE1D(object):
             - ``renormalization``
             - ``reflexion``
             - ``linear_combination``
+
+        If the domain is unbounded (i.e. :math:`[-\infty;\infty]`), then
+        the value is ``unbounded``.
         """
-        return self._method
+        if self.bounded:
+            return self._method
+        return "unbounded"
 
     @method.setter
     def method(self, m):
