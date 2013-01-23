@@ -157,7 +157,6 @@ class KDE1D(object):
 
     def __init__(self, xdata, **kwords):
         self.xdata = np.atleast_1d(xdata)
-        self.n = self.xdata.shape[0]
         self._upper = np.inf
         self._lower = -np.inf
         self._kernel = normal_kernel1d()

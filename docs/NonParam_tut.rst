@@ -13,7 +13,7 @@ Confidence Intervals
 --------------------
 
 Local-Constant Regression
------------------------
+-------------------------
 
 Local-Linear Regression
 -----------------------
