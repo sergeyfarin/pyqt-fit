@@ -7,7 +7,7 @@ Kernel Density Estimation Methods
 ---------------------------------
 
 .. autoclass:: BoundedKDE1D
-    :members: evaluate, __call__, bandwidth, covariance
+    :members: evaluate, __call__, bandwidth, covariance, method
 
 Bandwidth Estimation Methods
 ----------------------------

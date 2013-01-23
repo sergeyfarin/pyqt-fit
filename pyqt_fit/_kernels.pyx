@@ -12,21 +12,20 @@ ctypedef np.float_t DTYPE_t
 cdef double S2PI = sqrt(2*<double>M_PI)
 cdef double S2 = sqrt(2)
 
-cdef void _vectorize(np.ndarray[double] z,
-                     np.ndarray[double] out,
+cdef void _vectorize(object z,
+                     object out,
                      DTYPE_t (*fct)(DTYPE_t v)):
     cdef np.broadcast it = np.broadcast(z, out)
     while np.PyArray_MultiIter_NOTDONE(it):
         (<double*> np.PyArray_MultiIter_DATA(it, 1))[0] = fct((<double*> np.PyArray_MultiIter_DATA(it, 0))[0])
         np.PyArray_MultiIter_NEXT(it)
 
-cdef object vectorize(np.ndarray z,
-                      np.ndarray[double] out,
+cdef object vectorize(object z,
+                      object out,
                       DTYPE_t (*fct)(DTYPE_t v)):
-    cdef object oz = <object>z
-    if oz.shape:
+    if z.shape:
         if out is None:
-            out = np.empty(oz.shape, dtype=np.float64)
+            out = np.empty(z.shape, dtype=np.float64)
         _vectorize(z, out, fct)
         return out
     else:
