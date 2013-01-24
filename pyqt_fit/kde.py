@@ -156,24 +156,52 @@ class KDE1D(object):
     """
 
     def __init__(self, xdata, **kwords):
-        self.xdata = np.atleast_1d(xdata)
+        self._xdata = np.atleast_1d(xdata)
         self._upper = np.inf
         self._lower = -np.inf
         self._kernel = normal_kernel1d()
 
+        self._bw_fct = None
         self._bw = None
+        self._cov_fct = None
         self._covariance = None
         self._method = None
 
         self.weights = 1.
         self.lambdas = 1.
 
-        attrs = dict(kwords)
-        attrs.setdefault('covariance', scotts_bandwidth)
-        attrs.setdefault('method', 'renormalization')
+        for n in kwords:
+            setattr(self, n, kwords[n])
 
-        for n in attrs:
-            setattr(self, n, attrs[n])
+        if self.covariance is None:
+            self.covariance = scotts_bandwidth
+
+        if self._method is None:
+            self.methods = 'renormalization'
+
+    def update_bandwidth(self):
+        """
+        Re-compute the bandwidth if it was specified as a function.
+        """
+        if self._bw_fct:
+            _bw = float(self._bw_fct(self._xdata))
+            _cov = _bw*_bw
+        elif self._cov_fct:
+            _cov = float(self._cov_fct(self._xdata))
+            _bw = np.sqrt(_cov)
+        else:
+            return
+        self._covariance = _cov
+        self._bw = _bw
+
+    @property
+    def xdata(self):
+        return self._xdata
+
+    @xdata.setter
+    def xdata(self, xs):
+        self._xdata = np.atleast_1d(xs)
+        self.update_bandwidth()
 
     @property
     def kernel(self):
@@ -298,12 +326,15 @@ class KDE1D(object):
 
     @bandwidth.setter
     def bandwidth(self, bw):
+        self._bw_fct = None
+        self._cov_fct = None
         if callable(bw):
-            _bw = float(bw(self.xdata))
+            self._bw_fct = bw
+            self.update_bandwidth()
         else:
-            _bw = float(bw)
-        self._covariance = _bw*_bw
-        self._bw = _bw
+            bw = float(bw)
+            self._bw = bw
+            self._covariance = bw*bw
 
 
     @property
@@ -321,12 +352,15 @@ class KDE1D(object):
 
     @covariance.setter
     def covariance(self, cov):
+        self._bw_fct = None
+        self._cov_fct = None
         if callable(cov):
-            _cov = float(cov(self.xdata))
+            self._cov_fct = cov
+            self.update_bandwidth()
         else:
-            _cov = float(cov)
-        self._covariance = _cov
-        self._bw = np.sqrt(_cov)
+            cov = float(cov)
+            self._covariance = cov
+            self._bw = np.sqrt(cov)
 
     def evaluate_unbounded(self, points, output=None):
         """
@@ -337,7 +371,6 @@ class KDE1D(object):
 
         bw = self.bandwidth * self.lambdas
 
-        n = self.n
         z = (points - xdata) / bw
 
         kernel = self.kernel
