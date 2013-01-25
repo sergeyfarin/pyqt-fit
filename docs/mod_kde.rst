@@ -7,7 +7,7 @@ Kernel Density Estimation Methods
 ---------------------------------
 
 .. autoclass:: KDE1D
-    :members: bandwidth, covariance, evaluate, kernel, lambdas, lower, method, total_weights, update_bandwidth, upper, weights, xdata, __call__
+    :members: bandwidth, closed, covariance, evaluate, grid, kernel, lambdas, lower, method, total_weights, update_bandwidth, upper, weights, xdata, __call__
 
 Bandwidth Estimation Methods
 ----------------------------

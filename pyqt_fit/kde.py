@@ -4,10 +4,12 @@
 Module implementing kernel-based estimation of density of probability.
 """
 
+from __future__ import division
 import numpy as np
-from scipy.special import erf
+from scipy.special import erf, gamma
 import cyth
 from kernels import normal_kernel1d
+from scipy import fftpack, optimize
 
 def variance_bandwidth(factor, xdata):
     r"""
@@ -46,6 +48,60 @@ def scotts_bandwidth(xdata, ydata = None):
     xdata = np.atleast_2d(xdata)
     d,n = xdata.shape
     return variance_bandwidth(np.power(n, -1./(d+4.)), xdata)
+
+def _botev_fixed_point(t, M, I, a2):
+    l=7
+    I = np.float128(I)
+    M = np.float128(M)
+    a2 = np.float128(a2)
+    f = 2*np.pi**(2*l)*np.sum(I**l*a2*np.exp(-I*np.pi**2*t))
+    for s in range(l, 1, -1):
+        K0 = np.prod(np.arange(1, 2*s, 2))/np.sqrt(2*np.pi)
+        const = (1 + (1/2)**(s + 1/2))/3
+        time=(2*const*K0/M/f)**(2/(3+2*s))
+        f=2*np.pi**(2*s)*np.sum(I**s*a2*np.exp(-I*np.pi**2*time))
+    return t-(2*M*np.sqrt(np.pi)*f)**(-2/5)
+
+class botev_bandwidth(object):
+    """
+    Implementation of the KDE bandwidth selection method outline in:
+
+    Z. I. Botev, J. F. Grotowski, and D. P. Kroese. Kernel density
+    estimation via diffusion. The Annals of Statistics, 38(5):2916-2957, 2010.
+
+    Based on the implementation of Daniel B. Smith, PhD
+    """
+    def __init__(self, lower=None, upper=None, N = None):
+        self.lower = lower
+        self.upper = upper
+        self.N = N
+
+    def __call__(self, data):
+        N = 2**10 if self.N is None else int(2**np.ceil(np.log2(self.N)))
+        lower = self.lower
+        upper = self.upper
+        if lower is None or upper is None:
+            minimum = np.min(data)
+            maximum = np.max(data)
+            span = maximum - minimum
+            lower = minimum - span / 10 if lower is None else lower
+            upper = maximum + span / 10 if upper is None else upper
+        # Range of the data
+        span = upper - lower
+
+        # Histogram of the data to get a crude approximation of the density
+        M = len(data)
+        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper))
+        DataHist = DataHist / M
+        DCTData = fftpack.dct(DataHist, norm=None)
+
+        I = np.arange(1,N,dtype=int)**2
+        SqDCTData = (DCTData[1:]/2)**2
+        guess = 0.1
+
+        t_star = optimize.brentq(_botev_fixed_point, 0, guess, args=(M, I, SqDCTData))
+
+        return np.sqrt(t_star)*span
 
 
 class KDE1D(object):
@@ -116,6 +172,7 @@ class KDE1D(object):
         - renormalization
         - reflexion
         - linear combination
+        - cyclic
 
     1. Renormalization
 
@@ -150,6 +207,16 @@ class KDE1D(object):
             K_r(x;X,h,L,U) = \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u) - a_1(-u,-l)^2} K(z)
 
             z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
+
+    4. Cyclic
+
+        This method assumes cyclic boundary conditions and works only for closed boundaries.
+
+        The estimation is done with a modified kernel given by:
+
+        .. math::
+
+            \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right) + K\left(\frac{x-X-(U-L)}{h}\right) + K\left(\frac{x-X+(U-L)}{h}\right)
 
     .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density estimation. Statistics and Computing 3: 135--146.
 
@@ -432,6 +499,33 @@ class KDE1D(object):
 
         return output
 
+    def evaluate_cyclic(self, points, output=None):
+        if not self.closed:
+            raise ValueError("Cyclic boundary conditions can only be used with closed domains.")
+
+        xdata = self.xdata
+        points = np.atleast_1d(points)[:,np.newaxis]
+
+        bw = self.bandwidth * self.lambdas
+
+        z = (points - xdata) / bw
+        L = self.lower
+        U = self.upper
+
+        span = U-L
+
+        kernel = self.kernel
+
+        terms = kernel(z)
+        terms += kernel(z - (span/bw))
+        terms += kernel(z + (span/bw))
+
+        terms *= self.weights / bw
+        output = terms.sum(axis=1, out=output)
+        output /= self.total_weights
+
+        return output
+
     def evaluate_linear(self, points, output=None):
         xdata = self.xdata
         points = np.atleast_1d(points)[:,np.newaxis]
@@ -481,6 +575,7 @@ class KDE1D(object):
             - ``renormalization``
             - ``reflexion``
             - ``linear_combination``
+            - ``cyclic``
 
         If the domain is unbounded (i.e. :math:`[-\infty;\infty]`), then
         the value is ``unbounded``.
@@ -493,16 +588,113 @@ class KDE1D(object):
     def method(self, m):
         _known_methods = { 'renormalization': self.evaluate_renorm,
                            'reflexion': self.evaluate_reflexion,
-                           'linear_combination': self.evaluate_linear }
+                           'linear_combination': self.evaluate_linear,
+                           'cyclic': self.evaluate_cyclic}
+        _known_grid = { 'renormalization': self.grid_eval,
+                        'reflexion': self.grid_reflexion,
+                        'linear_combination': self.grid_eval,
+                        'cyclic': self.grid_cyclic }
         self._evaluate = _known_methods[m]
+        self._grid_eval = _known_grid[m]
         self._method = m
+
+    @property
+    def closed(self):
+        """
+        Returns true if the density domain is closed (i.e. lower and upper are both finite)
+        """
+        return self.lower > -np.inf and self.upper < np.inf
 
     @property
     def bounded(self):
         """
         Returns true if the density domain is actually bounded
         """
-        if self.lower >= self.upper:
-            raise ValueError("Error, the lower bound must be strictly smaller than the upper bound")
         return self.lower > -np.inf or self.upper < np.inf
+
+
+    def grid_eval(self, N = None):
+        N = 2**10 if N is None else N
+        lower = np.min(xdata) - 2*self.bandwidth if self.lower == -np.inf else self.lower
+        upper = np.max(xdata) + 2*self.bandwidth if self.upper ==  np.inf else self.upper
+        g = r_[lower:upper:N]
+        return self(g)
+
+    def grid_cyclic(self, N):
+        """
+        FFT-based estimation of KDE estimation, i.e. with cyclic boundary conditions.
+        This works only for closed domains, fixed bandwidth (i.e. lamddas = 1)
+        and gaussian kernel.
+        """
+        if self.lambdas != 1. or self.kernel != normal_kernel1d:
+            return self.grid_eval(N)
+        if not self.closed:
+            raise ValueError("Error, cyclic boundary conditions require a closed domain.")
+        bw = self.bandwidth
+        data = self.xdata
+        N = 2**14 if N is None else N
+        lower = self.lower
+        upper = self.upper
+        R = upper - lower
+        dN = 1/N
+        mesh = np.r_[lower:upper+dN:(N+2)*1j]
+        M = len(data)
+        DataHist, bin_edges = np.histogram(data, bins=mesh - dN/2)
+        DataHist[0] += DataHist[-1]
+        DataHist = DataHist/M
+        FFTData = fftpack.fft(DataHist[:-1])
+        t_star = (2*bw/R)
+        gp = (np.arange(N)-N/2)
+        smth = np.roll(np.exp(-gp**2*(np.pi*t_star)**2/2), N//2)
+        SmoothFFTData = FFTData * smth
+        density = fftpack.ifft(SmoothFFTData) / (mesh[1]-mesh[0])
+        return mesh[:-2], density.real
+
+    def grid_reflexion(self, N = None):
+        """
+        DCT-based estimation of KDE estimation, i.e. with reflexion boundary
+        conditions. This works only for fixed bandwidth (i.e. lamddas = 1) and
+        gaussian kernel.
+
+        For open domains, the grid is taken with 3 times the bandwidth as extra space to remove the boundary problems.
+        """
+        if self.lambdas != 1. or self.kernel != normal_kernel1d:
+            return self.grid_eval(N)
+
+        data = self.xdata
+        N = 2**14 if N is None else N
+        lower = np.min(xdata) - 3*self.bandwidth if self.lower == -np.inf else self.lower
+        upper = np.max(xdata) + 3*self.bandwidth if self.upper ==  np.inf else self.upper
+
+        R = upper - lower
+
+        # Histogram the data to get a crude first approximation of the density
+        M = len(data)
+        DataHist, bins = np.histogram(data, bins=N, range=(MIN,MAX))
+        DataHist = DataHist/M
+        DCTData = fftpack.dct(DataHist, norm=None)
+        t_star = (self.bandwidth/R)**2
+
+        # Smooth the DCTransformed data using t_star
+        SmDCTData = DCTData*sci.exp(-sci.arange(N)**2*sci.pi**2*t_star/2)
+        # Inverse DCT to get density
+        density = fftpack.idct(SmDCTData, norm=None)/(2*R)
+        mesh = sci.array([(bins[i]+bins[i+1])/2 for i in xrange(N)])
+
+        return bandwidth, mesh, density
+
+
+    def grid(self, N = None):
+        """
+        Evaluate the density on a grid of N points spanning the whole dataset.
+
+        Currently, for cyclic, reflexion and unbouded methods, this used FFT
+        and CDT, which are a lots faster on a regular grid. FFT and CDT cannot
+        be used if the bandwidth vary depending on the sample though.
+
+        :returns: a tuple with the mesh on which the density is evaluated and the density itself
+        """
+        if not self.bounded:
+            self.grid_reflexion(N)
+        return self._grid_eval(N)
 
