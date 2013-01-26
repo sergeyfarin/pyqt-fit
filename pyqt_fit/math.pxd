@@ -5,3 +5,4 @@ cdef extern from "math.h" nogil:
     long double logl(long double)
     long double sqrtl(long double)
     long double lgammal(long double)
+    double erf(double)

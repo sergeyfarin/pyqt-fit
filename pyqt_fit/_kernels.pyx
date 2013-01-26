@@ -3,8 +3,8 @@
 
 import numpy as np
 cimport numpy as np
-from math cimport isfinite
-from libc.math cimport erf, exp, sqrt, M_PI
+from math cimport isfinite, erf
+from libc.math cimport exp, sqrt, M_PI
 
 np.import_array()
 

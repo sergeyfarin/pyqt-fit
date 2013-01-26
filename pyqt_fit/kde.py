@@ -287,6 +287,17 @@ class KDE1D(object):
         ``kernel.pm2(z)``
             Second partial moment, defined by :math:`\mathcal{M}^K_2(z) = \int_{-\infty}^z x^2K(x)dx`
 
+        ``kernel.fft(z)``
+            FFT of the kernel on the points of ``z``. The points will always be
+            provided as a grid with :math:`2^n` points, representing the whole
+            frequency range to be explored. For convenience, the second half of
+            the points will be provided as negative values.
+
+        ``kernel.dct(z)``
+            DCT of the kernel on the points of ``z``. The points will always be
+            provided as a grid with :math:`2^n` points, representing the whole
+            frequency range to be explored.
+
         By default, the kernel is an instance of :py:class:`kernels.normal_kernel1d`
         """
         return self._kernel
@@ -617,8 +628,8 @@ class KDE1D(object):
         N = 2**10 if N is None else N
         lower = np.min(xdata) - 2*self.bandwidth if self.lower == -np.inf else self.lower
         upper = np.max(xdata) + 2*self.bandwidth if self.upper ==  np.inf else self.upper
-        g = r_[lower:upper:N]
-        return self(g)
+        g = np.r_[lower:upper:N]
+        return g, self(g)
 
     def grid_cyclic(self, N):
         """
@@ -626,7 +637,7 @@ class KDE1D(object):
         This works only for closed domains, fixed bandwidth (i.e. lamddas = 1)
         and gaussian kernel.
         """
-        if self.lambdas != 1. or self.kernel != normal_kernel1d:
+        if self.lambdas != 1.:
             return self.grid_eval(N)
         if not self.closed:
             raise ValueError("Error, cyclic boundary conditions require a closed domain.")
@@ -643,9 +654,13 @@ class KDE1D(object):
         DataHist[0] += DataHist[-1]
         DataHist = DataHist/M
         FFTData = fftpack.fft(DataHist[:-1])
-        t_star = (2*bw/R)
-        gp = (np.arange(N)-N/2)
-        smth = np.roll(np.exp(-gp**2*(np.pi*t_star)**2/2), N//2)
+        if hasattr(self.kernel, 'fft'):
+            t_star = (2*bw/R)
+            gp = np.roll((np.arange(N)-N/2)*np.pi*t_star, N//2)
+            smth = self.kernel.fft(gp)
+        else:
+            gp = np.roll((np.arange(N)-N/2)*R/N, N//2)
+            smth = fftpack.fft(self.kernel(gp/bw) * (gp[1]-gp[0]) / bw)
         SmoothFFTData = FFTData * smth
         density = fftpack.ifft(SmoothFFTData) / (mesh[1]-mesh[0])
         return mesh[:-2], density.real
@@ -658,9 +673,10 @@ class KDE1D(object):
 
         For open domains, the grid is taken with 3 times the bandwidth as extra space to remove the boundary problems.
         """
-        if self.lambdas != 1. or self.kernel != normal_kernel1d:
+        if self.lambdas != 1.:
             return self.grid_eval(N)
 
+        bw = self.bandwidth
         data = self.xdata
         N = 2**14 if N is None else N
         lower = np.min(xdata) - 3*self.bandwidth if self.lower == -np.inf else self.lower
@@ -670,18 +686,27 @@ class KDE1D(object):
 
         # Histogram the data to get a crude first approximation of the density
         M = len(data)
-        DataHist, bins = np.histogram(data, bins=N, range=(MIN,MAX))
+        DataHist, bins = np.histogram(data, bins=N, range=(lower,upper))
         DataHist = DataHist/M
         DCTData = fftpack.dct(DataHist, norm=None)
-        t_star = (self.bandwidth/R)**2
+
+        if hasattr(self.kernel, 'dct'):
+            print "Using dct"
+            t_star = bw/R
+            gp = np.arange(N)*np.pi*t_star
+            smth = self.kernel.dct(gp)
+        else:
+            print "Not using dct"
+            gp = (np.arange(N)+0.5)*R/N
+            smth = fftpack.dct(self.kernel(gp/bw) * (gp[1]-gp[0]) / bw)
 
         # Smooth the DCTransformed data using t_star
-        SmDCTData = DCTData*sci.exp(-sci.arange(N)**2*sci.pi**2*t_star/2)
+        SmDCTData = DCTData * smth
         # Inverse DCT to get density
         density = fftpack.idct(SmDCTData, norm=None)/(2*R)
-        mesh = sci.array([(bins[i]+bins[i+1])/2 for i in xrange(N)])
+        mesh = np.array([(bins[i]+bins[i+1])/2 for i in xrange(N)])
 
-        return bandwidth, mesh, density
+        return mesh, density
 
 
     def grid(self, N = None):

@@ -42,6 +42,24 @@ class normal_kernel1d(object):
 
     __call__ = pdf
 
+    def fft(self, z, out = None):
+        """
+        Returns the FFT of the normal distribution
+        """
+        out = np.multiply(z, z, out)
+        out *= -0.5
+        np.exp(out, out)
+        return out
+
+    def dct(self, z, out = None):
+        """
+        Returns the DCT of the normal distribution
+        """
+        out = np.multiply(z, z, out)
+        out *= -0.5
+        np.exp(out, out)
+        return out
+
     def cdf(self, z, out = None):
         r"""
         Cumulative density of probability. The formula used is:
