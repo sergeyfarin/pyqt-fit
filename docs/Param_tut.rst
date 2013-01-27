@@ -13,7 +13,6 @@ such that:
 
 .. math::
 
-  \DeclareMathOperator{\argmin}{argmin}
   y_i = f(\theta, x_i) + \epsilon_i
 
 with :math:`\epsilon_i \in \mathbb{R}` such that :math:`E(\epsilon) = 0`.
@@ -124,7 +123,7 @@ residual analysis with::
 
   ``normq``
     Value expected for the quantiles in ``prob`` if the distribution is normal.
-    The foluma is: :math:`\DeclareMathOperator{\erf}{erf} \Phi(p) = \sqrt{2}
+    The foluma is: :math:`\Phi(p) = \sqrt{2}
     \erf^{-1}(2p-1), p\in[0;1]`
 
 Plotting the results

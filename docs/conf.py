@@ -89,6 +89,16 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+rst_prolog = r"""
+.. only:: html
+
+    .. math::
+
+        \DeclareMathOperator{\erf}{erf}
+        \DeclareMathOperator{\argmin}{argmin}
+        \newcommand{\R}{\mathbb{R}}
+        \newcommand{\n}{\boldsymbol{n}}
+"""
 
 # -- Options for HTML output ---------------------------------------------------
 
@@ -200,7 +210,17 @@ latex_documents = [
 #latex_show_urls = False
 
 # Additional stuff for the LaTeX preamble.
-#latex_preamble = ''
+latex_preamble = r'''
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bbm}
+\usepackage{bbold}
+
+\DeclareMathOperator{\erf}{erf}
+\DeclareMathOperator{\argmin}{argmin}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\n}{\boldsymbol{n}}
+'''
 
 # Documents to append as an appendix to all manuals.
 #latex_appendices = []

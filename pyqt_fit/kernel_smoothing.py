@@ -142,7 +142,6 @@ class LocalLinearKernel1D(object):
 
     .. math::
 
-        \DeclareMathOperator{\argmin}{argmin}
         f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 -
         a_1(x-X_i)\right)^2
 
@@ -234,7 +233,6 @@ class LocalPolynomialKernel1D(object):
 
     .. math::
 
-        \DeclareMathOperator{\argmin}{argmin}
         f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 -
         a_1(x-X_i) - \ldots - a_q \frac{(x-X_i)^q}{q!}\right)^2
 
@@ -415,7 +413,6 @@ class LocalPolynomialKernel(object):
 
     .. math::
 
-        \DeclareMathOperator{\argmin}{argmin}
         f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 - \mathcal{P}_q(X_i-x)\right)^2
 
     Where :math:`K(x)` is the kernel such that :math:`E(K(x)) = 0`, :math:`q`
@@ -427,7 +424,6 @@ class LocalPolynomialKernel(object):
 
     .. math::
 
-        \newcommand{\n}{\boldsymbol{n}}
         \mathcal{F}_d(k) = \left\{ \n \in \mathbb{N}^d \middle| \sum_{i=1}^d n_i = k \right\}
 
         \mathcal{P}_q(x_1,\ldots,x_d) = \sum_{k=1}^q \sum_{\n\in\mathcal{F}_d(k)} a_{k,\n} \prod_{i=1}^d x_i^{n_i}

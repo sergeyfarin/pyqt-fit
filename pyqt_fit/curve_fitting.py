@@ -105,7 +105,6 @@ class CurveFitting(object):
 
         .. math::
 
-            \DeclareMathOperator{\argmin}{argmin}
             \hat{\theta} = \argmin_{\theta\in \mathbb{R}^p} \sum_i r(y_i, f(\theta, x_i))^2
 
         Where :math:`\theta` is the vector of :math:`p` parameters to optimise, :math:`r` is the residual function and :math:`f` is
