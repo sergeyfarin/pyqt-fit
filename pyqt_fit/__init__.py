@@ -9,7 +9,7 @@ __all__ = ['bootstrap', 'plot_fit', 'curve_fitting', 'kernel_smoothing']
 
 import functions
 import residuals
-from plot_fit import write1d, plot1d, fit_evaluation
+#from plot_fit import write1d, plot1d, fit_evaluation
 from curve_fitting import CurveFitting
 from path import path
 

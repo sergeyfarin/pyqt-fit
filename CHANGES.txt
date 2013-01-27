@@ -1,3 +1,5 @@
+v.1.1.6, 27/1/2012
+ - Corrected grid code to account for weights and lambdas
 v1.1.5, 25/1/2012
  - Added CDT and FFT-based KDE estimation
  - Added TriCube kernel for demonstration

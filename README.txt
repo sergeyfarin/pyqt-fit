@@ -16,6 +16,7 @@ The GUI for 1D data analysis is invoked with:
 PyQt-Fit can also be used from the python interpreter. Here is a typical session:
 
     >>> import pyqt_fit
+    >>> from pyqt_fit import plot_fit
     >>> import numpy as np
     >>> from matplotlib import pylab
     >>> x = np.arange(0,3,0.01)
@@ -25,7 +26,7 @@ PyQt-Fit can also be used from the python interpreter. Here is a typical session
     >>> fit = pyqt_fit.CurveFitting(x, y, (0,1,0), fct)
     >>> result = pyqt_fit.fit_evaluation(fit, x, y)
     >>> print fit(x) # Display the estimated values
-    >>> pyqt_fit.plot1d(result)
+    >>> plot_fit.plot1d(result)
     >>> pylab.show()
 
 PyQt-Fit is a package for regression in Python. There are two set of tools: for
