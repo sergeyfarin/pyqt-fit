@@ -198,7 +198,7 @@ class tricube(object):
 
         .. math::
 
-            F(x) = \left\{\begin{array}{ll}
+            \text{cdf}(x) = \left\{\begin{array}{ll}
                 \frac{1}{162} {\left(60 (ax)^{7} - 7 {\left(2 (ax)^{10} + 15 (ax)^{4}\right)} \mathrm{sgn}\left(ax\right) + 140 ax + 81\right)} & \text{, if}x\in[-1/a;1/a]\\
                 0 & \text{, if} x < -1/a \\
                 1 & \text{, if} x > 1/a
