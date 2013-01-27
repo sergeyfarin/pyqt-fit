@@ -6,9 +6,9 @@ Parametric regression tutorial
 Introduction
 ------------
 
-Given a set of observations :math:`(x_i, y_i)`, with :math:`\newcommand{\R}{\mathbb{R}}x_i = (x_{i1},
-\ldots, x_{ip})^T \in \R^p`. We assume, there exists a function
-:math:`f(\theta, x)` and a set of parameters :math:`\theta \in \R^q`
+Given a set of observations :math:`(x_i, y_i)`, with :math:`x_i = (x_{i1},
+\ldots, x_{ip})^T \in \mathbb{R}^p`. We assume, there exists a function
+:math:`f(\theta, x)` and a set of parameters :math:`\theta \in \mathbb{R}^q`
 such that:
 
 .. math::
@@ -16,7 +16,7 @@ such that:
   \DeclareMathOperator{\argmin}{argmin}
   y_i = f(\theta, x_i) + \epsilon_i
 
-with :math:`\epsilon_i \in \R` such that :math:`E(\epsilon) = 0`.
+with :math:`\epsilon_i \in \mathbb{R}` such that :math:`E(\epsilon) = 0`.
 
 The objective is to fine the set of parameters `\theta`. Obviously, the real
 function is inaccesible. Instead, we will try to find an estimate of the
@@ -24,7 +24,7 @@ parameters, :math:`\hat{\theta}` using the least square estimator, which is:
 
 .. math::
 
-  \hat{\theta} = \argmin_{\theta \in \R^q} \left( f(\theta,x_i) - y_i \right)^2
+  \hat{\theta} = \argmin_{\theta \in \mathbb{R}^q} \left( f(\theta,x_i) - y_i \right)^2
 
 The method is based on the SciPy function ``scipy.optimize.leastsq``, which
 relies on the MINPACK's functions ``lmdif`` and ``lmder``. Both functions
@@ -105,7 +105,8 @@ You can then examine the ``result`` variable. But you can also perform only the
 analysis you need. For example, you can compute the data needed for the
 residual analysis with::
 
-  >>> rm = pyqt_fit.plot_fit.residual_measures(fit.res)
+  >>> from pyqt_fit import plot_fit
+  >>> rm = plot_fit.residual_measures(fit.res)
 
 ``rm`` is a named tuple with the following fields:
 
@@ -131,7 +132,7 @@ Plotting the results
 
 At last, you can use the display used for the GUI::
 
-  >>> handles = pyqt_fit.plot1d(result)
+  >>> handles = plot_fit.plot1d(result)
 
 What you will obtain are these two graphs:
 
