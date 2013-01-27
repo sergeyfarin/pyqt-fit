@@ -164,3 +164,72 @@ class normal_kernel(object):
 
     __call__ = pdf
 
+class tricube(object):
+    r"""
+    Return the kernel corresponding to a tri-cube distribution, whose expression is. The tri-cube function is given by:
+
+    .. math::
+
+        f_r(x) = \left\{\begin{array}{ll}
+                        \left(1-|x|^3\right)^3 & \text{, if } x \in [-1;1]\\
+                                0 & \text{, otherwise}
+                        \end{array}\right.
+
+    As :math:`f_r` is not a probability and is not of variance 1, we use a normalized function:
+
+    .. math::
+
+        f(x) = a b f_r(ax)
+
+        a = \sqrt{\frac{35}{243}}
+
+        b = \frac{70}{81}
+
+    """
+
+    def pdf(self, z, out = None):
+        return _kernels.tricube_pdf(z, out)
+
+    __call__ = pdf
+
+    def cdf(self, z, out = None):
+        r"""
+        CDF of the distribution:
+
+        .. math::
+
+            F(x) = \left\{\begin{array}{ll}
+                \frac{1}{162} {\left(60 (ax)^{7} - 7 {\left(2 (ax)^{10} + 15 (ax)^{4}\right)} \mathrm{sgn}\left(ax\right) + 140 ax + 81\right)} & \text{, if}x\in[-1/a;1/a]\\
+                0 & \text{, if} x < -1/a \\
+                1 & \text{, if} x > 1/a
+                \end{array}\right.
+        """
+        return _kernels.tricube_cdf(z, out)
+
+    def pm1(self, z, out = None):
+        r"""
+        Partial moment of order 1:
+
+        .. math::
+
+            \text{pm1}(x) = \left\{\begin{array}{ll}
+                \frac{7}{3564a} {\left(165 (ax)^{8} - 8 {\left(5 (ax)^{11} + 33 (ax)^{5}\right)} \mathrm{sgn}\left(ax\right) + 220 (ax)^{2} - 81\right)} & \text{, if} x\in [-1/a;1/a]\\
+                0 & \text{, otherwise}
+                \end{array}\right.
+        """
+        return _kernels.tricube_pm1(z, out)
+
+    def pm2(self, z, out = None):
+        r"""
+        Partial moment of order 2:
+
+        .. math::
+
+            \text{pm2}(x) = \left\{\begin{array}{ll}
+            \frac{35}{486a^2} {\left(4 (ax)^{9} + 4 (ax)^{3} - {\left((ax)^{12} + 6 (ax)^{6}\right)} \mathrm{sgn}\left(ax\right) + 1\right)} & \text{, if} x\in[-1/a;1/a] \\
+            0 & \text{, if } x < -1/a \\
+            1 & \text{, if } x > 1/a
+            \end{array}\right.
+        """
+        return _kernels.tricube_pm2(z, out)
+

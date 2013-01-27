@@ -6,3 +6,4 @@ cdef extern from "math.h" nogil:
     long double sqrtl(long double)
     long double lgammal(long double)
     double erf(double)
+    double fabs(double)

@@ -168,13 +168,21 @@ class KDE1D(object):
         a_2(l,u) = \int_l^u z^2K(z) dz
 
 
-    There are currently three methods available:
-        - renormalization
-        - reflexion
-        - linear combination
-        - cyclic
+    There are currently five methods available:
+        1. unbounded
+        2. renormalization
+        3. reflexion
+        4. near combination
+        5. cyclic
 
-    1. Renormalization
+    1. Unbounded
+
+        This is the usual method, as described above. The method doesn't need
+        to be selected, but is automatically used as soon as the domain is
+        unbounded. When computing a grid, this method uses the CDT with 3 times
+        the bandwidth as padding to avoid border effects.
+
+    2. Renormalization
 
         This method consists in using the normal kernel method, but renormalize to
         only take into account the part of the kernel within the domain of the
@@ -186,7 +194,7 @@ class KDE1D(object):
 
             \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0\left(\frac{L-x}{h},\frac{U-x}{h}\right)} K\left(\frac{x-X}{h}\right)
 
-    2. Reflexion
+    3. Reflexion
 
         This method consist in simulating the reflection of the data left and right of the boundaries.
         If one of the boundary is infinite, then the data is not reflected in that direction. To this
@@ -196,7 +204,9 @@ class KDE1D(object):
 
             \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right) + K\left(\frac{x+X-2L}{h}\right) + K\left(\frac{x+X-2U}{h}\right)
 
-    3. Linear Combination
+        When computing grids, if the bandwidth is constant, the result is computing using CDT.
+
+    4. Linear Combination
 
         This method uses the linear combination correction published in [1]_.
 
@@ -208,7 +218,7 @@ class KDE1D(object):
 
             z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
 
-    4. Cyclic
+    5. Cyclic
 
         This method assumes cyclic boundary conditions and works only for closed boundaries.
 
@@ -217,6 +227,8 @@ class KDE1D(object):
         .. math::
 
             \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right) + K\left(\frac{x-X-(U-L)}{h}\right) + K\left(\frac{x-X+(U-L)}{h}\right)
+
+        When computing grids, if the bandwidth is constant, the result is computing using FFT.
 
     .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density estimation. Statistics and Computing 3: 135--146.
 
@@ -691,12 +703,10 @@ class KDE1D(object):
         DCTData = fftpack.dct(DataHist, norm=None)
 
         if hasattr(self.kernel, 'dct'):
-            print "Using dct"
             t_star = bw/R
             gp = np.arange(N)*np.pi*t_star
             smth = self.kernel.dct(gp)
         else:
-            print "Not using dct"
             gp = (np.arange(N)+0.5)*R/N
             smth = fftpack.dct(self.kernel(gp/bw) * (gp[1]-gp[0]) / bw)
 

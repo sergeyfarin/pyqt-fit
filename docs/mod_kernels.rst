@@ -10,5 +10,11 @@ Gaussian Kernels
     :members: pdf
 
 .. autoclass:: normal_kernel1d
+    :members: pdf, cdf, dct, fft, pm1, pm2
+
+Tricube Kernel
+--------------
+
+.. autoclass:: tricube
     :members: pdf, cdf, pm1, pm2
 

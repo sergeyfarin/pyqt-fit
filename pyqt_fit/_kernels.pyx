@@ -3,8 +3,8 @@
 
 import numpy as np
 cimport numpy as np
-from math cimport isfinite, erf
-from libc.math cimport exp, sqrt, M_PI
+from math cimport isfinite, erf, fabs
+from libc.math cimport exp, sqrt, M_PI, pow
 
 np.import_array()
 
@@ -60,4 +60,55 @@ cdef float64_t _norm1d_pm2(float64_t z):
 
 def norm1d_pm2(np.ndarray z, object out = None):
     return vectorize(z, out, _norm1d_pm2)
+
+cdef double tricube_a = sqrt(35./243)
+
+cdef float64_t _tricube_pdf(float64_t z):
+    z *= tricube_a
+    if z < -1 or z > 1:
+        return 0
+    return 70./81*pow(1 - pow(fabs(z), 3.), 3.)
+
+def tricube_pdf(np.ndarray z, object out = None):
+    return vectorize(z, out, _tricube_pdf)
+
+cdef float64_t _tricube_cdf(float64_t z):
+    z *= tricube_a
+    if z < -1:
+        return 0.
+    if z > 1:
+        return 1.
+    if z > 0:
+        return 1./162*(60*pow(z, 7.) - 7.*(2*pow(z, 10.) + 15.*pow(z, 4.)) + 140*z + 81)
+    else:
+        return 1./162*(60*pow(z, 7.) + 7.*(2*pow(z, 10.) + 15.*pow(z, 4.)) + 140*z + 81)
+
+def tricube_cdf(np.ndarray z, object out = None):
+    return vectorize(z, out, _tricube_cdf)
+
+cdef float64_t _tricube_pm1(float64_t z):
+    z *= tricube_a
+    if z < -1 or z > 1:
+        return 0
+    if z > 0:
+        return 7./(tricube_a*3565)*(165*pow(z, 8.) - 8.*(5*pow(z, 11.) + 33.*pow(z, 5.)) + 220*pow(z, 2.) - 81)
+    else:
+        return 7./(tricube_a*3565)*(165*pow(z, 8.) + 8.*(5*pow(z, 11.) + 33.*pow(z, 5.)) + 220*pow(z, 2.) - 81)
+
+def tricube_pm1(np.ndarray z, object out = None):
+    return vectorize(z, out, _tricube_pm1)
+
+cdef float64_t _tricube_pm2(float64_t z):
+    z *= tricube_a
+    if z < -1:
+        return 0
+    if z > 1:
+        return 1
+    if z > 0:
+        return 35./(tricube_a*tricube_a*486)*(4*pow(z, 9.) - (pow(z, 12.) + 6.*pow(z, 6.)) + 4*pow(z, 3.) + 1)
+    else:
+        return 35./(tricube_a*tricube_a*486)*(4*pow(z, 9.) + (pow(z, 12.) + 6.*pow(z, 6.)) + 4*pow(z, 3.) + 1)
+
+def tricube_pm2(np.ndarray z, object out = None):
+    return vectorize(z, out, _tricube_pm2)
 
