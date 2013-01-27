@@ -361,7 +361,7 @@ class KDE1D(object):
     def weights(self, ws):
         try:
             ws = float(ws)
-            self._weights = 1.
+            self._weights = np.asarray(1.)
             self._total_weights = float(self.xdata.shape[0])
         except TypeError:
             ws = np.array(ws, dtype=float)
@@ -371,7 +371,7 @@ class KDE1D(object):
 
     @weights.deleter
     def weights(self):
-        self._weights = 1.
+        self._weights = np.asarray(1.)
         self._total_weights = float(self.xdata.shape[0])
 
     @property
@@ -391,7 +391,7 @@ class KDE1D(object):
     @lambdas.setter
     def lambdas(self, ls):
         try:
-            self._lambdas = float(ls)
+            self._lambdas = np.asarray(float(ls))
         except TypeError:
             ls = np.array(ls, dtype=float)
             ls.shape = self.xdata.shape
@@ -399,7 +399,7 @@ class KDE1D(object):
 
     @lambdas.deleter
     def lambdas(self):
-        self._lambdas = 1.
+        self._lambdas = np.asarray(1.)
 
     @property
     def bandwidth(self):
@@ -617,6 +617,8 @@ class KDE1D(object):
                         'reflexion': self.grid_reflexion,
                         'linear_combination': self.grid_eval,
                         'cyclic': self.grid_cyclic }
+        if m not in _known_methods:
+            raise ValueError("Error, method must be one of 'renormalization', 'reflexion', 'cyclic' or 'linear_combination'")
         self._evaluate = _known_methods[m]
         self._grid_eval = _known_grid[m]
         self._method = m
@@ -646,14 +648,14 @@ class KDE1D(object):
     def grid_cyclic(self, N):
         """
         FFT-based estimation of KDE estimation, i.e. with cyclic boundary conditions.
-        This works only for closed domains, fixed bandwidth (i.e. lamddas = 1)
+        This works only for closed domains, fixed bandwidth (i.e. lambdas = 1)
         and gaussian kernel.
         """
-        if self.lambdas != 1.:
+        if self.lambdas.shape:
             return self.grid_eval(N)
         if not self.closed:
             raise ValueError("Error, cyclic boundary conditions require a closed domain.")
-        bw = self.bandwidth
+        bw = self.bandwidth * self.lambdas
         data = self.xdata
         N = 2**14 if N is None else N
         lower = self.lower
@@ -662,7 +664,10 @@ class KDE1D(object):
         dN = 1/N
         mesh = np.r_[lower:upper+dN:(N+2)*1j]
         M = len(data)
-        DataHist, bin_edges = np.histogram(data, bins=mesh - dN/2)
+        weights = self.weights
+        if not weights.shape:
+            weights = None
+        DataHist, bin_edges = np.histogram(data, bins=mesh - dN/2, weights=weights)
         DataHist[0] += DataHist[-1]
         DataHist = DataHist/M
         FFTData = fftpack.fft(DataHist[:-1])
@@ -680,25 +685,28 @@ class KDE1D(object):
     def grid_reflexion(self, N = None):
         """
         DCT-based estimation of KDE estimation, i.e. with reflexion boundary
-        conditions. This works only for fixed bandwidth (i.e. lamddas = 1) and
+        conditions. This works only for fixed bandwidth (i.e. lambdas = 1) and
         gaussian kernel.
 
         For open domains, the grid is taken with 3 times the bandwidth as extra space to remove the boundary problems.
         """
-        if self.lambdas != 1.:
+        if self.lambdas.shape:
             return self.grid_eval(N)
 
-        bw = self.bandwidth
+        bw = self.bandwidth * self.lambdas
         data = self.xdata
         N = 2**14 if N is None else N
-        lower = np.min(xdata) - 3*self.bandwidth if self.lower == -np.inf else self.lower
-        upper = np.max(xdata) + 3*self.bandwidth if self.upper ==  np.inf else self.upper
+        lower = np.min(data) - 3*self.bandwidth if self.lower == -np.inf else self.lower
+        upper = np.max(data) + 3*self.bandwidth if self.upper ==  np.inf else self.upper
 
         R = upper - lower
 
         # Histogram the data to get a crude first approximation of the density
         M = len(data)
-        DataHist, bins = np.histogram(data, bins=N, range=(lower,upper))
+        weights = self.weights
+        if not weights.shape:
+            weights = None
+        DataHist, bins = np.histogram(data, bins=N, range=(lower,upper), weights = weights)
         DataHist = DataHist/M
         DCTData = fftpack.dct(DataHist, norm=None)
 
@@ -730,6 +738,6 @@ class KDE1D(object):
         :returns: a tuple with the mesh on which the density is evaluated and the density itself
         """
         if not self.bounded:
-            self.grid_reflexion(N)
+            return self.grid_reflexion(N)
         return self._grid_eval(N)
 
