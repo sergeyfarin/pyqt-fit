@@ -1,5 +1,6 @@
 v1.1.5, 25/1/2012
  - Added CDT and FFT-based KDE estimation
+ - Added TriCube kernel for demonstration
 v1.1.4, 23/1/2012
  - Refactored 1D KDE estimation to support multiple methods.
  - Refactored documentation to reflect this
