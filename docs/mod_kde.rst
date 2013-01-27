@@ -18,3 +18,5 @@ Bandwidth Estimation Methods
 
 .. autofunction:: scotts_bandwidth
 
+.. autofunction:: botev_bandwidth
+
