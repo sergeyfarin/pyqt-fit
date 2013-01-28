@@ -641,7 +641,7 @@ class KDE1D(object):
         N = 2**10 if N is None else N
         lower = np.min(xdata) - 2*self.bandwidth if self.lower == -np.inf else self.lower
         upper = np.max(xdata) + 2*self.bandwidth if self.upper ==  np.inf else self.upper
-        g = np.r_[lower:upper:N]
+        g = np.r_[lower:upper:N*1j]
         return g, self(g)
 
     def grid_cyclic(self, N):

@@ -17,18 +17,16 @@ if os.name == 'nt':
 
     # XXX: we're assuming that MinGW is installed in C:\MinGW (default)
     if os.environ.has_key('PATH'):
-        os.environ['PATH'] = os.environ['PATH'] + ';C:\MinGW\bin'
+        os.environ['PATH'] = os.environ['PATH'] + r';C:\MinGW\bin'
     else:
-        os.environ['PATH'] = 'C:\MinGW\bin'
+        os.environ['PATH'] = r'C:\MinGW\bin'
 
     mingw_setup_args = { 'options': { 'build_ext': { 'compiler': 'mingw32' } } }
     pyximport.install(setup_args=mingw_setup_args, reload_support=True)
 
 elif os.name == 'posix':
-    extra_flags = ' -I' + numpy.get_include()
-    if os.environ.has_key('CFLAGS'):
-        os.environ['CFLAGS'] = os.environ['CFLAGS'] + extra_flags
-    else:
-        os.environ['CFLAGS'] = extra_flags
+    extra_flags = '-I' + numpy.get_include()
+    os.environ['CFLAGS'] = " ".join([os.environ.get('CFLAGS', ''), extra_flags])
+    os.environ['CXXFLAGS'] = " ".join([os.environ.get('CXXFLAGS', ''), extra_flags])
 
     pyximport.install(reload_support=True)
