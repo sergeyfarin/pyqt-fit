@@ -25,7 +25,14 @@ setup(name='PyQt-Fit',
       author_email='pierre.barbierdereuille@gmail.com',
       url=['https://code.google.com/p/pyqt-fit/'],
       packages= ['pyqt_fit', 'pyqt_fit.functions', 'pyqt_fit.residuals'],
-      package_data = {'pyqt_fit': ['qt_fit.ui', 'version.txt', 'cy_local_linear.pyx']},
+      package_data = {'pyqt_fit':
+          [ 'qt_fit.ui',
+            'version.txt',
+            'cy_local_linear.pyx',
+            '_kernels.pyx',
+            '_kde.pyx',
+            'math.pxd'
+            ] },
       scripts=['bin/pyqt_fit1d.py'],
       install_requires= [
           'distribute >=0.6',
