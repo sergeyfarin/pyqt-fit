@@ -4,6 +4,7 @@
 Module contained a variety of small useful functions.
 """
 
+from __future__ import division
 from collections import OrderedDict
 from keyword import iskeyword as _iskeyword
 from operator import itemgetter as _itemgetter, eq as _eq

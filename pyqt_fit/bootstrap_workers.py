@@ -1,3 +1,4 @@
+from __future__ import division
 import sharedmem
 from itertools import izip
 

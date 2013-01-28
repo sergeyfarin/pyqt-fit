@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import division
 import cyth
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt

@@ -7,7 +7,6 @@ Module implementing kernel-based estimation of density of probability.
 from __future__ import division
 import numpy as np
 from scipy.special import erf, gamma
-import cyth
 from kernels import normal_kernel1d
 from scipy import fftpack, optimize
 

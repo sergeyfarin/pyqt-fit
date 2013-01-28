@@ -4,6 +4,7 @@
 This modules provides function for bootstrapping a regression method.
 """
 
+from __future__ import division
 import numpy as np
 from numpy.random import randint
 from scipy import optimize

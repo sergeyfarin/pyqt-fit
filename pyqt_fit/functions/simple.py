@@ -1,3 +1,4 @@
+from __future__ import division
 from numpy import exp, argsort, log, zeros, ones, array, log
 
 class Linear(object):

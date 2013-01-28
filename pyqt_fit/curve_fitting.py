@@ -6,6 +6,7 @@ scipy.optimize.leastsq function. It allows for parameter value fixing,
 different kind of residual and added constraints function.
 """
 
+from __future__ import division
 from scipy import optimize
 from numpy import array, inf
 

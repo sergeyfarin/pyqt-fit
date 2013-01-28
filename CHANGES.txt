@@ -1,3 +1,6 @@
+v1.1.8, 29/1/2012
+ - Corrected Cython import error in kernels.py
+ - Added "from __future__ import division" in all numerical module
 v1.1.7, 28/1/2012
  - Corrected installation bug
  - Started tutorial on non-parametric fitting

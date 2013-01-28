@@ -1,8 +1,10 @@
 #import cyth
 #from _kernels import normal_kernel1d
 
+from __future__ import division
 import numpy as np
 from scipy.special import erf
+import cyth
 import _kernels
 from scipy.weave import inline
 
