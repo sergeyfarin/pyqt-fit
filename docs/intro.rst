@@ -3,15 +3,11 @@
 Introduction to PyQt-Fit
 ========================
 
-The GUI for 1D data analysis is invoked with:
-
-::
+The GUI for 1D data analysis is invoked with::
 
     $ pyqt_fit1d.py
 
-PyQt-Fit can also be used from the python interpreter. Here is a typical session:
-
-::
+PyQt-Fit can also be used from the python interpreter. Here is a typical session::
 
     >>> import pyqt_fit
     >>> from pyqt_fit import plot_fit
@@ -22,7 +18,7 @@ PyQt-Fit can also be used from the python interpreter. Here is a typical session
     >>> def fct((a0, a1, a2), x):
     ...     return a0 + a1*x + a2*x*x
     >>> fit = pyqt_fit.CurveFitting(x, y, (0,1,0), fct)
-    >>> result = pyqt_fit.fit_evaluation(fit, x, y)
+    >>> result = plot_fit.fit_evaluation(fit, x, y)
     >>> print fit(x) # Display the estimated values
     >>> plot_fit.plot1d(result)
     >>> pylab.show()
