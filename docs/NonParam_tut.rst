@@ -63,7 +63,7 @@ For our example, lets first degine our target function::
 Then, we will generate our data::
 
   >>> xs = np.random.rand(200) * 10
-  >>> ys = f(xs) * (1+0.2*np.random.randn(*xs.shape))
+  >>> ys = f(xs) + 2*np.random.randn(*xs.shape)
 
 We can then visualize the data::
 
@@ -81,8 +81,84 @@ We can then visualize the data::
 At first, we will try to use a simple Nadaraya-Watson method, or spatial averaging, using a gaussian kernel::
 
   >>> import pyqt_fit.kernel_smoothing as smooth
-  >>> k1 = smooth.SpatialAverage(xs, ys)
-  >>> plt.plot(grid, k1(grid), label="Spatial Averaging")
+  >>> k0 = smooth.SpatialAverage(xs, ys)
+  >>> plt.plot(grid, k0(grid), label="Spatial Averaging")
+  >>> plt.legend(loc='best')
+
+.. figure:: NonParam_tut_spatial_ave.png
+  :align: center
+
+  Result of the spatial averaging.
+
+As always during regressionm we need to look at the residuals::
+
+  >>> from pyqt_fit import plot_fit
+  >>> yopts = k0(xs)
+  >>> res = ys - yopts
+  >>> plot_fit.plot_residual_tests(xs, yopts, res, 'Spatial Average')
+
+.. figure:: NonParam_tut_spatial_ave_test.png
+  :align: center
+
+  Residuals of the Spatial Averaging regression
+
+We can see from the data that the inside of the curve is well-fitted. However,
+the boundaries are not. This is extremely visible on the right boundary, where
+the data is clearly under-fitted. This is a typical problem with spatial
+averaging, as it doesn't cope well with strong maxima, especially on the
+boundaries. As an improvement, we can try local-linear or local-polynomial. The
+process is exactly the same::
+
+  >>> k1 = smooth.LocalLinearKernel1D(xs, ys)
+  >>> k2 = smooth.LocalPolynomialKernel1D(xs, ys, q=2)
+  >>> k3 = smooth.LocalPolynomialKernel1D(xs, ys, q=3)
+  >>> k15 = smooth.LocalPolynomialKernel1D(xs, ys, q=15)
+  >>> plt.figure()
+  >>> plt.plot(xs, ys, '+', label='Data')
+  >>> plt.plot(grid, f(grid), 'r--', label='Target')
+  >>> plt.plot(grid, k1(grid), 'g', label='linear')
+  >>> plt.plot(grid, k2(grid), 'k', label='quadratic')
+  >>> plt.plot(grid, k3(grid), 'y', label='cubic')
+  >>> plt.plot(grid, k15(grid), 'b', label='polynom order 15')
+  >>> plt.legend(loc='best')
+
+.. figure:: NonParam_tut_spatial_poly.png
+  :align: center
+
+  Result of polynomial fitting with orders 1, 2, 3 and 15
+
+In this example, we can see that linear, quadratic and cubic give very similar
+result, while a polynom of order 15 is clearly over-fitting the data. Looking
+closer at the data, we can see that the linear fit seems to be better adapted,
+as quadratic and cubic both seem to over-fit the data. Note that this is not to
+be generalise and is very dependent on the data you have! We can now redo the
+residual plots::
+
+  >>> yopts = k1(xs)
+  >>> res = ys - yopts
+  >>> plot_fit.plot_residual_tests(xs, yopts, res, 'Local Linear')
+
+.. figure:: NonParam_tut_spatial_ll_test.png
+  :align: center
+
+  Residuals of the Local Linear Regression
+
+We can also look at the residuals for the quadratic polynomial::
+
+  >>> yopts = k2(xs)
+  >>> res = ys - yopts
+  >>> plot_fit.plot_residual_tests(xs, yopts, res, 'Local Quadratic')
+
+.. figure:: NonParam_tut_spatial_lq_test.png
+  :align: center
+
+  Residuals of the Local Quadratic Regression
+
+We can see from the structure of the noise that the quadratic curve, although
+farther from our target, seems to fit much better the data. Unlike in the local
+linear regression, we do not have significant bias along the X axis. Also, the
+residuals seem "more normal" (i.e. the points in the QQ-plot are better aligned)
+than in the linear case.
 
 Confidence Intervals
 --------------------

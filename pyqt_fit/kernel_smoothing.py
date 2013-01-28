@@ -72,9 +72,9 @@ class SpatialAverage(object):
     @covariance.setter
     def covariance(self, cov):
         if callable(cov):
-            _cov = np.atleast_2d(bw(self.xdata, self.ydata))
+            _cov = np.atleast_2d(cov(self.xdata, self.ydata))
         else:
-            _cov = np.atleast_2d(bw)
+            _cov = np.atleast_2d(cov)
         self._bw = None
         self._covariance = _cov
         self._inv_cov = scipy.linalg.inv(_cov)
