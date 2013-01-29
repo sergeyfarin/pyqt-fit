@@ -20,5 +20,6 @@ def bootstrap_result(worker, start_repeats, end_repeats):
                 ea[i+1] = getattr(new_fit, attr)
     except Exception, ex:
         print "Error, exception caught: {}".format(ex)
+        raise
     #print "Worker {} finished".format(worker)
 

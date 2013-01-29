@@ -163,9 +163,33 @@ than in the linear case.
 Confidence Intervals
 --------------------
 
-Local-Constant Regression
--------------------------
+Confidence intervals can be computed using bootstrapping. Based on the previous
+paragraph, you can get confidence interval on the estimation with::
 
-Local-Linear Regression
------------------------
+  >>> import pyqt_fit.bootstrap as bs
+  >>> grid = np.r_[0:10:512j]
+  >>> result = bs.bootstrap(smooth.LocalPolynomialKernel1D, xs, ys, eval_points = grid, fit_kwrds = {'q': 2}, CI = (95,99))
+
+This will compute the 95% and 99% confidence intervals for the quadratic
+fitting. The result is a named tuple
+:py:class:`pyqt_fit.bootstrap.BootstrapResult`. The most important field are
+``y_est`` and ``CIs`` that provide the estimated values and the confidence
+intervals for the curve.
+
+The data can be plotted with::
+
+  >>> plt.plot(grid, result.y_fit(grid), 'r', label="Fitted curve")
+  >>> plt.plot(grid, result.CIs[0][0,0], 'g--', label='95% CI')
+  >>> plt.plot(grid, result.CIs[0][0,1], 'g--')
+  >>> plt.plot(xs, ys, '+', label='Data')
+  >>> plt.fill_between(grid, result.CIs[0][0,0], result.CIs[0][0,1], color='g', alpha=0.25)
+  >>> plt.legend(loc=0)
+
+.. figure:: NonParam_tut_data_CIs.png
+  :align: center
+
+  Confidence intervals
+
+Types of Regressions
+--------------------
 

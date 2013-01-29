@@ -248,7 +248,7 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuff
     for ea, ev in izip(extra_arrays, extra_values):
         ea[0] = ev
 
-    base_repeat = repeats / nb_workers
+    base_repeat = repeats // nb_workers
     if base_repeat*nb_workers < repeats:
         base_repeat += 1
 
