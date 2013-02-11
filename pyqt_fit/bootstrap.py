@@ -19,8 +19,9 @@ def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
     popt, pcov = optimize.curve_fit(fct, x, y, **kwrds)
     return (popt, pcov, fct(popt, x, *args) - y)
 
-def _percentile(array, p):
-    n = (len(array)-1)*p
+def percentile(array, p, axis=0):
+    a = np.asarray(array).sort(axis=0)
+    n = (len(array)-1)*p/100
     n0 = np.floor(n)
     n1 = n0+1
     #print("%g percentile on %d = [%d-%d]" % (p*100, len(array), n0, n1))
@@ -134,17 +135,17 @@ def bootstrap_regression(fct, xdata, ydata, repeats = 3000, **kwrds):
     return shuffled_x, shuffled_y
 
 def getCIs(CI, *arrays):
-    sorted_arrays = [ np.sort(a, axis=0) for a in arrays ]
+    #sorted_arrays = [ np.sort(a, axis=0) for a in arrays ]
 
     if not np.iterable(CI):
         CI = (CI,)
 
     CIs = tuple(np.zeros((len(CI), 2,)+a.shape[1:], dtype=float) for a in arrays)
     for i, ci in enumerate(CI):
-        ci = (1-ci/100.0)/2
-        for cis, sorted_array in izip(CIs, sorted_arrays):
-            low = _percentile(sorted_array, ci)
-            high = _percentile(sorted_array, 1-ci)
+        ci = (100.-ci)/2
+        for cis, arr in izip(CIs, arrays):
+            low = np.percentile(arr, ci, axis=0)
+            high = np.percentile(arr, 100-ci, axis=0)
             cis[i] = [low, high]
 
     return CIs

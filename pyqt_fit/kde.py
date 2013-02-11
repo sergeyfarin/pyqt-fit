@@ -687,7 +687,8 @@ class KDE1D(object):
         conditions. This works only for fixed bandwidth (i.e. lambdas = 1) and
         gaussian kernel.
 
-        For open domains, the grid is taken with 3 times the bandwidth as extra space to remove the boundary problems.
+        For open domains, the grid is taken with 3 times the bandwidth as extra
+        space to remove the boundary problems.
         """
         if self.lambdas.shape:
             return self.grid_eval(N)

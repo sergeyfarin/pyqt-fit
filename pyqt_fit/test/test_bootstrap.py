@@ -59,7 +59,7 @@ class TestBootstrapMethods(unittest.TestCase):
 class VoidFittingFct(object):
     def __init__(self, y, *args, **kwords):
         self.args = np.array(args)
-        print(y[0], file=sys.stderr)
+        #print(y[0], file=sys.stderr)
         self.y = y[0]
 
     def __call__(self, x):
@@ -111,8 +111,8 @@ class TestBoostrap(unittest.TestCase):
             result = bootstrap.bootstrap(fit, self.xdata, self.ydata, CI=CI, extra_attrs = extra_attrs,
                                          eval_points = self.eval_points, repeats = rep,
                                          shuffle_method = shuffle, *args, **kwords)
-            np.testing.assert_array_equal(result.y_est, self.xdata+1)
-            np.testing.assert_array_equal(result.y_eval, self.eval_points+1)
+            np.testing.assert_array_equal(result.y_est, self.xdata)
+            np.testing.assert_array_equal(result.y_eval, self.eval_points)
             self.assertEqual(len(result.CIs), 1 + len(extra_attrs))
             for ci in result.CIs:
                 self.assertTupleEqual(ci.shape[:-1], (len(CI),2))
@@ -122,7 +122,7 @@ class TestBoostrap(unittest.TestCase):
                 self.assertIn(result.shuffled_xs.shape[-2], (1, rep))
                 self.assertIn(result.shuffled_ys.shape[-2], (1, rep))
                 self.assertTupleEqual(result.full_results.shape, (rep+1, len(self.eval_points)))
-                np.testing.assert_array_equal(result.full_results, self.eval_points[np.newaxis,:] + r_[0:rep:(rep+1)*1j])
+                np.testing.assert_array_equal(result.full_results, self.eval_points + np.r_[0:rep:(rep+1)*1j][:,np.newaxis])
             other_tests(result)
 
     def test_simple_sparse(self):
