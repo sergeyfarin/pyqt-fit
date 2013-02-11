@@ -6,7 +6,7 @@ scipy.optimize.leastsq function. It allows for parameter value fixing,
 different kind of residual and added constraints function.
 """
 
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 from scipy import optimize
 from numpy import array, inf
 
@@ -121,7 +121,7 @@ class CurveFitting(object):
             Dres = lambda y1,y0,dy: -dy
 
         use_derivs = (Dres is not None) and (Dfun is not None)
-        #print "use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun)
+        #print("use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun))
         #f = None
         df = None
 

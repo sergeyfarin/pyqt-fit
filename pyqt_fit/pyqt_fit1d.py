@@ -1,16 +1,13 @@
 #!/usr/bin/env python
-from __future__ import division
-import cyth
+from __future__ import division, print_function, absolute_import
+from . import cyth
+from . import functions, residuals, plot_fit, bootstrap
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt
 import matplotlib
 from numpy import nan, array, ma, isnan, arange, c_
-import functions
-import residuals
 from path import path
-from curve_fitting import CurveFitting
-import plot_fit
-import bootstrap
+from .curve_fitting import CurveFitting
 from csv import reader as csv_reader
 from csv import writer as csv_writer
 import sys
@@ -99,7 +96,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
                     self.dataChanged.emit(index, index)
                     return True
                 else:
-                    print "Error, cannot convert value to double"
+                    print("Error, cannot convert value to double")
             elif c == 2 and role == Qt.CheckStateRole:
                 self.fixed[r] = value
                 self.dataChanged.emit(index, index)
@@ -150,12 +147,12 @@ class QtFitDlg(QtGui.QDialog):
 
     @pyqtSignature("const QString&")
     def on_function_currentIndexChanged(self, txt):
-        print "New function: %s" % txt
+        print("New function: {}".format(txt))
         self.fct = functions.get(str(txt))
 
     @pyqtSignature("const QString&")
     def on_residuals_currentIndexChanged(self, txt):
-        print "New residual: %s" % txt
+        print("New residual: {}".format(txt))
         self.res = residuals.get(str(txt))
 
     @pyqtSignature("")
@@ -234,7 +231,7 @@ class QtFitDlg(QtGui.QDialog):
                         header = None
                 if data is not None:
                     self._input = txt
-                    print "input: %s" % (self._input,)
+                    print("input: {}".format(self._input))
                     if self._input != self.inputFile.text():
                         self.inputFile.setText(self._input)
                     self.setData(header, data)
@@ -461,10 +458,10 @@ class QtFitDlg(QtGui.QDialog):
                 return
             plot_fit.plot1d(result, loc=loc)
             if self.writeResult and outfile:
-                #print "output to file '%s'" % (outfile,)
+                #print("output to file '%s'" % (outfile,))
                 plot_fit.write1d(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
             #else:
-                #print "self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile)
+                #print("self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile))
 
 def main():
     wnd = QtFitDlg()

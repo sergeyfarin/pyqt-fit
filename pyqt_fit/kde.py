@@ -4,10 +4,10 @@
 Module implementing kernel-based estimation of density of probability.
 """
 
-from __future__ import division
+from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special import erf, gamma
-from kernels import normal_kernel1d
+from .kernels import normal_kernel1d
 from scipy import fftpack, optimize
 
 def variance_bandwidth(factor, xdata):

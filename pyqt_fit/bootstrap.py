@@ -4,16 +4,16 @@
 This modules provides function for bootstrapping a regression method.
 """
 
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 import numpy as np
 from numpy.random import randint
 from scipy import optimize
 from collections import namedtuple
 from itertools import izip
-import kernel_smoothing
-import sharedmem
+from . import kernel_smoothing
+from . import sharedmem
 import multiprocessing as mp
-import bootstrap_workers
+from . import bootstrap_workers
 
 def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
     popt, pcov = optimize.curve_fit(fct, x, y, **kwrds)
@@ -23,13 +23,13 @@ def _percentile(array, p):
     n = (len(array)-1)*p
     n0 = np.floor(n)
     n1 = n0+1
-    #print "%g percentile on %d = [%d-%d]" % (p*100, len(array), n0, n1)
+    #print("%g percentile on %d = [%d-%d]" % (p*100, len(array), n0, n1))
     d = n-n0
     v0 = array[n0]
     v1 = array[n1]
     return v0 + d*(v1-v0)
 
-def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, residuals = None, add_residual = None, correct_bias = False, **kwrds):
+def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residuals = None, add_residual = None, correct_bias = False, **kwrds):
     """
     This implements the residual bootstrapping method for non-linear regression.
 
@@ -42,8 +42,9 @@ def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, resi
     :type  ydata: ndarray
     :param ydata: The dependant data
 
-    :type  residuals: ndarray
-    :param residuals: Residuals for the estimation on each xdata
+    :type  residuals: ndarray or callable or None
+    :param residuals: Residuals for the estimation on each xdata. If callable,
+        the call will be ``residuals(ydata, yopt)``.
 
     :type  repeats: int
     :param repeats: Number of repeats for the bootstrapping
@@ -75,7 +76,11 @@ def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, resi
         residuals = np.subtract
 
     yopt = fct(xdata)
-    res = residuals(ydata, yopt)
+
+    if not isinstance(residuals, np.ndarray):
+        res = residuals(ydata, yopt)
+    else:
+        res = np.array(residuals)
 
     res -= np.mean(res)
 
@@ -95,7 +100,7 @@ def bootstrap_residuals(fct, xdata, ydata, repeats = 3000, residual = None, resi
 
     return xdata[...,np.newaxis,:], modified_ydata
 
-def bootstrap_regression(fct, xdata, ydata, residuals, repeats = 3000, **kwrds):
+def bootstrap_regression(fct, xdata, ydata, repeats = 3000, **kwrds):
     """
     This implements the shuffling of standard bootstrapping method for non-linear regression.
 
@@ -107,9 +112,6 @@ def bootstrap_regression(fct, xdata, ydata, residuals, repeats = 3000, **kwrds):
 
     :type  ydata: ndarray
     :param ydata: The dependant data
-
-    :type  residuals: ndarray
-    :param residuals: Residuals for the estimation on each xdata
 
     :type  repeats: int
     :param repeats: Number of repeats for the bootstrapping
@@ -292,19 +294,19 @@ def test():
 
     init = (10,1,1)
     target = np.array([10,4,1.2])
-    print "Target parameters: %s" % (target,)
+    print("Target parameters: {}".format(target))
     x = 6*rand(200) - 3
     y = test(x, target)*(1+0.3*randn(x.shape[0]))
     xr = arange(-3, 3, 0.01)
     yr = test(xr,target)
 
-    print "Estimage best parameters, fixing the first one"
+    print("Estimage best parameters, fixing the first one")
     popt, pcov, _, _ = curve_fit(test, x, y, init, fix_params=(0,))
-    print "Best parameters: %s" % (popt,)
+    print("Best parameters: {}".format(popt))
 
-    print "Estimate best parameters from data"
+    print("Estimate best parameters from data")
     popt, pcov, _, _ = curve_fit(test, x, y, init)
-    print "Best parameters: %s" % (popt,)
+    print("Best parameters: {}".format(popt))
 
     figure(1)
     clf()
@@ -312,7 +314,7 @@ def test():
     plot(xr, yr, 'r', label='function')
     legend(loc='upper left')
 
-    print "Residual bootstrap calculation"
+    print("Residual bootstrap calculation")
     result_r = bootstrap_fit(test, x, y, init, (95, 99), shuffle_method=bootstrap_residuals, eval_points = xr, fit=curve_fit)
     popt_r, pcov_r, res_r, CI_r, CIp_r, extra_r = result_r
     yopt_r = test(xr, popt_r)
@@ -328,7 +330,7 @@ def test():
     legend(loc='upper left')
     title('Residual Bootstrapping')
 
-    print "Regression bootstrap calculation"
+    print("Regression bootstrap calculation")
     popt_c, pcov_c, res_c, CI_c, CIp_r, extra_c = bootstrap_fit(test, x, y, init, CI=(95, 99), shuffle_method=bootstrap_regression, eval_points = xr, fit=curve_fit)
     yopt_c = test(xr, popt_c)
 
@@ -343,7 +345,7 @@ def test():
     legend(loc='upper left')
     title('Regression Bootstrapping (also called Case Resampling)')
 
-    print "Done"
+    print("Done")
 
     show()
 

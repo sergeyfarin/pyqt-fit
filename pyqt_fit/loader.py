@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import
 import inspect
 from path import path
 import imp
@@ -36,7 +37,7 @@ def load(find_functions, search_path = None):
                 mod = imp.load_module(pack_name, *mod_desc)
                 fcts.update(find_functions(mod))
             except ImportError as ex:
-                print("Warning, cannot import module '%s' from %s: %s" % (module_name, caller_module.__name__, ex))
+                print("Warning, cannot import module '{0}' from {1}: {2}".format(module_name, caller_module.__name__, ex), file=sys.stderr)
     return fcts
 
 

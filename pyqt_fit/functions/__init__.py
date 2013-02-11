@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 from ..utils import namedtuple
@@ -24,7 +26,7 @@ def find_functions(module):
             else:
                 result[obj.name] = obj
         except Exception, ex: # Silently ignore any exception
-            print "Error: '{}'".format(ex)
+            print("Error: '{}'".format(ex))
             pass
     return result
 
@@ -67,9 +69,9 @@ def get(name):
             Jacobian of the function (in column, so call leastsq with col_deriv=1)
     """
     f = functions.get(name, None)
-    print "Getting function '%s'" % name
-    if f is not None:
-        print "  Dfun = %s" % f.Dfun
+    #print("Getting function '{}'".format(name))
+    #if f is not None:
+        #print("  Dfun = {}".format(f.Dfun))
     return f
 
 def names():

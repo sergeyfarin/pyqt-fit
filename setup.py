@@ -24,7 +24,7 @@ setup(name='PyQt-Fit',
       author='Pierre Barbier de Reuille',
       author_email='pierre.barbierdereuille@gmail.com',
       url=['https://code.google.com/p/pyqt-fit/'],
-      packages= ['pyqt_fit', 'pyqt_fit.functions', 'pyqt_fit.residuals'],
+      packages= ['pyqt_fit', 'pyqt_fit.functions', 'pyqt_fit.residuals', 'pyqt_fit.test'],
       package_data = {'pyqt_fit':
           [ 'qt_fit.ui',
             'version.txt',

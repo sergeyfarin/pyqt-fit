@@ -4,7 +4,7 @@
 Module contained a variety of small useful functions.
 """
 
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 from collections import OrderedDict
 from keyword import iskeyword as _iskeyword
 from operator import itemgetter as _itemgetter, eq as _eq
@@ -104,7 +104,7 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
     for i, name in enumerate(field_names):
         template += "        %s = _property(_itemgetter(%d), doc='Alias for field number %d')\n" % (name, i, i)
     if verbose:
-        print template
+        print(template)
 
     # Execute the template string in a temporary namespace and
     # support tracing utilities by setting a value for frame.f_globals['__name__']

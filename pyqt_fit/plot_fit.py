@@ -4,18 +4,18 @@
 This modules implement functions to test and plot parametric regression.
 """
 
-from __future__ import division
-from curve_fitting import CurveFitting
+from __future__ import division, print_function, absolute_import
+from .curve_fitting import CurveFitting
 from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
 from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, clf, ylim, hist, suptitle, gca
-import bootstrap
+from . import bootstrap
 from itertools import izip, chain
 from scipy.special import erfinv, gamma
 from scipy import stats
 #try:
 #    from cy_kernel_smoothing import SpatialAverage
 #except ImportError:
-from kernel_smoothing import SpatialAverage, LocalLinearKernel1D
+from .kernel_smoothing import SpatialAverage, LocalLinearKernel1D
 import inspect
 from csv import writer as csv_writer
 from collections import namedtuple
@@ -203,7 +203,7 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     result["CIs"] = CIs
     #result["CIparams"] = CIparams
     result["CIresults"] = CIresults
-    #print "estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"]
+    #print("estimate jacobian = %s" % result["extra_output"][-1]["est_jacobian"])
     return ResultStruct(**result)
 
 ResidualMeasures = namedtuple("ResidualMeasures", "scaled_res res_IX prob normq")
@@ -364,7 +364,7 @@ def write1d(outfile, result, res_desc, CImethod):
             w.writerow(["Method",CImethod])
             head = ["Parameters"] + list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in result.CI]))
             w.writerow(head)
-            print result.CIs[1]
+            #print(result.CIs[1])
             for cis in izip(parm_names, *chain(*result.CIs[1])):
                 cistr = [cis[0]] + ["%.20g" % v for v in cis[1:]]
                 w.writerow(cistr)
@@ -384,7 +384,7 @@ def test():
 
     init = (10,1,1)
     target = (10,4,1.2)
-    print "Target parameters: %s" % (target,)
+    print("Target parameters: %s" % (target,))
     x = 6*rand(200) - 3
     y = test(x, target)*(1+0.2*randn(x.shape[0]))
     xr = arange(-3, 3, 0.01)

@@ -5,6 +5,7 @@ Created on Tue Jul 31 20:11:03 2012
 @author: ips_user
 """
 
+from __future__ import absolute_import, print_function
 import os
 import numpy
 import pyximport

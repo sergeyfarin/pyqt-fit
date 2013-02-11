@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 from ..utils import namedtuple
@@ -24,7 +26,7 @@ def find_functions(module):
             else:
                 result[obj.name] = obj
         except Exception, ex: # Silently ignore any exception
-            print "Error: '{}'".format(ex)
+            print("Error: '{}'".format(ex))
             pass
     return result
 

@@ -4,17 +4,18 @@
 Module implementing non-parametric regressions using kernel smoothing methods.
 """
 
+from __future__ import division, absolute_import, print_function
 from scipy import stats
 from scipy.special import gamma
 from scipy.linalg import sqrtm, solve
 import scipy
 import numpy as np
 
-import cyth
-import cy_local_linear
+from . import cyth
+from . import cy_local_linear
 
-from kde import scotts_bandwidth
-from kernels import normal_kernel
+from .kde import scotts_bandwidth
+from .kernels import normal_kernel
 
 class SpatialAverage(object):
     r"""

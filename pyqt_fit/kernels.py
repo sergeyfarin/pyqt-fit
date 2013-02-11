@@ -1,9 +1,8 @@
-from __future__ import division
+from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special import erf
-import cyth
-import _kernels
-from scipy.weave import inline
+from . import cyth
+from . import _kernels
 
 S2PI = np.sqrt(2*np.pi)
 S2 = np.sqrt(2)
