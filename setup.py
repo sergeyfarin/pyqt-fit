@@ -56,6 +56,7 @@ setup(name='PyQt-Fit',
           'Topic :: Scientific/Engineering :: Mathematics',
           'Topic :: Scientific/Engineering :: Visualization',
           ],
+      test_suite = 'nose.collector',
       **extra
      )
 

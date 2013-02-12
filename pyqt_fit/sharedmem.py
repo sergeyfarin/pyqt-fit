@@ -83,7 +83,7 @@ def _allocate_raw_array(size, dtype):
     ct = _numpy_to_ctypes.get(dtype)
     if ct is None:
         raise TypeError("Error, cannot convert numpy type {} into ctypes".format(dtype))
-    return mp.RawArray(ct, size)
+    return mp.RawArray(ct, int(size))
 
 class SharedArray(object):
     def __init__(self, ra, shape = None, order='C'):
