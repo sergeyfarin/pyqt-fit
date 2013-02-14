@@ -130,7 +130,7 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
 
 #
 from scipy import sqrt
-from numpy import finfo, asfarray, zeros
+from numpy import finfo, asarray, asfarray, zeros
 
 _epsilon = sqrt(finfo(float).eps)
 
@@ -151,10 +151,12 @@ def approx_jacobian(x,func,epsilon,*args):
          The approximation is done using forward differences
 
     """
-    x0 = asfarray(x)
+    x0 = asarray(x)
+    x0 = asfarray(x0, dtype=x0.dtype)
+    epsilon = x0.dtype.type(epsilon)
     f0 = func(*((x0,)+args))
-    jac = zeros([len(x0),len(f0)])
-    dx = zeros(len(x0))
+    jac = zeros([len(x0),len(f0)], dtype=x0.dtype)
+    dx = zeros(len(x0), dtype=x0.dtype)
     for i in range(len(x0)):
        dx[i] = epsilon
        jac[i] = (func(*((x0+dx,)+args)) - f0)/epsilon
