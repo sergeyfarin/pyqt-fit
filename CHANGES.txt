@@ -1,4 +1,6 @@
-v1.1.9, 12/2/2012
+v1.1.10, 18/2/2012
+ - plot_residual_tests now supports nD regression
+v1.1.9, 18/2/2012
  - Added tests for the various modules
  - Corrected bug in sharedmem for Python 3
  - Now using print_function and relative_import futures to minimise changes between Python 2 and 3

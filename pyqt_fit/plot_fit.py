@@ -307,7 +307,10 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
 
     plot1 = subplot(2,2,1)
 # First subplot is the residuals
-    p_res = plot_residuals(xname, xdata, res_name, res)
+    if len(xdata.shape) == 1 or xdata.shape[1] == 1:
+        p_res = plot_residuals(xname, xdata.squeeze(), res_name, res)
+    else:
+        p_res = plot_residuals(yname, yopts, res_name, res)
 
     if scaled_res is None or sorted_yopts is None or normq is None:
         scaled_res, res_IX, _, normq = residual_measures(res)
