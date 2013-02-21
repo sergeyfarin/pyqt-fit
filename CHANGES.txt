@@ -1,5 +1,6 @@
 v1.1.10, 18/2/2012
  - plot_residual_tests now supports nD regression
+ - corrected kde in case no method is specified
 v1.1.9, 18/2/2012
  - Added tests for the various modules
  - Corrected bug in sharedmem for Python 3

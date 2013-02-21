@@ -255,7 +255,7 @@ class KDE1D(object):
             self.covariance = scotts_bandwidth
 
         if self._method is None:
-            self.methods = 'renormalization'
+            self.method = 'renormalization'
 
     def update_bandwidth(self):
         """
