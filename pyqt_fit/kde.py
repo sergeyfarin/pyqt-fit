@@ -644,8 +644,8 @@ class KDE1D(object):
 
     def grid_eval(self, N = None):
         N = 2**10 if N is None else N
-        lower = np.min(xdata) - 2*self.bandwidth if self.lower == -np.inf else self.lower
-        upper = np.max(xdata) + 2*self.bandwidth if self.upper ==  np.inf else self.upper
+        lower = np.min(self.xdata) - 2*self.bandwidth if self.lower == -np.inf else self.lower
+        upper = np.max(self.xdata) + 2*self.bandwidth if self.upper ==  np.inf else self.upper
         g = np.r_[lower:upper:N*1j]
         return g, self(g)
 
@@ -673,7 +673,7 @@ class KDE1D(object):
             weights = None
         DataHist, bin_edges = np.histogram(data, bins=mesh - dN/2, weights=weights)
         DataHist[0] += DataHist[-1]
-        DataHist = DataHist/M
+        DataHist = DataHist / self._total_weights
         FFTData = fftpack.fft(DataHist[:-1])
         if hasattr(self.kernel, 'fft'):
             t_star = (2*bw/R)
@@ -707,12 +707,11 @@ class KDE1D(object):
         R = upper - lower
 
         # Histogram the data to get a crude first approximation of the density
-        M = len(data)
         weights = self.weights
         if not weights.shape:
             weights = None
         DataHist, bins = np.histogram(data, bins=N, range=(lower,upper), weights = weights)
-        DataHist = DataHist/M
+        DataHist = DataHist / self._total_weights
         DCTData = fftpack.dct(DataHist, norm=None)
 
         if hasattr(self.kernel, 'dct'):

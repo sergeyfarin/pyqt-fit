@@ -2,6 +2,8 @@ v1.1.10, 24/2/2012
  - Added Epanechnikov kernel
  - plot_residual_tests now supports nD regression
  - corrected kde in case no method is specified
+ - corrected grid_eval (now works)
+ - corrected weights application
 v1.1.9, 18/2/2012
  - Added tests for the various modules
  - Corrected bug in sharedmem for Python 3
