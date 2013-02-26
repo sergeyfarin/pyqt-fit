@@ -23,7 +23,7 @@ class normal_kernel1d(object):
         :param ndarray xs: Array of any shape
         :returns: an array of shape identical to ``xs``
         """
-        return _kernels.norm1d_pdf(np.asarray(z, dtype=np.float64), out)
+        return _kernels.norm1d_pdf(z, out)
 
     def _pdf(self, z, out = None):
         """
@@ -66,7 +66,7 @@ class normal_kernel1d(object):
 
             \text{cdf}(z) \triangleq \int_{-\infty}^z \phi(z) dz = \frac{1}{2}\text{erf}\left(\frac{z}{\sqrt{2}}\right) + \frac{1}{2}
         """
-        return _kernels.norm1d_cdf(np.asarray(z, dtype=np.float64), out)
+        return _kernels.norm1d_cdf(z, out)
 
     def _cdf(self, z, out=None):
         """
@@ -89,7 +89,7 @@ class normal_kernel1d(object):
 
             \text{pm1}(z) \triangleq \int_{-\infty}^z z\phi(z) dz = -\frac{1}{\sqrt{2\pi}}e^{-\frac{z^2}{2}}
         """
-        return _kernels.norm1d_pm1(np.asarray(z, dtype=np.float64), out)
+        return _kernels.norm1d_pm1(z, out)
 
     def _pm1(self, z, out=None):
         """
@@ -112,7 +112,7 @@ class normal_kernel1d(object):
 
             \text{pm2}(z) \triangleq \int_{-\infty}^z z^2\phi(z) dz = \frac{1}{2}\text{erf}\left(\frac{z}{2}\right) - \frac{z}{\sqrt{2\pi}} e^{-\frac{z^2}{2}} + \frac{1}{2}
         """
-        return _kernels.norm1d_pm2(np.asarray(z, dtype=np.float64), out)
+        return _kernels.norm1d_pm2(z, out)
 
     def _pm2(self, z, out=None):
         """

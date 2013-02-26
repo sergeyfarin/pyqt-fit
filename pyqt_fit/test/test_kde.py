@@ -36,7 +36,6 @@ class TestBandwidth(object):
         rati = bws / bws[0]
         assert sum((rati - self.ratios)**2) < 1e-6
 
-
 class TestUnboundedKDE1D(object):
     @classmethod
     def setUpClass(cls):
