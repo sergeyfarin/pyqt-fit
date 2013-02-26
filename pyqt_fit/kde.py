@@ -68,7 +68,9 @@ class botev_bandwidth(object):
     Z. I. Botev, J. F. Grotowski, and D. P. Kroese. Kernel density
     estimation via diffusion. The Annals of Statistics, 38(5):2916-2957, 2010.
 
-    Based on the implementation of Daniel B. Smith, PhD
+    Based on the implementation of Daniel B. Smith, PhD.
+
+    The object is a callable returning the bandwidth for a 1D kernel.
     """
     def __init__(self, lower=None, upper=None, N = None):
         self.lower = lower
@@ -76,6 +78,9 @@ class botev_bandwidth(object):
         self.N = N
 
     def __call__(self, data):
+        """
+        Returns the optimal bandwidth based on the data
+        """
         N = 2**10 if self.N is None else int(2**np.ceil(np.log2(self.N)))
         lower = self.lower
         upper = self.upper

@@ -231,3 +231,64 @@ class tricube(object):
         """
         return _kernels.tricube_pm2(z, out)
 
+class Epanechnikov(object):
+    """
+    1D Epanechnikov density kernel with extra integrals for 1D bounded kernel estimation.
+    """
+    def pdf(self, xs):
+        return _kernels.epanechnikov_pdf(xs)
+    __call__ = pdf
+
+    def cdf(self, xs):
+        return _kernels.epanechnikov_cdf(xs)
+
+    def pm1(self, xs):
+        return _kernels.epanechnikov_pm1(xs)
+
+    def pm2(self, xs):
+        return _kernels.epanechnikov_pm2(xs)
+
+class Epanechnikov_order4(object):
+    r"""
+    Order 4 Epanechnikov kernel. That is:
+
+    .. math::
+
+        K_{[4]} = \frac{3}{2} K(x) + \frac{1}{2} x K'(x) = -\frac{15}{8}x^2+\frac{9}{8}
+
+    """
+    def pdf(self, xs):
+        return _kernels.epanechnikov_o4_pdf(xs)
+    __call__ = pdf
+
+    def cdf(self, xs):
+        return _kernels.epanechnikov_o4_cdf(xs)
+
+    def pm1(self, xs):
+        return _kernels.epanechnikov_o4_pm1(xs)
+
+    def pm2(self, xs):
+        return _kernels.epanechnikov_o4_pm2(xs)
+
+class normal_order4(object):
+    r"""
+    Order 4 Epanechnikov kernel. That is:
+
+    .. math::
+
+        K_{[4]} = \frac{3}{2} K(x) + \frac{1}{2} x K'(x) = -\frac{15}{8}x^2+\frac{9}{8}
+
+    """
+    def pdf(self, xs):
+        return _kernels.normal_o4_pdf(xs)
+    __call__ = pdf
+
+    def cdf(self, xs):
+        return _kernels.normal_o4_cdf(xs)
+
+    def pm1(self, xs):
+        return _kernels.normal_o4_pm1(xs)
+
+    def pm2(self, xs):
+        return _kernels.normal_o4_pm2(xs)
+
