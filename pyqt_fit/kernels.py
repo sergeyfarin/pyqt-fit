@@ -304,7 +304,7 @@ class Epanechnikov_order4(object):
 
         K_{[4]}(x) = \frac{3}{2} K(x) + \frac{1}{2} x K'(x) = -\frac{15}{8}x^2+\frac{9}{8}
 
-    where :math:`K` is the Epanechnikov kernel.
+    where :math:`K` is the non-normalized Epanechnikov kernel.
     """
     def pdf(self, xs):
         return _kernels.epanechnikov_o4_pdf(xs)
