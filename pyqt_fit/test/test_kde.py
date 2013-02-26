@@ -45,7 +45,7 @@ class TestUnboundedKDE1D(object):
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = {}
         cls.grid_accuracy = 1e-7
-        cls.accuracy = 1e-4
+        cls.accuracy = 1e-3
 
     def test_converge(self):
         xs = np.r_[-3:3:512j]
@@ -77,7 +77,7 @@ class TestUnboundedKDE1D(object):
         k = kde.KDE1D(self.vs[i], weights=ws, **self.args)
         xs, ys = k.grid_eval(2048)
         tot = sum(ys)*(xs[1]-xs[0])
-        assert abs(tot - 1) < 10*self.accuracy, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
     def is_ws_grid_normed(self, i):
         ws = np.r_[1:2:self.sizes[i]*1j]
@@ -99,7 +99,7 @@ class TestUnboundedKDE1D(object):
         k = kde.KDE1D(self.vs[i], lambdas=ws, **self.args)
         xs, ys = k.grid_eval(2048)
         tot = sum(ys)*(xs[1]-xs[0])
-        assert abs(tot - 1) < 10*self.accuracy, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_ls_normed(self):
         for i in xrange(len(self.sizes)):
@@ -113,7 +113,7 @@ class TestReflexionKDE1D(TestUnboundedKDE1D):
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method='reflexion')
         cls.grid_accuracy = 1e-5
-        cls.accuracy = 1e-4
+        cls.accuracy = 1e-3
 
 class TestCyclicKDE1D(TestUnboundedKDE1D):
     @classmethod
@@ -123,7 +123,7 @@ class TestCyclicKDE1D(TestUnboundedKDE1D):
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method='cyclic')
         cls.grid_accuracy = 1e-7
-        cls.accuracy = 1e-4
+        cls.accuracy = 1e-3
 
 class TestRenormKDE1D(TestUnboundedKDE1D):
     @classmethod
@@ -133,7 +133,7 @@ class TestRenormKDE1D(TestUnboundedKDE1D):
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method='renormalization')
         cls.grid_accuracy = 1e-4
-        cls.accuracy = 1e-4
+        cls.accuracy = 1e-3
 
 class TestLCKDE1D(TestUnboundedKDE1D):
     @classmethod
@@ -143,5 +143,5 @@ class TestLCKDE1D(TestUnboundedKDE1D):
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method='linear_combination')
         cls.grid_accuracy = 1e-4
-        cls.accuracy = 1e-4
+        cls.accuracy = 1e-3
 
