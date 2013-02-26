@@ -176,7 +176,7 @@ class KDE1D(object):
         1. unbounded
         2. renormalization
         3. reflexion
-        4. near combination
+        4. linear combination
         5. cyclic
 
     1. Unbounded

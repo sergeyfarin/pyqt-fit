@@ -38,29 +38,31 @@ class TestBandwidth(object):
 
 
 class TestUnboundedKDE1D(object):
-
     @classmethod
     def setUpClass(cls):
         cls.dist = stats.norm(0,1)
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
+        cls.args = {}
+        cls.grid_accuracy = 1e-7
+        cls.accuracy = 1e-4
 
     def test_converge(self):
         xs = np.r_[-3:3:512j]
         ys = self.dist.pdf(xs)
-        ks = [ kde.KDE1D(v) for v in self.vs ]
+        ks = [ kde.KDE1D(v, **self.args) for v in self.vs ]
 
     def is_normed(self, i):
-        k = kde.KDE1D(self.vs[i])
+        k = kde.KDE1D(self.vs[i], **self.args)
         xs, ys = k.grid_eval(2048)
         tot = sum(ys)*(xs[1]-xs[0])
-        assert abs(tot - 1) < 1e-4, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
     def is_grid_normed(self, i):
-        k = kde.KDE1D(self.vs[i])
+        k = kde.KDE1D(self.vs[i], **self.args)
         xs, ys = k.grid(2048)
         tot = sum(ys)*(xs[1]-xs[0])
-        assert abs(tot - 1) < 1e-8, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_normed(self):
         for i in xrange(len(self.sizes)):
@@ -70,34 +72,76 @@ class TestUnboundedKDE1D(object):
         for i in xrange(len(self.sizes)):
             yield self.is_grid_normed, i
 
-class TestWeights(object):
+    def is_ws_normed(self, i):
+        ws = np.r_[1:2:self.sizes[i]*1j]
+        k = kde.KDE1D(self.vs[i], weights=ws, **self.args)
+        xs, ys = k.grid_eval(2048)
+        tot = sum(ys)*(xs[1]-xs[0])
+        assert abs(tot - 1) < 10*self.accuracy, "Error, {} should be close to 1".format(tot)
 
+    def is_ws_grid_normed(self, i):
+        ws = np.r_[1:2:self.sizes[i]*1j]
+        k = kde.KDE1D(self.vs[i], weights=ws, **self.args)
+        xs, ys = k.grid(2048)
+        tot = sum(ys)*(xs[1]-xs[0])
+        assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
+
+    def test_ws_normed(self):
+        for i in xrange(len(self.sizes)):
+            yield self.is_ws_normed, i
+
+    def test_ws_grid_normed(self):
+        for i in xrange(len(self.sizes)):
+            yield self.is_ws_grid_normed, i
+
+    def is_ls_normed(self, i):
+        ws = np.r_[1:2:self.sizes[i]*1j]
+        k = kde.KDE1D(self.vs[i], lambdas=ws, **self.args)
+        xs, ys = k.grid_eval(2048)
+        tot = sum(ys)*(xs[1]-xs[0])
+        assert abs(tot - 1) < 10*self.accuracy, "Error, {} should be close to 1".format(tot)
+
+    def test_ls_normed(self):
+        for i in xrange(len(self.sizes)):
+            yield self.is_ls_normed, i
+
+class TestReflexionKDE1D(TestUnboundedKDE1D):
     @classmethod
     def setUpClass(cls):
         cls.dist = stats.norm(0,1)
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
+        cls.args = dict(lower=-5, upper=5, method='reflexion')
+        cls.grid_accuracy = 1e-5
+        cls.accuracy = 1e-4
 
-    def is_normed(self, i):
-        ws = np.r_[1:2:self.sizes[i]*1j]
-        k = kde.KDE1D(self.vs[i], weights=ws)
-        xs, ys = k.grid_eval(2048)
-        tot = sum(ys)*(xs[1]-xs[0])
-        assert abs(tot - 1) < 1e-3, "Error, {} should be close to 1".format(tot)
+class TestCyclicKDE1D(TestUnboundedKDE1D):
+    @classmethod
+    def setUpClass(cls):
+        cls.dist = stats.norm(0,1)
+        cls.sizes = np.r_[1000:5000:5j]
+        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
+        cls.args = dict(lower=-5, upper=5, method='cyclic')
+        cls.grid_accuracy = 1e-7
+        cls.accuracy = 1e-4
 
-    def is_grid_normed(self, i):
-        ws = np.r_[1:2:self.sizes[i]*1j]
-        k = kde.KDE1D(self.vs[i], weights=ws)
-        xs, ys = k.grid(2048)
-        tot = sum(ys)*(xs[1]-xs[0])
-        assert abs(tot - 1) < 1e-8, "Error, {} should be close to 1".format(tot)
+class TestRenormKDE1D(TestUnboundedKDE1D):
+    @classmethod
+    def setUpClass(cls):
+        cls.dist = stats.norm(0,1)
+        cls.sizes = np.r_[1000:5000:5j]
+        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
+        cls.args = dict(lower=-5, upper=5, method='renormalization')
+        cls.grid_accuracy = 1e-4
+        cls.accuracy = 1e-4
 
-    def test_normed(self):
-        for i in xrange(len(self.sizes)):
-            yield self.is_normed, i
-
-    def test_grid_normed(self):
-        for i in xrange(len(self.sizes)):
-            yield self.is_grid_normed, i
-
+class TestLCKDE1D(TestUnboundedKDE1D):
+    @classmethod
+    def setUpClass(cls):
+        cls.dist = stats.norm(0,1)
+        cls.sizes = np.r_[1000:5000:5j]
+        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
+        cls.args = dict(lower=-5, upper=5, method='linear_combination')
+        cls.grid_accuracy = 1e-4
+        cls.accuracy = 1e-4
 
