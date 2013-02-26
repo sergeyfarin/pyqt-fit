@@ -232,20 +232,68 @@ class tricube(object):
         return _kernels.tricube_pm2(z, out)
 
 class Epanechnikov(object):
-    """
+    r"""
     1D Epanechnikov density kernel with extra integrals for 1D bounded kernel estimation.
     """
     def pdf(self, xs):
+        r"""
+        The PDF of the kernel is usually given by:
+
+        .. math::
+
+            f_r(x) = \left\{\begin{array}{ll}
+                            \frac{3}{4} \left(1-x^2\right) & \text{, if} x \in [-1:1]\\
+                                    0 & \text{, otherwise}
+                            \end{array}\right.
+
+        As :math:`f_r` is not of variance 1 (and therefore would need adjustments for the bandwidth selection), we use a normalized function:
+
+        .. math::
+
+            f(x) = \frac{1}{\sqrt{5}}f\left(\frac{x}{\sqrt{5}}\right)
+        """
         return _kernels.epanechnikov_pdf(xs)
     __call__ = pdf
 
     def cdf(self, xs):
+        r"""
+        CDF of the distribution. The CDF is defined on the interval :math:`[-\sqrt{5}:\sqrt{5}]` as:
+
+        .. math::
+
+            \text{cdf}(x) = \left\{\begin{array}{ll}
+                    \frac{1}{2} + \frac{3}{4\sqrt{5}} x - \frac{3}{20\sqrt{5}}x^3 & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
+                    0 & \text{, if } x < -\sqrt{5} \\
+                    1 & \text{, if } x > \sqrt{5}
+                    \end{array}\right.
+        """
         return _kernels.epanechnikov_cdf(xs)
 
     def pm1(self, xs):
+        r"""
+        First partial moment of the distribution:
+
+        .. math::
+
+            \text{pm1}(x) = \left\{\begin{array}{ll}
+                    -\frac{3\sqrt{5}}{16}\left(1-\frac{2}{5}x^2+\frac{1}{25}x^4\right) & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
+                    0 & \text{, otherwise}
+                    \end{array}\right.
+        """
         return _kernels.epanechnikov_pm1(xs)
 
     def pm2(self, xs):
+        r"""
+        Second partial moment of the distribution:
+
+        .. math::
+
+            \text{pm2}(x) = \left\{\begin{array}{ll}
+                    \frac{5}{20}\left(2 + \frac{1}{\sqrt{5}}x^3 - \frac{3}{5^{5/2}}x^5 \right) & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
+                    0 & \text{, if } x < -\sqrt{5} \\
+                    1 & \text{, if } x > \sqrt{5}
+                    \end{array}\right.
+        """
         return _kernels.epanechnikov_pm2(xs)
 
 class Epanechnikov_order4(object):
@@ -254,8 +302,9 @@ class Epanechnikov_order4(object):
 
     .. math::
 
-        K_{[4]} = \frac{3}{2} K(x) + \frac{1}{2} x K'(x) = -\frac{15}{8}x^2+\frac{9}{8}
+        K_{[4]}(x) = \frac{3}{2} K(x) + \frac{1}{2} x K'(x) = -\frac{15}{8}x^2+\frac{9}{8}
 
+    where :math:`K` is the Epanechnikov kernel.
     """
     def pdf(self, xs):
         return _kernels.epanechnikov_o4_pdf(xs)
@@ -272,11 +321,13 @@ class Epanechnikov_order4(object):
 
 class normal_order4(object):
     r"""
-    Order 4 Epanechnikov kernel. That is:
+    Order 4 Normal kernel. That is:
 
     .. math::
 
-        K_{[4]} = \frac{3}{2} K(x) + \frac{1}{2} x K'(x) = -\frac{15}{8}x^2+\frac{9}{8}
+        \phi_{[4]}(x) = \frac{3}{2} \phi(x) + \frac{1}{2} x \phi'(x) = \frac{1}{2}(3-x^2)\phi(x)
+
+    where :math:`\phi` is the normal kernel.
 
     """
     def pdf(self, xs):
