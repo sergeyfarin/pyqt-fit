@@ -1,3 +1,6 @@
+v1.1.11, 27/2/2012
+ - Correct CDF of tricube kernel (error inducing a 1e-4 error on CDF computation)
+ - Added tests for kernels
 v1.1.10, 26/2/2012
  - Added Epanechnikov kernel
  - plot_residual_tests now supports nD regression
