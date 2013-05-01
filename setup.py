@@ -39,7 +39,8 @@ setup(name='PyQt-Fit',
           'scipy >=0.10.0',
           'numpy >=1.5.0',
           'matplotlib',
-          'path.py >=2.4.1'
+          'path.py >=2.4.1',
+          'cython >= 0.19'
           ],
       license = 'LICENSE.txt',
       long_description = open('README.txt').read(),

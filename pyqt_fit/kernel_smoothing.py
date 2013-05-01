@@ -15,7 +15,7 @@ from . import cyth
 from . import cy_local_linear
 
 from .kde import scotts_bandwidth
-from .kernels import normal_kernel
+from .kernels import normal_kernel, normal_kernel1d
 
 class SpatialAverage(object):
     r"""
@@ -226,6 +226,17 @@ class LocalLinearKernel1D(object):
         """
         return self.evaluate(*args, **kwords)
 
+class PolynomialDesignMatrix1D(object):
+    def __init__(self, dim):
+        self.dim = dim
+        powers = np.arange(0,dim+1).reshape((1,dim+1)) # This is a line vector
+        #frac = gamma(powers+1) # gamma(x+1) = x! if x is integer
+        self.powers = powers
+        #self.frac = frac
+
+    def __call__(self, dX, out=None):
+        return np.power(dX, self.powers, out) # / self.frac
+
 class LocalPolynomialKernel1D(object):
     r"""
     Perform a local-polynomial regression using a user-provided kernel (Gaussian by default).
@@ -247,28 +258,32 @@ class LocalPolynomialKernel1D(object):
     :param ndarray xdata: Explaining variables (at most 2D array)
     :param ndarray ydata: Explained variables (should be 1D array)
     :param int q: Order of the polynomial to fit. **Default:** 3
-    :param callable kernel: Kernel to use for the weights. Call is
-        ``kernel(points)`` and should return an array of values the same size
-        as ``points``. **Default:** ``scipy.stats.norm(0,1).pdf``
 
     :type  cov: float or callable
     :param cov: If an float, it should be a variance of the gaussian kernel.
         Otherwise, it should be a function ``cov(xdata, ydata)`` returning the variance. **Default:** ``scotts_bandwidth``
 
     """
-    def __init__(self, xdata, ydata, q = 3, cov = scotts_bandwidth, kernel = None):
+    def __init__(self, xdata, ydata, q = 3, **kwords):
         self.xdata = np.atleast_1d(xdata)
         self.ydata = np.atleast_1d(ydata)
-        if kernel is None:
-            kernel = normal_kernel(1)
-        self.kernel = kernel
         self.n = xdata.shape[0]
         self.q = q
 
+        self._kernel = None
         self._bw = None
         self._covariance = None
+        self.designMatrix = None
 
-        self.covariance = cov
+        for n in kwords:
+            setattr(self, n, kwords[n])
+
+        if self.kernel is None:
+            self.kernel = normal_kernel1d()
+        if self.covariance is None:
+            self.covariance = scotts_bandwidth
+        if self.designMatrix is None:
+            self.designMatrix = PolynomialDesignMatrix1D
 
     @property
     def bandwidth(self):
@@ -276,6 +291,15 @@ class LocalPolynomialKernel1D(object):
         Bandwidth of the kernel.
         """
         return self._bw
+
+    @bandwidth.setter
+    def bandwidth(self, bw):
+        if callable(bw):
+            _bw = float(bw(self.xdata, self.ydata))
+        else:
+            _bw = float(bw)
+        self._bw = _bw
+        self._covariance = _bw*_bw
 
 
     @property
@@ -300,6 +324,39 @@ class LocalPolynomialKernel1D(object):
         self._covariance = _cov
         self._bw = np.sqrt(_cov)
 
+    @property
+    def cov(self):
+        """
+        Covariance of the gaussian kernel.
+        Can be set either as a fixed value or using a bandwith calculator, that is a function
+        of signature ``w(xdata, ydata)`` that returns a single value.
+
+        .. note::
+
+            A ndarray with a single value will be converted to a floating point value.
+        """
+        return self.covariance
+
+    @cov.setter
+    def cov(self, val):
+        self.covariance = val
+
+    @property
+    def kernel(self):
+        r"""
+        Kernel object. Should provide the following methods:
+
+        ``kernel.pdf(xs)``
+            Density of the kernel, denoted :math:`K(x)`
+
+        By default, the kernel is an instance of :py:class:`kernels.normal_kernel1d`
+        """
+        return self._kernel
+
+    @kernel.setter
+    def kernel(self, val):
+        self._kernel = val
+
     def evaluate(self, points, output=None):
         """
         Evaluate the spatial averaging on a set of points
@@ -310,16 +367,15 @@ class LocalPolynomialKernel1D(object):
         xdata = self.xdata[:,np.newaxis] # make it a column vector
         ydata = self.ydata[:,np.newaxis] # make it a column vector
         q = self.q
-        powers = np.arange(0,q+1).reshape((1,q+1)) # This is a line vector
-        frac = gamma(powers+1) # gamma(x+1) = x! if x is integer
         bw = self.bandwidth
         kernel = self.kernel
+        designMatrix = self.designMatrix(q)
         if output is None:
             output = np.empty(points.shape, dtype=float)
         for i,p in enumerate(points):
             dX = (xdata - p)
             Wx = kernel(dX/bw)
-            Xx = np.power(dX, powers) / frac
+            Xx = designMatrix(dX)
             WxXx = Wx*Xx
             XWX = np.dot(Xx.T, WxXx)
             Lx = solve(XWX, WxXx.T)[0]
@@ -332,78 +388,88 @@ class LocalPolynomialKernel1D(object):
         """
         return self.evaluate(*args, **kwords)
 
-def designMatrixSize(dim, deg, factors = False):
-    """
-    Compute the size of the design matrix for a n-D problem of order d. Can also
-    compute the Taylors factors (i.e. the factors that would be applied for the
-    taylor decomposition)
+class PolynomialDesignMatrix(object):
+    def __init__(self, dim, deg):
+        self.dim = dim
+        self.deg = deg
 
-    :param int dim: Dimension of the problem
-    :param int deg: Degree of the fitting polynomial
-    :param bool factors: If true, the output includes the Taylor factors
+        self._designMatrixSize()
 
-    :returns: The number of columns in the design matrix and, if required, a
-        ndarray with the taylor coefficients for each column of the design matrix.
-    """
-    init = 1
-    dims = [0] * (dim+1)
-    cur = init
-    prev = 0
-    if factors:
-        fcts = [1]
-    fact = 1
-    for i in xrange(deg):
-        diff = cur - prev
-        prev = cur
-        old_dims = list(dims)
-        fact *= (i+1)
-        for j in xrange(dim):
-            dp = diff - old_dims[j]
-            cur += dp
-            dims[j+1] = dims[j]+dp
-        if factors:
-            fcts += [fact]*(cur-prev)
-    if factors:
-        return cur, np.array(fcts)
-    return cur
+    def _designMatrixSize(self):
+        """
+        Compute the size of the design matrix for a n-D problem of order d. Can also
+        compute the Taylors factors (i.e. the factors that would be applied for the
+        taylor decomposition)
 
-def designMatrix(x, deg, factors = None, out = None):
-    """
-    Creates the design matrix for polynomial fitting using the points x.
+        :param int dim: Dimension of the problem
+        :param int deg: Degree of the fitting polynomial
+        :param bool factors: If true, the output includes the Taylor factors
 
-    :param ndarray x: Points to create the design matrix. Shape must be (D,N)
-        or (N,), where D is the dimension of the problem, 1 if not there.
+        :returns: The number of columns in the design matrix and, if required, a
+            ndarray with the taylor coefficients for each column of the design matrix.
+        """
+        dim = self.dim
+        deg = self.deg
+        init = 1
+        dims = [0] * (dim+1)
+        cur = init
+        prev = 0
+        #if factors:
+        #    fcts = [1]
+        fact = 1
+        for i in xrange(deg):
+            diff = cur - prev
+            prev = cur
+            old_dims = list(dims)
+            fact *= (i+1)
+            for j in xrange(dim):
+                dp = diff - old_dims[j]
+                cur += dp
+                dims[j+1] = dims[j]+dp
+        #    if factors:
+        #        fcts += [fact]*(cur-prev)
+        self.size = cur
+        #self.factors = np.array(fcts)
 
-    :param int deg: Degree of the fitting polynomial
+    def __call__(x, out = None):
+        """
+        Creates the design matrix for polynomial fitting using the points x.
 
-    :param ndarray factors: Scaling factor for the columns of the design
-        matrix. The shape should be (M,) or (M,1), where M is the number of columns
-        of the output. This value can be obtained using the :py:func:`designMatrixSize` function.
+        :param ndarray x: Points to create the design matrix. Shape must be (D,N)
+            or (N,), where D is the dimension of the problem, 1 if not there.
 
-    :returns: The design matrix as a (M,N) matrix.
-    """
-    x = np.atleast_2d(x)
-    dim = x.shape[0]
-    if out is None:
-        s = designMatrixSize(dim, deg)
-        out = np.empty((s, x.shape[1]), dtype=x.dtype)
-    dims = [0]*(dim+1)
-    out[0,:] = 1
-    cur = 1
-    for i in xrange(deg):
-        old_dims = list(dims)
-        prev = cur
-        for j in xrange(x.shape[0]):
-            dims[j] = cur
-            for k in xrange(old_dims[j], prev):
-                np.multiply(out[k], x[j], out[cur])
-                cur += 1
-    if factors is not None:
-        factors = np.asarray(factors)
-        if len(factors.shape) == 1:
-            factors = factors[:,np.newaxis]
-        out /= factors
-    return out
+        :param int deg: Degree of the fitting polynomial
+
+        :param ndarray factors: Scaling factor for the columns of the design
+            matrix. The shape should be (M,) or (M,1), where M is the number of columns
+            of the output. This value can be obtained using the :py:func:`designMatrixSize` function.
+
+        :returns: The design matrix as a (M,N) matrix.
+        """
+        dim = self.dim
+        #factors = self.factors
+        x = np.atleast_2d(x)
+        dim = x.shape[0]
+        if out is None:
+            s = designMatrixSize(dim, deg)
+            out = np.empty((s, x.shape[1]), dtype=x.dtype)
+        dims = [0]*(dim+1)
+        out[0,:] = 1
+        cur = 1
+        for i in xrange(deg):
+            old_dims = list(dims)
+            prev = cur
+            for j in xrange(x.shape[0]):
+                dims[j] = cur
+                for k in xrange(old_dims[j], prev):
+                    np.multiply(out[k], x[j], out[cur])
+                    cur += 1
+        #if factors is not None:
+        #    factors = np.asarray(factors)
+        #    if len(factors.shape) == 1:
+        #        factors = factors[:,np.newaxis]
+        #    out /= factors
+        return out
 
 
 class LocalPolynomialKernel(object):
@@ -508,7 +574,7 @@ class LocalPolynomialKernel(object):
         n = self.n
         q = self.q
         d = self.d
-        dm_size, frac = designMatrixSize(d, q, True)
+        designMatrix = PolynomialDesignMatrix(d, q)
         Xx = np.empty((dm_size, n), dtype=xdata.dtype)
         WxXx = np.empty(Xx.shape, dtype=xdata.dtype)
         XWX = np.empty((dm_size,dm_size), dtype=xdata.dtype)
@@ -519,7 +585,7 @@ class LocalPolynomialKernel(object):
         for i in xrange(points.shape[1]):
             dX = (xdata - points[:,i:i+1])
             Wx = kernel(np.dot(inv_bw, dX))
-            designMatrix(dX, q, frac, out = Xx)
+            designMatrix(dX, out = Xx)
             np.multiply(Wx, Xx, WxXx)
             np.dot(Xx, WxXx.T, XWX)
             Lx = solve(XWX, WxXx)[0]
