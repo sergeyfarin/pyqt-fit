@@ -24,7 +24,7 @@ def variance_bandwidth(factor, xdata):
     sq_bandwidth = data_covariance*factor*factor
     return sq_bandwidth
 
-def silverman_bandwidth(xdata, ydata = None):
+def silverman_bandwidth(xdata, ydata = None, model=None):
     r"""
     The Silverman bandwidth is defined as a variance bandwidth with factor:
 
@@ -36,7 +36,7 @@ def silverman_bandwidth(xdata, ydata = None):
     d,n = xdata.shape
     return variance_bandwidth(np.power(n*(d+2.)/4., -1./(d+4.)), xdata)
 
-def scotts_bandwidth(xdata, ydata = None):
+def scotts_bandwidth(xdata, ydata = None, model=None):
     r"""
     The Scotts bandwidth is defined as a variance bandwidth with factor:
 
@@ -61,6 +61,9 @@ def _botev_fixed_point(t, M, I, a2):
         f=2*np.pi**(2*s)*np.sum(I**s*a2*np.exp(-I*np.pi**2*time))
     return t-(2*M*np.sqrt(np.pi)*f)**(-2/5)
 
+def finite(val):
+    return val is not None and np.isfinite(val)
+
 class botev_bandwidth(object):
     """
     Implementation of the KDE bandwidth selection method outline in:
@@ -72,24 +75,24 @@ class botev_bandwidth(object):
 
     The object is a callable returning the bandwidth for a 1D kernel.
     """
-    def __init__(self, lower=None, upper=None, N = None):
-        self.lower = lower
-        self.upper = upper
+    def __init__(self, N=None, **kword):
+        if 'lower' in kword or 'upper' in kword:
+            print("Warning, using 'lower' and 'uper' for botev bandwidth is deprecated. Argument is ignored")
         self.N = N
 
-    def __call__(self, data):
+    def __call__(self, data, model, ydata=None):
         """
         Returns the optimal bandwidth based on the data
         """
         N = 2**10 if self.N is None else int(2**np.ceil(np.log2(self.N)))
-        lower = self.lower
-        upper = self.upper
-        if lower is None or upper is None:
+        lower = getattr(model, 'lower', None)
+        upper = getattr(model, 'upper', None)
+        if not finite(lower) or not finite(upper):
             minimum = np.min(data)
             maximum = np.max(data)
             span = maximum - minimum
-            lower = minimum - span / 10 if lower is None else lower
-            upper = maximum + span / 10 if upper is None else upper
+            lower = minimum - span / 10 if not finite(lower) else lower
+            upper = maximum + span / 10 if not finite(upper) else upper
         # Range of the data
         span = upper - lower
 
@@ -267,10 +270,10 @@ class KDE1D(object):
         Re-compute the bandwidth if it was specified as a function.
         """
         if self._bw_fct:
-            _bw = float(self._bw_fct(self._xdata))
+            _bw = float(self._bw_fct(self._xdata, model=self))
             _cov = _bw*_bw
         elif self._cov_fct:
-            _cov = float(self._cov_fct(self._xdata))
+            _cov = float(self._cov_fct(self._xdata, model=self))
             _bw = np.sqrt(_cov)
         else:
             return
