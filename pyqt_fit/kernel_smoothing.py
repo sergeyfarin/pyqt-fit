@@ -389,6 +389,9 @@ class LocalPolynomialKernel1D(object):
         return self.evaluate(*args, **kwords)
 
 class PolynomialDesignMatrix(object):
+    """
+    Class used to create a design matrix for polynomial regression
+    """
     def __init__(self, dim, deg):
         self.dim = dim
         self.deg = deg

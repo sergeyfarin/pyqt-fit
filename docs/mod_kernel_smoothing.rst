@@ -21,7 +21,6 @@ Kernel Smoothing Methods
 Utility functions
 -----------------
 
-.. autofunction:: designMatrix
-
-.. autofunction:: designMatrixSize
+.. autoclass:: PolynomialDesignMatrix
+  :members: __call__
 

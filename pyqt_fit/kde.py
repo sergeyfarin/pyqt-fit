@@ -8,6 +8,7 @@ from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special import erf, gamma
 from .kernels import normal_kernel1d
+from .utils import namedtuple
 from scipy import fftpack, optimize
 
 def variance_bandwidth(factor, xdata):
@@ -265,6 +266,18 @@ class KDE1D(object):
         if self._method is None:
             self.method = 'renormalization'
 
+    def copy(self):
+        """
+        Shallow copy of the KDE object
+        """
+        res = KDE1D.__new__(KDE1D)
+        mems = ['_xdata', '_upper', '_lower', '_kernel', '_bw_fct', '_bw', '_cov_fct',
+                '_covariance', '_method', '_weights', '_total_weights', '_lambdas', '_evaluate',
+                '_grid_eval' ]
+        for m in mems:
+            setattr(res, m, getattr(self, m))
+        return res
+
     def update_bandwidth(self):
         """
         Re-compute the bandwidth if it was specified as a function.
@@ -459,7 +472,7 @@ class KDE1D(object):
             self._covariance = cov
             self._bw = np.sqrt(cov)
 
-    def evaluate_unbounded(self, points, output=None):
+    def _evaluate_unbounded(self, points, output=None):
         """
         Method to use if there is, effectively, no bounds
         """
@@ -481,7 +494,7 @@ class KDE1D(object):
 
         return output
 
-    def evaluate_renorm(self, points, output=None):
+    def _evaluate_renorm(self, points, output=None):
         xdata = self.xdata
         points = np.atleast_1d(points)[:,np.newaxis]
 
@@ -502,7 +515,7 @@ class KDE1D(object):
 
         return output
 
-    def evaluate_reflexion(self, points, output=None):
+    def _evaluate_reflexion(self, points, output=None):
         xdata = self.xdata
         points = np.atleast_1d(points)[:,np.newaxis]
 
@@ -529,7 +542,7 @@ class KDE1D(object):
 
         return output
 
-    def evaluate_cyclic(self, points, output=None):
+    def _evaluate_cyclic(self, points, output=None):
         if not self.closed:
             raise ValueError("Cyclic boundary conditions can only be used with closed domains.")
 
@@ -556,7 +569,7 @@ class KDE1D(object):
 
         return output
 
-    def evaluate_linear(self, points, output=None):
+    def _evaluate_linear(self, points, output=None):
         xdata = self.xdata
         points = np.atleast_1d(points)[:,np.newaxis]
 
@@ -589,7 +602,7 @@ class KDE1D(object):
         """
         if self.bounded:
             return self._evaluate(points, output=output)
-        return self.evaluate_unbounded(points, output=output)
+        return self._evaluate_unbounded(points, output=output)
 
     def __call__(self, points, output=None):
         """
@@ -616,14 +629,14 @@ class KDE1D(object):
 
     @method.setter
     def method(self, m):
-        _known_methods = { 'renormalization': self.evaluate_renorm,
-                           'reflexion': self.evaluate_reflexion,
-                           'linear_combination': self.evaluate_linear,
-                           'cyclic': self.evaluate_cyclic}
-        _known_grid = { 'renormalization': self.grid_eval,
-                        'reflexion': self.grid_reflexion,
-                        'linear_combination': self.grid_eval,
-                        'cyclic': self.grid_cyclic }
+        _known_methods = { 'renormalization': self._evaluate_renorm,
+                           'reflexion': self._evaluate_reflexion,
+                           'linear_combination': self._evaluate_linear,
+                           'cyclic': self._evaluate_cyclic}
+        _known_grid = { 'renormalization': self._grid_eval,
+                        'reflexion': self._grid_reflexion,
+                        'linear_combination': self._grid_eval,
+                        'cyclic': self._grid_cyclic }
         if m not in _known_methods:
             raise ValueError("Error, method must be one of 'renormalization', 'reflexion', 'cyclic' or 'linear_combination'")
         self._evaluate = _known_methods[m]
@@ -645,21 +658,21 @@ class KDE1D(object):
         return self.lower > -np.inf or self.upper < np.inf
 
 
-    def grid_eval(self, N = None):
+    def _grid_eval(self, N = None):
         N = 2**10 if N is None else N
         lower = np.min(self.xdata) - 2*self.bandwidth if self.lower == -np.inf else self.lower
         upper = np.max(self.xdata) + 2*self.bandwidth if self.upper ==  np.inf else self.upper
         g = np.r_[lower:upper:N*1j]
         return g, self(g)
 
-    def grid_cyclic(self, N):
+    def _grid_cyclic(self, N):
         """
         FFT-based estimation of KDE estimation, i.e. with cyclic boundary conditions.
         This works only for closed domains, fixed bandwidth (i.e. lambdas = 1)
         and gaussian kernel.
         """
         if self.lambdas.shape:
-            return self.grid_eval(N)
+            return self._grid_eval(N)
         if not self.closed:
             raise ValueError("Error, cyclic boundary conditions require a closed domain.")
         bw = self.bandwidth * self.lambdas
@@ -689,7 +702,7 @@ class KDE1D(object):
         density = fftpack.ifft(SmoothFFTData) / (mesh[1]-mesh[0])
         return mesh[:-2], density.real
 
-    def grid_reflexion(self, N = None):
+    def _grid_reflexion(self, N = None):
         """
         DCT-based estimation of KDE estimation, i.e. with reflexion boundary
         conditions. This works only for fixed bandwidth (i.e. lambdas = 1) and
@@ -699,7 +712,7 @@ class KDE1D(object):
         space to remove the boundary problems.
         """
         if self.lambdas.shape:
-            return self.grid_eval(N)
+            return self._grid_eval(N)
 
         bw = self.bandwidth * self.lambdas
         data = self.xdata
@@ -745,6 +758,133 @@ class KDE1D(object):
         :returns: a tuple with the mesh on which the density is evaluated and the density itself
         """
         if not self.bounded:
-            return self.grid_reflexion(N)
+            return self._grid_reflexion(N)
         return self._grid_eval(N)
+
+Transform = namedtuple('Tranform', ['__call__', 'inv', 'Dinv' ])
+
+LogTransform = Transform(np.log, np.exp, np.exp)
+ExpTransform = Transform(np.exp, np.log, lambda x: 1/x)
+
+def transform_distribution(xs, ys, Dfct, output = None):
+    """
+    Transform a distribution into another one by a change a variable.
+
+    Given a random variable :math:`X` of distribution :math:`f_X`, the random
+    variable :math:`Y = g(X)` has a distribution :math:`f_Y` given by:
+
+    .. math::
+
+        f_Y(y) = \left| \frac{1}{g'(g^{-1}(y))} \right| \cdot f_X(g^{-1}(y))
+
+    """
+    return np.multiply(np.abs(1/Dfct(xs)),ys,output)
+
+def create_transform(obj, inv=None, Dinv = None):
+    if isinstance(obj, Transform):
+        return obj
+    fct = obj.__call__
+    if inv is None:
+        if not hasattr(obj, 'inv'):
+            raise AttributeError("Error, transform object must have a 'inv' attribute or you must specify 'inv'")
+        inv = obj.inv if hasattr(obj, 'inv') else inv
+    if Dinv is None:
+        if hasattr(obj, Dinv):
+            Dinv = obj.Dinv
+        else:
+            def Dinv(x):
+                x = asfarray(x)
+                dx = x * 1e-9
+                dx[x==0] = np.min(dx[x!=0])
+                return (inv(x+dx) - inv(x-dx))/(2*dx)
+    return Transform(fct, inv, Dinv)
+
+class TransformKDE(object):
+    r"""
+    Compute the Kernel Density Estimate of a dataset, transforming it first to
+    a domain where distances are "more meaningful".
+
+    Often, KDE is best estimated in a different domain. This object takes a
+    KDE1D object (or one compatible), and a transformation function.
+
+    Given a random variable :math:`X` of distribution :math:`f_X`, the random
+    variable :math:`Y = g(X)` has a distribution :math:`f_Y` given by:
+
+    .. math::
+
+        f_Y(y) = \left| \frac{1}{g'(g^{-1}(y))} \right| \cdot f_X(g^{-1}(y))
+
+    In our term, :math:`Y` is the random variable the user is interested in,
+    and :math:`X` the random variable we can estimate using the KDE. In this
+    case, :math:`g` is the transform from :math:`Y` to :math:`X`.
+
+    So to estimate the distribution on a set of points given in :math:`x`, we
+    need a total of three functions:
+
+        - Direct function: transform from the original space to the one in
+          which the KDE will be perform (i.e. :math:`g^{-1}: y \mapsto x`)
+        - Invert function: transform from the KDE space to the original one
+          (i.e. :math:`g: x \mapsto y`)
+        - Derivative of the invert function
+
+    If the derivative is not provided, it will be estimated numerically.
+
+    :param kde: KDE evaluation object
+    :param trans: Either a simple function, or a function object with
+           attributes `inv` and `Dinv` to use in case they are not provided as arguments.
+    :param inv: Invert of the function. If not provided, `trans` must have it as attribute.
+    :param Dinv: Derivative of the invert function.
+
+    Any unknown member is forwarded to the underlying KDE object.
+    """
+    def __init__(self, kde, trans, inv=None, Dinv=None):
+        d = self.__dict__
+        trans = create_transform(trans, inv, Dinv)
+        d['trans'] = trans
+        d['kde'] = kde.copy()
+        self.kde.xdata = trans(kde.xdata)
+        self.kde.lower = trans(kde.lower)
+        self.kde.upper = trans(kde.upper)
+        self.kde.update_bandwidth()
+
+    def copy(self):
+        """
+        Creates a shallow copy of the TransformKDE object
+        """
+        res = TransformKDE.__new__(TransformKDE)
+        d = res.__dict__
+        d['trans'] = self.trans
+        d['kde'] = self.kde
+        return res
+
+    def evaluate(self, points, output=None):
+        """
+        Evaluate the KDE on a set of points
+        """
+        trans = self.trans
+        pts = trans(points)
+        output = self.kde(pts, output)
+        return transform_distribution(pts, output, trans.Dinv, output)
+
+    def __call__(self, points, output = None):
+        """
+        Evaluate the KDE on a set of points
+        """
+        return self.evaluate(points, output)
+
+    def grid(self, N = None):
+        """
+        Evaluate the KDE on a grid of points with N points.
+
+        The grid is regular *in the transformed domain*, so as to use FFT or CDT methods when applicable.
+        """
+        xs, ys = self.kde.grid(N)
+        trans = self.trans
+        return trans.inv(xs), transform_distribution(xs, ys, trans.Dinv)
+
+    def __getattr__(self, name):
+        return getattr(self.kde, name)
+
+    def __setattr__(self, name, value):
+        return setattr(self.kde, name, value)
 
