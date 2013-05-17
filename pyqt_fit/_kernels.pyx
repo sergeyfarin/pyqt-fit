@@ -9,7 +9,7 @@ from libc.math cimport exp, sqrt, M_PI, pow
 np.import_array()
 
 ctypedef np.npy_float64 float64_t
-ctypedef np.npy_float128 float128_t
+#ctypedef np.npy_float128 float128_t
 
 cdef float64_t S2PI = sqrt(2.0*M_PI)
 cdef float64_t S2 = sqrt(2.0)
@@ -64,7 +64,7 @@ def norm1d_pm2(object z, object out = None):
     return vectorize(z, out, _norm1d_pm2)
 
 cdef float64_t tricube_a = sqrt(35./243)
-cdef float128_t tricube_al = sqrtl(35./243)
+#cdef float128_t tricube_al = sqrtl(35./243)
 tricube_width = tricube_a
 
 cdef float64_t _tricube_pdf(float64_t z):
@@ -91,17 +91,17 @@ def tricube_cdf(object z, object out = None):
     return vectorize(z, out, _tricube_cdf)
 
 cdef float64_t _tricube_pm1(float64_t zc):
-    cdef float128_t z = zc
+    cdef float64_t z = zc
     z *= tricube_al
     if z < -1 or z > 1:
         return 0
     if z < 0:
         z = -z
-    cdef float128_t z2 = z*z
-    cdef float128_t z3 = z2*z
-    cdef float128_t z5 = z3*z2
-    cdef float128_t z8 = z5*z3
-    cdef float128_t z11 = z8*z3
+    cdef float64_t z2 = z*z
+    cdef float64_t z3 = z2*z
+    cdef float64_t z5 = z3*z2
+    cdef float64_t z8 = z5*z3
+    cdef float64_t z11 = z8*z3
     return 7./(tricube_al*3564)*(165*z8 - 8.*(5*z11 + 33.*z5) + 220*z2 - 81)
 
 def tricube_pm1(object z, object out = None):
