@@ -1,5 +1,6 @@
 v1.1.13, 17/5/2013
  - Removed reference to npy_float128. Seems it doesn't work on 32 bits machines.
+ - Adapted to 32 bits machines
 v1.1.12, 15/5/2013
  - Added transformed KDE class, to compute KDE using variable change
 v1.1.11, 27/2/2013
