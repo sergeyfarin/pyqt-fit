@@ -633,9 +633,9 @@ class KDE1D(object):
                            'reflexion': self._evaluate_reflexion,
                            'linear_combination': self._evaluate_linear,
                            'cyclic': self._evaluate_cyclic}
-        _known_grid = { 'renormalization': self._grid_eval,
+        _known_grid = { 'renormalization': self.grid_eval,
                         'reflexion': self._grid_reflexion,
-                        'linear_combination': self._grid_eval,
+                        'linear_combination': self.grid_eval,
                         'cyclic': self._grid_cyclic }
         if m not in _known_methods:
             raise ValueError("Error, method must be one of 'renormalization', 'reflexion', 'cyclic' or 'linear_combination'")
@@ -658,7 +658,7 @@ class KDE1D(object):
         return self.lower > -np.inf or self.upper < np.inf
 
 
-    def _grid_eval(self, N = None):
+    def grid_eval(self, N = None):
         N = 2**10 if N is None else N
         lower = np.min(self.xdata) - 2*self.bandwidth if self.lower == -np.inf else self.lower
         upper = np.max(self.xdata) + 2*self.bandwidth if self.upper ==  np.inf else self.upper
@@ -672,7 +672,7 @@ class KDE1D(object):
         and gaussian kernel.
         """
         if self.lambdas.shape:
-            return self._grid_eval(N)
+            return self.grid_eval(N)
         if not self.closed:
             raise ValueError("Error, cyclic boundary conditions require a closed domain.")
         bw = self.bandwidth * self.lambdas
@@ -712,7 +712,7 @@ class KDE1D(object):
         space to remove the boundary problems.
         """
         if self.lambdas.shape:
-            return self._grid_eval(N)
+            return self.grid_eval(N)
 
         bw = self.bandwidth * self.lambdas
         data = self.xdata

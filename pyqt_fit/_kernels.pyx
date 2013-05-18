@@ -3,7 +3,7 @@
 
 import numpy as np
 cimport numpy as np
-from math cimport isfinite, erf, fabs, sqrtl
+from math cimport isfinite, erf, fabs
 from libc.math cimport exp, sqrt, M_PI, pow
 
 np.import_array()
@@ -92,7 +92,7 @@ def tricube_cdf(object z, object out = None):
 
 cdef float64_t _tricube_pm1(float64_t zc):
     cdef float64_t z = zc
-    z *= tricube_al
+    z *= tricube_a
     if z < -1 or z > 1:
         return 0
     if z < 0:
@@ -102,7 +102,7 @@ cdef float64_t _tricube_pm1(float64_t zc):
     cdef float64_t z5 = z3*z2
     cdef float64_t z8 = z5*z3
     cdef float64_t z11 = z8*z3
-    return 7./(tricube_al*3564)*(165*z8 - 8.*(5*z11 + 33.*z5) + 220*z2 - 81)
+    return 7./(tricube_a*3564)*(165*z8 - 8.*(5*z11 + 33.*z5) + 220*z2 - 81)
 
 def tricube_pm1(object z, object out = None):
     return vectorize(z, out, _tricube_pm1)

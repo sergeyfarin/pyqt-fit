@@ -29,7 +29,10 @@ class TestBandwidth(object):
         yield self.variance_methods, kde.scotts_bandwidth
 
     def test_botev(self):
-        bws = np.array([ kde.botev_bandwidth()(v) for v in self.vs ])
+        class FakeModel(object):
+            lower=-np.inf
+            upper = np.inf
+        bws = np.array([ kde.botev_bandwidth()(v, model=FakeModel()) for v in self.vs ])
         assert bws.shape == (3,)
         rati = bws**2 / self.ss
         assert sum((rati - rati[0])**2) < 1e-6
@@ -53,7 +56,7 @@ class TestUnboundedKDE1D(object):
 
     def is_normed(self, i):
         k = kde.KDE1D(self.vs[i], **self.args)
-        xs, ys = k.grid_eval(2048)
+        xs, ys = k._grid_eval(2048)
         tot = sum(ys)*(xs[1]-xs[0])
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
@@ -74,7 +77,7 @@ class TestUnboundedKDE1D(object):
     def is_ws_normed(self, i):
         ws = np.r_[1:2:self.sizes[i]*1j]
         k = kde.KDE1D(self.vs[i], weights=ws, **self.args)
-        xs, ys = k.grid_eval(2048)
+        xs, ys = k._grid_eval(2048)
         tot = sum(ys)*(xs[1]-xs[0])
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
@@ -96,7 +99,7 @@ class TestUnboundedKDE1D(object):
     def is_ls_normed(self, i):
         ws = np.r_[1:2:self.sizes[i]*1j]
         k = kde.KDE1D(self.vs[i], lambdas=ws, **self.args)
-        xs, ys = k.grid_eval(2048)
+        xs, ys = k._grid_eval(2048)
         tot = sum(ys)*(xs[1]-xs[0])
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
