@@ -5,7 +5,7 @@ from .. import kde
 import numpy as np
 from numpy import newaxis
 from numpy.random import randn
-from scipy import stats
+from scipy import stats, integrate
 
 class TestBandwidth(object):
 
@@ -46,24 +46,27 @@ class TestUnboundedKDE1D(object):
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = {}
-        cls.grid_accuracy = 1e-7
+        cls.grid_accuracy = 1e-6
         cls.accuracy = 1e-3
+
+    def createKDE(self, data, **args):
+        return kde.KDE1D(data, **args)
 
     def test_converge(self):
         xs = np.r_[-3:3:512j]
         ys = self.dist.pdf(xs)
-        ks = [ kde.KDE1D(v, **self.args) for v in self.vs ]
+        ks = [ self.createKDE(v, **self.args) for v in self.vs ]
 
     def is_normed(self, i):
-        k = kde.KDE1D(self.vs[i], **self.args)
+        k = self.createKDE(self.vs[i], **self.args)
         xs, ys = k._grid_eval(2048)
-        tot = sum(ys)*(xs[1]-xs[0])
+        tot = integrate.simps(ys, xs) # sum(ys)*(xs[1]-xs[0])
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
     def is_grid_normed(self, i):
-        k = kde.KDE1D(self.vs[i], **self.args)
+        k = self.createKDE(self.vs[i], **self.args)
         xs, ys = k.grid(2048)
-        tot = sum(ys)*(xs[1]-xs[0])
+        tot = integrate.simps(ys, xs) # sum(ys)*(xs[1]-xs[0])
         assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_normed(self):
@@ -76,16 +79,16 @@ class TestUnboundedKDE1D(object):
 
     def is_ws_normed(self, i):
         ws = np.r_[1:2:self.sizes[i]*1j]
-        k = kde.KDE1D(self.vs[i], weights=ws, **self.args)
+        k = self.createKDE(self.vs[i], weights=ws, **self.args)
         xs, ys = k._grid_eval(2048)
-        tot = sum(ys)*(xs[1]-xs[0])
+        tot = integrate.simps(ys, xs) # sum(ys)*(xs[1]-xs[0])
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
     def is_ws_grid_normed(self, i):
         ws = np.r_[1:2:self.sizes[i]*1j]
-        k = kde.KDE1D(self.vs[i], weights=ws, **self.args)
+        k = self.createKDE(self.vs[i], weights=ws, **self.args)
         xs, ys = k.grid(2048)
-        tot = sum(ys)*(xs[1]-xs[0])
+        tot = integrate.simps(ys, xs) # sum(ys)*(xs[1]-xs[0])
         assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_ws_normed(self):
@@ -98,9 +101,9 @@ class TestUnboundedKDE1D(object):
 
     def is_ls_normed(self, i):
         ws = np.r_[1:2:self.sizes[i]*1j]
-        k = kde.KDE1D(self.vs[i], lambdas=ws, **self.args)
+        k = self.createKDE(self.vs[i], lambdas=ws, **self.args)
         xs, ys = k._grid_eval(2048)
-        tot = sum(ys)*(xs[1]-xs[0])
+        tot = integrate.simps(ys, xs) # sum(ys)*(xs[1]-xs[0])
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_ls_normed(self):
@@ -124,7 +127,7 @@ class TestCyclicKDE1D(TestUnboundedKDE1D):
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method='cyclic')
-        cls.grid_accuracy = 1e-7
+        cls.grid_accuracy = 1e-6
         cls.accuracy = 1e-3
 
 class TestRenormKDE1D(TestUnboundedKDE1D):
