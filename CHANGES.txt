@@ -5,6 +5,7 @@ v1.1.13, 21/4/2013
    functions
  - Free switching between pure python and cython kernels
  - Cython 1.19 is not really needed, so downgrading the need to 1.17
+ - Moved Cython dependencies into an "extra" with name 'Cython'
 v1.1.12, 15/5/2013
   - Added transformed KDE class, to compute KDE using variable change
 v1.1.11, 27/2/2013
