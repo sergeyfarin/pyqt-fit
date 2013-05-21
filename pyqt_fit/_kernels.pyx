@@ -126,7 +126,7 @@ def tricube_pm2(object z, object out = None):
     return vectorize(z, out, _tricube_pm2)
 
 cdef float64_t epanechnikov_a = 1./sqrt(5.)
-epanechnikov_A = epanechnikov_a
+epanechnikov_width = epanechnikov_a
 
 cdef float64_t _epanechnikov_pdf(float64_t z):
     z *= epanechnikov_a
