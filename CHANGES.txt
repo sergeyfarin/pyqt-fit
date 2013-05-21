@@ -3,6 +3,7 @@ v1.1.13, 21/4/2013
  - Adapted to 32 bits machines
  - If cython is not present (on not wanted!), kernels exist also as pure python
    functions
+ - Free switching between pure python and cython kernels
  - Cython 1.19 is not really needed, so downgrading the need to 1.17
 v1.1.12, 15/5/2013
   - Added transformed KDE class, to compute KDE using variable change
