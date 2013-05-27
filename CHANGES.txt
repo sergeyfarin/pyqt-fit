@@ -1,6 +1,7 @@
-v.1.1.14, 27/5/2013
+v1.1.14, 27/5/2013
  - Unifying code base using a compatibility module
  - sharedmem.py is now the same for Python2 and Python3 (and working with python3!)
+ - cleaned and corrected CSV output code for python 2 and python 3
 v1.1.13, 21/5/2013
  - Removed reference to npy_float128. Seems it doesn't work on 32 bits machines.
  - Adapted to 32 bits machines
