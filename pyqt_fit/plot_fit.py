@@ -8,8 +8,9 @@ from __future__ import division, print_function, absolute_import
 from .curve_fitting import CurveFitting
 from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
 from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, clf, ylim, hist, suptitle, gca
+from .compat import izip
 from . import bootstrap
-from itertools import izip, chain
+from itertools import chain
 from scipy.special import erfinv, gamma
 from scipy import stats
 #try:
