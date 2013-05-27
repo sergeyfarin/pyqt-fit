@@ -6,7 +6,7 @@ from ..utils import namedtuple
 from .. import loader
 from path import path
 import os
-from itertools import izip
+from ..compat import izip
 
 _fields = ['name', 'description', 'invert', 'Dfun', '__call__']
 

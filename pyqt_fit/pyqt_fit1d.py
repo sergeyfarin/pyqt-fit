@@ -2,6 +2,8 @@
 from __future__ import division, print_function, absolute_import
 from . import cyth
 from . import functions, residuals, plot_fit, bootstrap
+from .compat import izip, CSV_READ_FLAGS, DECODE_STRING, user_text
+
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt
 import matplotlib
@@ -12,9 +14,8 @@ from csv import reader as csv_reader
 from csv import writer as csv_writer
 import sys
 from pylab import close as close_figure
-from itertools import izip, chain
+from itertools import chain
 import traceback
-from compat import CSV_READ_FLAGS, DECODE_STRING
 
 def get_args(*a, **k):
     return a,k
@@ -302,8 +303,8 @@ class QtFitDlg(QtGui.QDialog):
 
     def updateParameters(self):
         if self._data is not None and self.fct is not None and self.res is not None and self.fieldX is not None and self.fieldY is not None:
-            idxX = self.header.index(unicode(self.fieldX))
-            idxY = self.header.index(unicode(self.fieldY))
+            idxX = self.header.index(user_text(self.fieldX))
+            idxY = self.header.index(user_text(self.fieldY))
             self.param_model = ParametersModel(self._data, self.fct, self.res, idxX, idxY)
             self.parameters.setModel(self.param_model)
             minx = self._data[:,idxX].min()
@@ -325,7 +326,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_computeCI_toggled(self, on):
         if on:
             meth = self.CImethod.currentText()
-            ints = [float(f) for f in unicode(self.CIvalues.text()).split(";")]
+            ints = [float(f) for f in user_text(self.CIvalues.text()).split(";")]
             self.CI = [meth, ints]
         else:
             self.CI = None
@@ -338,7 +339,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_CIvalues_editingFinished(self):
         if self.CI:
             try:
-                ints = [float(f) for f in unicode(self.CIvalues.text()).split(";")]
+                ints = [float(f) for f in user_text(self.CIvalues.text()).split(";")]
                 self.setIntervals(ints)
             except:
                 pass
@@ -351,14 +352,14 @@ class QtFitDlg(QtGui.QDialog):
     @pyqtSignature("const QString&")
     def on_CImethod_currentIndexChanged(self, txt):
         if self.CI:
-            meth = unicode(txt)
+            meth = user_text(txt)
             self.setCIMethod(meth)
 
     def _getCI(self):
         return self._CI
     def _setCI(self, val):
         if val is not None:
-            val = (unicode(val[0]), [float(f) for f in val[1]])
+            val = (user_text(val[0]), [float(f) for f in val[1]])
         if val != self._CI:
             self._CI = val
             if val is not None:
@@ -416,9 +417,9 @@ class QtFitDlg(QtGui.QDialog):
                     xmax = float(self.xMax.text())
                 eval_points = arange(xmin, xmax, (xmax-xmin)/1024)
             CImethod = None
-            if unicode(self.CImethod.currentText()) == u"Bootstrapping":
+            if user_text(self.CImethod.currentText()) == u"Bootstrapping":
                 CImethod = bootstrap.bootstrap_regression
-            elif unicode(self.CImethod.currentText()) == u"Residual resampling":
+            elif user_text(self.CImethod.currentText()) == u"Residual resampling":
                 CImethod = bootstrap.bootstrap_residuals
             outfile = self.output
             CI = ()

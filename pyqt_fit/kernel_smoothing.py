@@ -10,7 +10,7 @@ from scipy.special import gamma
 from scipy.linalg import sqrtm, solve
 import scipy
 import numpy as np
-from compat import irange
+from .compat import irange
 
 from . import cyth
 from . import cy_local_linear

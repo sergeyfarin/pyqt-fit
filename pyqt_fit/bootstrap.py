@@ -9,12 +9,11 @@ import numpy as np
 from numpy.random import randint
 from scipy import optimize
 from collections import namedtuple
-from itertools import izip
 from . import kernel_smoothing
 from . import sharedmem
 import multiprocessing as mp
 from . import bootstrap_workers
-from compat import irange
+from .compat import irange, izip
 
 def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
     popt, pcov = optimize.curve_fit(fct, x, y, **kwrds)

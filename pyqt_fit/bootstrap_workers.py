@@ -1,9 +1,8 @@
 from __future__ import division, print_function, absolute_import
 from . import sharedmem
-from itertools import izip
 import sys
 import traceback
-from compat import irange
+from .compat import irange, izip
 
 def initialize_shared(nx, ny, result_array, extra_arrays, shuffled_x, shuffled_y, eval_points, extra_attrs, fit, fit_args, fit_kwrds):
     initialize(nx, ny, result_array.np, [ea.np for ea in extra_arrays], shuffled_x.np, shuffled_y.np, eval_points.np, extra_attrs, fit, fit_args, fit_kwrds)
