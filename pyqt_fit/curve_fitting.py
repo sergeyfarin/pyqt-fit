@@ -9,6 +9,7 @@ different kind of residual and added constraints function.
 from __future__ import division, print_function, absolute_import
 from scipy import optimize
 from numpy import array, inf
+from .compat import irange, lrange
 
 class CurveFitting(object):
     r"""
@@ -128,7 +129,7 @@ class CurveFitting(object):
         if fix_params:
             fix_params = tuple(fix_params)
             p_save = array(p0, dtype=float)
-            change_params = range(len(p0))
+            change_params = lrange(len(p0))
             try:
                 for i in fix_params:
                     change_params.remove(i)

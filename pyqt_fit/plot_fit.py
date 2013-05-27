@@ -382,7 +382,8 @@ def test():
     from pylab import plot, savefig, clf, legend, arange, figure, title, show
     from curve_fit import curve_fit
 
-    def test(x,(p0,p1,p2)):
+    def test(x,params):
+        p0, p1, p2 = params
         return p0 + p1*x + p2*x**2
 
     init = (10,1,1)

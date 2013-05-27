@@ -14,6 +14,7 @@ from . import kernel_smoothing
 from . import sharedmem
 import multiprocessing as mp
 from . import bootstrap_workers
+from compat import irange
 
 def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
     popt, pcov = optimize.curve_fit(fct, x, y, **kwrds)
@@ -255,7 +256,7 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method = bootstrap_residuals, shuff
     if base_repeat*nb_workers < repeats:
         base_repeat += 1
 
-    for i in xrange(nb_workers):
+    for i in irange(nb_workers):
         end_repeats = (i+1)*base_repeat
         if end_repeats > repeats:
             end_repeats = repeats
@@ -288,7 +289,8 @@ def test():
     from curve_fitting import curve_fit
     import residuals
 
-    def quadratic(x,(p0,p1,p2)):
+    def quadratic(x,params):
+        p0, p1, p2 = params
         return p0 + p1*x + p2*x**2
     #test = quadratic
     test = quad.quadratic

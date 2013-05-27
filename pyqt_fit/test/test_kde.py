@@ -6,6 +6,7 @@ import numpy as np
 from numpy import newaxis
 from numpy.random import randn
 from scipy import stats
+from ..compat import irange
 
 class TestBandwidth(object):
 
@@ -67,11 +68,11 @@ class TestUnboundedKDE1D(object):
         assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_normed(self):
-        for i in xrange(len(self.sizes)):
+        for i in irange(len(self.sizes)):
             yield self.is_normed, i
 
     def test_grid_normed(self):
-        for i in xrange(len(self.sizes)):
+        for i in irange(len(self.sizes)):
             yield self.is_grid_normed, i
 
     def is_ws_normed(self, i):
@@ -89,11 +90,11 @@ class TestUnboundedKDE1D(object):
         assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_ws_normed(self):
-        for i in xrange(len(self.sizes)):
+        for i in irange(len(self.sizes)):
             yield self.is_ws_normed, i
 
     def test_ws_grid_normed(self):
-        for i in xrange(len(self.sizes)):
+        for i in irange(len(self.sizes)):
             yield self.is_ws_grid_normed, i
 
     def is_ls_normed(self, i):
@@ -104,7 +105,7 @@ class TestUnboundedKDE1D(object):
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_ls_normed(self):
-        for i in xrange(len(self.sizes)):
+        for i in irange(len(self.sizes)):
             yield self.is_ls_normed, i
 
 class TestReflexionKDE1D(TestUnboundedKDE1D):

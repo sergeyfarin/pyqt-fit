@@ -14,15 +14,7 @@ import sys
 from pylab import close as close_figure
 from itertools import izip, chain
 import traceback
-
-if sys.version_info >= (3,):
-    CSV_READ_FLAGS = "rt"
-    def DECODE_STRING(s):
-        return s
-else:
-    CSV_READ_FLAGS = "rb"
-    def DECODE_STRING(s):
-        return s.decode('utf_8')
+from compat import CSV_READ_FLAGS, DECODE_STRING
 
 def get_args(*a, **k):
     return a,k
@@ -213,7 +205,7 @@ class QtFitDlg(QtGui.QDialog):
                 with open(txt, CSV_READ_FLAGS) as f:
                     try:
                         r = csv_reader(f)
-                        header = [ DECODE_STRING(t) for t in r.next() ]
+                        header = [ DECODE_STRING(t) for t in next(r) ]
                         if len(header) < 2:
                             QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
                             return
@@ -225,7 +217,7 @@ class QtFitDlg(QtGui.QDialog):
                         max_length = max(len(l) for l in data)
                         data = array([l + [nan]*(max_length-len(l)) for l in data], dtype=float)
                         data = ma.masked_invalid(data)
-                    except Exception, ex:
+                    except Exception as ex:
                         QtGui.QMessageBox.critical(self, "Error reading CSV file", str(ex))
                         data = None
                         header = None
@@ -451,7 +443,7 @@ class QtFitDlg(QtGui.QDialog):
                     result = plot_fit.fit_evaluation(fit, xdata, ydata, eval_points=eval_points,
                             xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
                             param_names = parm_names, res_name = res.name)
-            except Exception, ex:
+            except Exception as ex:
                 traceback.print_exc()
                 QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
                         "%s exception: %s" % (type(ex).__name__, ex.message))

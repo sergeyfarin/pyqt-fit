@@ -2,6 +2,7 @@ from __future__ import division, absolute_import
 import ctypes
 import multiprocessing as mp
 import numpy as np
+from compat import irange
 
 _ctypes_char_list = [
         ctypes.c_char,
@@ -65,7 +66,7 @@ def _shmem_as_ndarray(raw_array, shape = None, order='C'):
     dtype = _ctypes_to_numpy.get(raw_array._type_, None)
     if dtype is None:
         raise TypeError("Unknown conversion from {} to numpy type".format(raw_array._type_))
-    strides = tuple(item_size*np.prod(shape[i+1:], dtype=int) for i in xrange(len(shape)))
+    strides = tuple(item_size*np.prod(shape[i+1:], dtype=int) for i in irange(len(shape)))
     if order != 'C':
         strides = strides[::-1]
     d = _dummy()

@@ -6,7 +6,7 @@ from ..utils import namedtuple
 from .. import loader
 import os
 from path import path
-from itertools import izip
+from ..compat import izip
 
 _fields = ['name', 'description', 'args', 'init_args', 'Dfun', '__call__']
 
@@ -25,7 +25,7 @@ def find_functions(module):
                     break
             else:
                 result[obj.name] = obj
-        except Exception, ex: # Silently ignore any exception
+        except Exception as ex: # Silently ignore any exception
             print("Error: '{}'".format(ex))
             pass
     return result
