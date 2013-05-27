@@ -2,7 +2,9 @@
 from __future__ import division, print_function, absolute_import
 from . import cyth
 from . import functions, residuals, plot_fit, bootstrap
-from .compat import izip, CSV_READ_FLAGS, DECODE_STRING, user_text
+from .compat import izip, user_text, CSV_READ_FLAGS
+from .compat import unicode_csv_reader as csv_reader
+from .compat import unicode_csv_writer as csv_writer
 
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt
@@ -10,8 +12,6 @@ import matplotlib
 from numpy import nan, array, ma, isnan, arange, c_
 from path import path
 from .curve_fitting import CurveFitting
-from csv import reader as csv_reader
-from csv import writer as csv_writer
 import sys
 from pylab import close as close_figure
 from itertools import chain
@@ -206,7 +206,7 @@ class QtFitDlg(QtGui.QDialog):
                 with open(txt, CSV_READ_FLAGS) as f:
                     try:
                         r = csv_reader(f)
-                        header = [ DECODE_STRING(t) for t in next(r) ]
+                        header = next(r)
                         if len(header) < 2:
                             QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
                             return
