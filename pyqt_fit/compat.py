@@ -27,7 +27,7 @@ if PY2:
             self.csv = csv.writer(*args, **kwords)
 
         def writerows(self, rows):
-            return self.csv.writerow([[unicode(val).encode('utf-8') for val in row] for row in rows])
+            return self.csv.writerows([[unicode(val).encode('utf-8') for val in row] for row in rows])
 
         def writerow(self, row):
             return self.csv.writerow([unicode(val).encode('utf-8') for val in row])

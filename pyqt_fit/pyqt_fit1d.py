@@ -4,7 +4,6 @@ from . import cyth
 from . import functions, residuals, plot_fit, bootstrap
 from .compat import izip, user_text, CSV_READ_FLAGS
 from .compat import unicode_csv_reader as csv_reader
-from .compat import unicode_csv_writer as csv_writer
 
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import QObject, pyqtSignature, Qt
@@ -16,6 +15,9 @@ import sys
 from pylab import close as close_figure
 from itertools import chain
 import traceback
+import re
+
+CIsplitting = re.compile(r'[;, :-]')
 
 def get_args(*a, **k):
     return a,k
@@ -326,7 +328,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_computeCI_toggled(self, on):
         if on:
             meth = self.CImethod.currentText()
-            ints = [float(f) for f in user_text(self.CIvalues.text()).split(";")]
+            ints = [float(f) for f in CIsplitting.split(user_text(self.CIvalues.text())) if f]
             self.CI = [meth, ints]
         else:
             self.CI = None
@@ -339,7 +341,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_CIvalues_editingFinished(self):
         if self.CI:
             try:
-                ints = [float(f) for f in user_text(self.CIvalues.text()).split(";")]
+                ints = [float(f) for f in CIsplitting.split(user_text(self.CIvalues.text())) if f]
                 self.setIntervals(ints)
             except:
                 pass
@@ -417,9 +419,10 @@ class QtFitDlg(QtGui.QDialog):
                     xmax = float(self.xMax.text())
                 eval_points = arange(xmin, xmax, (xmax-xmin)/1024)
             CImethod = None
-            if user_text(self.CImethod.currentText()) == u"Bootstrapping":
+            CImethodName = user_text(self.CImethod.currentText())
+            if CImethodName == u"Bootstrapping":
                 CImethod = bootstrap.bootstrap_regression
-            elif user_text(self.CImethod.currentText()) == u"Residual resampling":
+            elif CImethodName == u"Residual resampling":
                 CImethod = bootstrap.bootstrap_residuals
             outfile = self.output
             CI = ()
@@ -452,7 +455,7 @@ class QtFitDlg(QtGui.QDialog):
             plot_fit.plot1d(result, loc=loc)
             if self.writeResult and outfile:
                 #print("output to file '%s'" % (outfile,))
-                plot_fit.write1d(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
+                plot_fit.write1d(outfile, result, res.description, CImethodName)#parm_names, self.CI[0] if self.CI is not None else None)
             #else:
                 #print("self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile))
 
