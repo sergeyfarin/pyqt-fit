@@ -15,8 +15,6 @@ with open(version_filename, "r") as f:
     __version__ = f.read().strip()
 
 extra = {}
-if sys.version_info >= (3,):
-    extra['use_2to3'] = True
 
 setup(name='PyQt-Fit',
       version=__version__,
