@@ -10,6 +10,7 @@ from scipy.special import gamma
 from scipy.linalg import sqrtm, solve
 import scipy
 import numpy as np
+from .compat import irange
 
 from . import cyth
 from . import cy_local_linear
@@ -96,7 +97,7 @@ class SpatialAverage(object):
         norm = np.zeros((m,), points.dtype)
 
         # iterate on the internal points
-        for i,ci in np.broadcast(xrange(self.n), xrange(self._correction.shape[0])):
+        for i,ci in np.broadcast(irange(self.n), irange(self._correction.shape[0])):
             diff = np.dot(self._correction[ci], self.xdata[:,i,np.newaxis] - points)
             tdiff = np.dot(self._inv_cov, diff)
             energy = np.exp(-np.sum(diff*tdiff,axis=0)/2.0)
@@ -420,12 +421,12 @@ class PolynomialDesignMatrix(object):
         #if factors:
         #    fcts = [1]
         fact = 1
-        for i in xrange(deg):
+        for i in irange(deg):
             diff = cur - prev
             prev = cur
             old_dims = list(dims)
             fact *= (i+1)
-            for j in xrange(dim):
+            for j in irange(dim):
                 dp = diff - old_dims[j]
                 cur += dp
                 dims[j+1] = dims[j]+dp
@@ -459,12 +460,12 @@ class PolynomialDesignMatrix(object):
         dims = [0]*(dim+1)
         out[0,:] = 1
         cur = 1
-        for i in xrange(deg):
+        for i in irange(deg):
             old_dims = list(dims)
             prev = cur
-            for j in xrange(x.shape[0]):
+            for j in irange(x.shape[0]):
                 dims[j] = cur
-                for k in xrange(old_dims[j], prev):
+                for k in irange(old_dims[j], prev):
                     np.multiply(out[k], x[j], out[cur])
                     cur += 1
         #if factors is not None:
@@ -585,7 +586,7 @@ class LocalPolynomialKernel(object):
         kernel = self.kernel
         if output is None:
             output = np.empty((points.shape[1],), dtype=float)
-        for i in xrange(points.shape[1]):
+        for i in irange(points.shape[1]):
             dX = (xdata - points[:,i:i+1])
             Wx = kernel(np.dot(inv_bw, dX))
             designMatrix(dX, out = Xx)

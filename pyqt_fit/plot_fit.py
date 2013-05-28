@@ -8,8 +8,9 @@ from __future__ import division, print_function, absolute_import
 from .curve_fitting import CurveFitting
 from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
 from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, clf, ylim, hist, suptitle, gca
+from .compat import izip
 from . import bootstrap
-from itertools import izip, chain
+from itertools import chain
 from scipy.special import erfinv, gamma
 from scipy import stats
 #try:
@@ -17,7 +18,7 @@ from scipy import stats
 #except ImportError:
 from .kernel_smoothing import SpatialAverage, LocalLinearKernel1D
 import inspect
-from csv import writer as csv_writer
+from .compat import unicode_csv_writer as csv_writer
 from collections import namedtuple
 
 smoothing = LocalLinearKernel1D
@@ -368,13 +369,13 @@ def write1d(outfile, result, res_desc, CImethod):
             head = ["Parameters"] + list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in result.CI]))
             w.writerow(head)
             #print(result.CIs[1])
-            for cis in izip(parm_names, *chain(*result.CIs[1])):
+            for cis in izip(result.param_names, *chain(*result.CIs[1])):
                 cistr = [cis[0]] + ["%.20g" % v for v in cis[1:]]
                 w.writerow(cistr)
             w.writerow([result.yname])
             head[0] = result.xname
             w.writerow(head)
-            w.writerows(c_[tuple(chain([result.eval_points], result.CIs[0][0]))])
+            w.writerows(c_[tuple(chain([result.eval_points], *result.CIs[0]))])
 
 def test():
     import residuals
@@ -382,7 +383,8 @@ def test():
     from pylab import plot, savefig, clf, legend, arange, figure, title, show
     from curve_fit import curve_fit
 
-    def test(x,(p0,p1,p2)):
+    def test(x,params):
+        p0, p1, p2 = params
         return p0 + p1*x + p2*x**2
 
     init = (10,1,1)

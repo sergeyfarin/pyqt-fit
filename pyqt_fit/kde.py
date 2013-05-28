@@ -10,6 +10,7 @@ from scipy.special import erf, gamma
 from .kernels import normal_kernel1d
 from .utils import namedtuple
 from scipy import fftpack, optimize
+from .compat import irange
 
 def variance_bandwidth(factor, xdata):
     r"""
@@ -55,7 +56,7 @@ def _botev_fixed_point(t, M, I, a2):
     M = np.float128(M)
     a2 = np.float128(a2)
     f = 2*np.pi**(2*l)*np.sum(I**l*a2*np.exp(-I*np.pi**2*t))
-    for s in range(l, 1, -1):
+    for s in irange(l, 1, -1):
         K0 = np.prod(np.arange(1, 2*s, 2))/np.sqrt(2*np.pi)
         const = (1 + (1/2)**(s + 1/2))/3
         time=(2*const*K0/M/f)**(2/(3+2*s))
@@ -742,7 +743,7 @@ class KDE1D(object):
         SmDCTData = DCTData * smth
         # Inverse DCT to get density
         density = fftpack.idct(SmDCTData, norm=None)/(2*R)
-        mesh = np.array([(bins[i]+bins[i+1])/2 for i in xrange(N)])
+        mesh = np.array([(bins[i]+bins[i+1])/2 for i in irange(N)])
 
         return mesh, density
 

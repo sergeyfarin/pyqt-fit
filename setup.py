@@ -37,9 +37,11 @@ setup(name='PyQt-Fit',
           'scipy >=0.10.0',
           'numpy >=1.5.0',
           'matplotlib',
-          'path.py >=2.4.1',
-          'cython >= 0.19'
+          'path.py >=2.4.1'
           ],
+      extras_require = {
+          'Cython': ["Cython >=0.17"]
+          },
       license = 'LICENSE.txt',
       long_description = open('README.txt').read(),
       classifiers=[

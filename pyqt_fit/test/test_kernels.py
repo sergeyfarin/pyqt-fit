@@ -145,3 +145,53 @@ class Testnormal_order4(KernelTester):
         cls.initUpClass()
         cls.kernel = kernels.normal_order4()
 
+class ComparePythonCython(object):
+    @classmethod
+    def initUpClass(cls):
+        cls.xs = np.r_[-3:3:4096j]
+
+    def _pdf(self, k):
+        kernels.useCython()
+        cy = k.pdf(self.xs)
+        kernels.usePython()
+        py = k.pdf(self.xs)
+        np.testing.assert_array_almost_equal(cy, py, 7)
+
+    def testing_pdf(self):
+        for cls in kernels.kernels1D:
+            yield self._pdf, cls
+
+    def _cdf(self, k):
+        kernels.useCython()
+        cy = k.cdf(self.xs)
+        kernels.usePython()
+        py = k.cdf(self.xs)
+        np.testing.assert_array_almost_equal(cy, py, 7)
+
+    def testing_cdf(self):
+        for cls in kernels.kernels1D:
+            yield self._cdf, cls
+
+    def _pm1(self, k):
+        kernels.useCython()
+        cy = k.pm1(self.xs)
+        kernels.usePython()
+        py = k.pm1(self.xs)
+        np.testing.assert_array_almost_equal(cy, py, 7)
+
+    def testing_pm1(self):
+        for cls in kernels.kernels1D:
+            yield self._pm1, cls
+
+    def _pm2(self, k):
+        kernels.useCython()
+        cy = k.pm2(self.xs)
+        kernels.usePython()
+        py = k.pm2(self.xs)
+        np.testing.assert_array_almost_equal(cy, py, 7)
+
+    def testing_pm2(self):
+        for cls in kernels.kernels1D:
+            yield self._pm2, cls
+
+

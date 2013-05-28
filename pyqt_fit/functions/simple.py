@@ -7,11 +7,13 @@ class Linear(object):
     args = "a b".split()
 
     @staticmethod
-    def __call__((a,b), x):
+    def __call__(ab, x):
+        a,b = ab
         return a*x + b
 
     @staticmethod
-    def Dfun((a,b), x):
+    def Dfun(ab, x):
+        a,b = ab
         result = ones((2, x.shape[0]), dtype=x.dtype)
         result[0] = x # d/da
         # d/db = 1
@@ -29,11 +31,13 @@ class Exponential(object):
     name = "Exponential"
 
     @staticmethod
-    def __call__((A,k,x0,y0), x):
+    def __call__(parms, x):
+        (A,k,x0,y0) = parms
         return A*exp(k*(x-x0))+y0
 
     @staticmethod
-    def Dfun((A,k,x0,y0), x):
+    def Dfun(parms, x):
+        (A,k,x0,y0) = parms
         result = ones((4, x.shape[0]), dtype=x.dtype)
         dx = x-x0
         ee = exp(k*dx)
@@ -59,11 +63,13 @@ class PowerLaw(object):
     args = "A x_0 k y_0".split()
 
     @staticmethod
-    def __call__((A, x0, k, y0), x):
+    def __call__(parms, x):
+        (A, x0, k, y0) = parms
         return A*(x-x0)**k + y0
 
     @staticmethod
-    def Dfun((A, x0, k, y0), x):
+    def Dfun(parms, x):
+        (A, x0, k, y0) = parms
         result = ones((4,x.shape[0]), dtype=x.dtype)
         dx = x-x0
         dxk1 = dx**(k-1)
@@ -87,11 +93,13 @@ class Logistic(object):
     name = "Logistic"
 
     @staticmethod
-    def __call__((A, k, x0, y0), x):
+    def __call__(parms, x):
+        (A, k, x0, y0) = parms
         return A/(1+exp(k*(x0-x))) + y0
 
     @staticmethod
-    def Dfun((A, k, x0, y0), x):
+    def Dfun(parms, x):
+        (A, k, x0, y0) = parms
         result = ones((4, x.shape[0]), dtype=x.dtype)
         dx = x0-x
         ee = exp(k*dx)

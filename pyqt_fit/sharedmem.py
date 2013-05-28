@@ -2,6 +2,7 @@ from __future__ import division, absolute_import
 import ctypes
 import multiprocessing as mp
 import numpy as np
+from .compat import irange, PY2
 
 _ctypes_char_list = [
         ctypes.c_char,
@@ -37,8 +38,7 @@ _ctypes_to_numpy = {
         }
 
 def _get_ctype_size(ct):
-    rv = mp.RawValue(ct)
-    return rv._wrapper.get_size()
+    return ctypes.sizeof(ct)
 
 for t in _ctypes_int_list:
     _ctypes_to_numpy[t] = np.dtype("=i{:d}".format(_get_ctype_size(t)))
@@ -54,10 +54,11 @@ _numpy_to_ctypes = {_ctypes_to_numpy[t]: t for t in _ctypes_to_numpy}
 class _dummy(object): pass
 
 def _shmem_as_ndarray(raw_array, shape = None, order='C'):
-    address = raw_array._wrapper.get_address()
-    size = raw_array._wrapper.get_size()
-    length = raw_array._length_
+    address = ctypes.addressof(raw_array)
+    length = len(raw_array)
+    size = ctypes.sizeof(raw_array)
     item_size = size // length
+
     if shape is None:
         shape = (length,)
     else:
@@ -65,7 +66,7 @@ def _shmem_as_ndarray(raw_array, shape = None, order='C'):
     dtype = _ctypes_to_numpy.get(raw_array._type_, None)
     if dtype is None:
         raise TypeError("Unknown conversion from {} to numpy type".format(raw_array._type_))
-    strides = tuple(item_size*np.prod(shape[i+1:], dtype=int) for i in xrange(len(shape)))
+    strides = tuple(item_size*np.prod(shape[i+1:], dtype=int) for i in irange(len(shape)))
     if order != 'C':
         strides = strides[::-1]
     d = _dummy()
