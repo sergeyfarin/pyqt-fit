@@ -11,14 +11,34 @@ import scipy
 import numpy as np
 from .compat import irange
 
-try:
-    from . import cyth
-    from . import cy_local_linear as local_linear
-except ImportError:
+
+def useCython():
+    """
+    Switch to using Cython methods if available
+    """
+    global local_linear
+    try:
+        from . import cyth
+        from . import cy_local_linear as local_linear
+        return True
+    except ImportError:
+        return False
+
+
+def usePython():
+    """
+    Switch to using the python implementation of the methods
+    """
+    global local_linear
     from . import py_local_linear as local_linear
+
+
+if not useCython():
+    usePython()
 
 from .kde import scotts_bandwidth
 from .kernels import normal_kernel, normal_kernel1d
+
 
 class SpatialAverage(object):
     r"""
@@ -42,7 +62,7 @@ class SpatialAverage(object):
 
     """
 
-    def __init__(self, xdata, ydata, cov = scotts_bandwidth):
+    def __init__(self, xdata, ydata, cov=scotts_bandwidth):
         self.xdata = np.atleast_2d(xdata)
         self.ydata = ydata
 
@@ -83,8 +103,7 @@ class SpatialAverage(object):
         self._covariance = _cov
         self._inv_cov = scipy.linalg.inv(_cov)
 
-
-    def evaluate(self, points, result = None):
+    def evaluate(self, points, result=None):
         """
         Evaluate the spatial averaging on a set of points
 
@@ -99,14 +118,14 @@ class SpatialAverage(object):
         norm = np.zeros((m,), points.dtype)
 
         # iterate on the internal points
-        for i,ci in np.broadcast(irange(self.n), irange(self._correction.shape[0])):
-            diff = np.dot(self._correction[ci], self.xdata[:,i,np.newaxis] - points)
+        for i, ci in np.broadcast(irange(self.n), irange(self._correction.shape[0])):
+            diff = np.dot(self._correction[ci], self.xdata[:, i, np.newaxis] - points)
             tdiff = np.dot(self._inv_cov, diff)
-            energy = np.exp(-np.sum(diff*tdiff,axis=0)/2.0)
-            result += self.ydata[i]*energy
+            energy = np.exp(-np.sum(diff * tdiff, axis=0) / 2.0)
+            result += self.ydata[i] * energy
             norm += energy
 
-        result[norm>1e-50] /= norm[norm>1e-50]
+        result[norm > 1e-50] /= norm[norm > 1e-50]
 
         return result
 
@@ -132,11 +151,12 @@ class SpatialAverage(object):
         """
         Add a correction coefficient depending on the density of the input
         """
-        kde = stats.gaussian_kde(xdata)
-        dens = kde(xdata)
+        kde = stats.gaussian_kde(self.xdata)
+        dens = kde(self.xdata)
         dm = dens.max()
         dens[dens < 1e-50] = dm
-        self._correction = dm/dens
+        self._correction = dm / dens
+
 
 class LocalLinearKernel1D(object):
     r"""
@@ -160,7 +180,7 @@ class LocalLinearKernel1D(object):
         Otherwise, it should be a function ``cov(xdata, ydata)`` returning the variance.
 
     """
-    def __init__(self, xdata, ydata, cov = scotts_bandwidth):
+    def __init__(self, xdata, ydata, cov=scotts_bandwidth):
         self.xdata = np.atleast_1d(xdata)
         self.ydata = np.atleast_1d(ydata)
         self.n = xdata.shape[0]
@@ -176,7 +196,6 @@ class LocalLinearKernel1D(object):
         Bandwidth of the kernel.
         """
         return self._bw
-
 
     @property
     def covariance(self):
@@ -217,16 +236,18 @@ class LocalLinearKernel1D(object):
         """
         return self.evaluate(*args, **kwords)
 
+
 class PolynomialDesignMatrix1D(object):
     def __init__(self, dim):
         self.dim = dim
-        powers = np.arange(0,dim+1).reshape((1,dim+1)) # This is a line vector
+        powers = np.arange(0, dim + 1).reshape((1, dim + 1))  # This is a line vector
         #frac = gamma(powers+1) # gamma(x+1) = x! if x is integer
         self.powers = powers
         #self.frac = frac
 
     def __call__(self, dX, out=None):
-        return np.power(dX, self.powers, out) # / self.frac
+        return np.power(dX, self.powers, out)  # / self.frac
+
 
 class LocalPolynomialKernel1D(object):
     r"""
@@ -255,7 +276,7 @@ class LocalPolynomialKernel1D(object):
         Otherwise, it should be a function ``cov(xdata, ydata)`` returning the variance. **Default:** ``scotts_bandwidth``
 
     """
-    def __init__(self, xdata, ydata, q = 3, **kwords):
+    def __init__(self, xdata, ydata, q=3, **kwords):
         self.xdata = np.atleast_1d(xdata)
         self.ydata = np.atleast_1d(ydata)
         self.n = xdata.shape[0]
@@ -290,8 +311,7 @@ class LocalPolynomialKernel1D(object):
         else:
             _bw = float(bw)
         self._bw = _bw
-        self._covariance = _bw*_bw
-
+        self._covariance = _bw * _bw
 
     @property
     def covariance(self):
@@ -355,19 +375,19 @@ class LocalPolynomialKernel1D(object):
         :param ndarray points: Points to evaluate the averaging on
         :param ndarray result: If provided, the result will be put in this array
         """
-        xdata = self.xdata[:,np.newaxis] # make it a column vector
-        ydata = self.ydata[:,np.newaxis] # make it a column vector
+        xdata = self.xdata[:, np.newaxis]  # make it a column vector
+        ydata = self.ydata[:, np.newaxis]  # make it a column vector
         q = self.q
         bw = self.bandwidth
         kernel = self.kernel
         designMatrix = self.designMatrix(q)
         if output is None:
             output = np.empty(points.shape, dtype=float)
-        for i,p in enumerate(points):
+        for i, p in enumerate(points):
             dX = (xdata - p)
-            Wx = kernel(dX/bw)
+            Wx = kernel(dX / bw)
             Xx = designMatrix(dX)
-            WxXx = Wx*Xx
+            WxXx = Wx * Xx
             XWX = np.dot(Xx.T, WxXx)
             Lx = solve(XWX, WxXx.T)[0]
             output[i] = np.dot(Lx, ydata)
@@ -378,6 +398,7 @@ class LocalPolynomialKernel1D(object):
         This method is an alias for :py:meth:`LocalLinearKernel1D.evaluate`
         """
         return self.evaluate(*args, **kwords)
+
 
 class PolynomialDesignMatrix(object):
     """
@@ -405,7 +426,7 @@ class PolynomialDesignMatrix(object):
         dim = self.dim
         deg = self.deg
         init = 1
-        dims = [0] * (dim+1)
+        dims = [0] * (dim + 1)
         cur = init
         prev = 0
         #if factors:
@@ -415,17 +436,17 @@ class PolynomialDesignMatrix(object):
             diff = cur - prev
             prev = cur
             old_dims = list(dims)
-            fact *= (i+1)
+            fact *= (i + 1)
             for j in irange(dim):
                 dp = diff - old_dims[j]
                 cur += dp
-                dims[j+1] = dims[j]+dp
+                dims[j + 1] = dims[j] + dp
         #    if factors:
         #        fcts += [fact]*(cur-prev)
         self.size = cur
         #self.factors = np.array(fcts)
 
-    def __call__(x, out = None):
+    def __call__(self, x, out=None):
         """
         Creates the design matrix for polynomial fitting using the points x.
 
@@ -440,15 +461,15 @@ class PolynomialDesignMatrix(object):
 
         :returns: The design matrix as a (M,N) matrix.
         """
-        dim = self.dim
+        dim, deg = self.dim, self.deg
         #factors = self.factors
         x = np.atleast_2d(x)
         dim = x.shape[0]
         if out is None:
-            s = designMatrixSize(dim, deg)
+            s = self._designMatrixSize(dim, deg)
             out = np.empty((s, x.shape[1]), dtype=x.dtype)
-        dims = [0]*(dim+1)
-        out[0,:] = 1
+        dims = [0] * (dim + 1)
+        out[0, :] = 1
         cur = 1
         for i in irange(deg):
             old_dims = list(dims)
@@ -511,7 +532,7 @@ class LocalPolynomialKernel(object):
         Otherwise, it should be a function ``cov(xdata, ydata)`` returning the variance. **Default:** ``scotts_bandwidth``
 
     """
-    def __init__(self, xdata, ydata, q = 3, cov = scotts_bandwidth, kernel = None):
+    def __init__(self, xdata, ydata, q=3, cov=scotts_bandwidth, kernel=None):
         self.xdata = np.atleast_2d(xdata)
         self.ydata = np.atleast_1d(ydata)
         self.d, self.n = xdata.shape
@@ -531,7 +552,6 @@ class LocalPolynomialKernel(object):
         Bandwidth of the kernel.
         """
         return self._bw
-
 
     @property
     def covariance(self):
@@ -563,23 +583,24 @@ class LocalPolynomialKernel(object):
         :param ndarray result: If provided, the result will be put in this array
         """
         xdata = self.xdata
-        ydata = self.ydata[:,np.newaxis] # make it a column vector
+        ydata = self.ydata[:, np.newaxis]  # make it a column vector
         points = np.atleast_2d(points)
         n = self.n
         q = self.q
         d = self.d
         designMatrix = PolynomialDesignMatrix(d, q)
+        dm_size = designMatrix.size
         Xx = np.empty((dm_size, n), dtype=xdata.dtype)
         WxXx = np.empty(Xx.shape, dtype=xdata.dtype)
-        XWX = np.empty((dm_size,dm_size), dtype=xdata.dtype)
+        XWX = np.empty((dm_size, dm_size), dtype=xdata.dtype)
         inv_bw = scipy.linalg.inv(self.bandwidth)
         kernel = self.kernel
         if output is None:
             output = np.empty((points.shape[1],), dtype=float)
         for i in irange(points.shape[1]):
-            dX = (xdata - points[:,i:i+1])
+            dX = (xdata - points[:, i:i + 1])
             Wx = kernel(np.dot(inv_bw, dX))
-            designMatrix(dX, out = Xx)
+            designMatrix(dX, out=Xx)
             np.multiply(Wx, Xx, WxXx)
             np.dot(Xx, WxXx.T, XWX)
             Lx = solve(XWX, WxXx)[0]
@@ -591,11 +612,4 @@ class LocalPolynomialKernel(object):
         This method is an alias for :py:meth:`LocalLinearKernel1D.evaluate`
         """
         return self.evaluate(*args, **kwords)
-
-def useCython():
-    from . import cyth
-    from . import cy_local_linear as local_linear
-
-def usePython():
-    from . import py_local_linear as local_linear
 
