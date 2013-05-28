@@ -6,7 +6,6 @@ Module implementing kernel-based estimation of density of probability.
 
 from __future__ import division, absolute_import, print_function
 import numpy as np
-from scipy.special import erf, gamma
 from .kernels import normal_kernel1d
 from .utils import namedtuple
 from scipy import fftpack, optimize
@@ -684,7 +683,6 @@ class KDE1D(object):
         R = upper - lower
         dN = 1/N
         mesh = np.r_[lower:upper+dN:(N+2)*1j]
-        M = len(data)
         weights = self.weights
         if not weights.shape:
             weights = None
@@ -794,7 +792,7 @@ def create_transform(obj, inv=None, Dinv = None):
             Dinv = obj.Dinv
         else:
             def Dinv(x):
-                x = asfarray(x)
+                x = np.asfarray(x)
                 dx = x * 1e-9
                 dx[x==0] = np.min(dx[x!=0])
                 return (inv(x+dx) - inv(x-dx))/(2*dx)
@@ -888,4 +886,3 @@ class TransformKDE(object):
 
     def __setattr__(self, name, value):
         return setattr(self.kde, name, value)
-

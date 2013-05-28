@@ -6,7 +6,6 @@ Module implementing non-parametric regressions using kernel smoothing methods.
 
 from __future__ import division, absolute_import, print_function
 from scipy import stats
-from scipy.special import gamma
 from scipy.linalg import sqrtm, solve
 import scipy
 import numpy as np
