@@ -43,7 +43,7 @@ cdef void cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t
             li2[j] += li*li
             Op[j] += li * yp[i]
 
-def cy_local_linear_1d(bw, xdata, ydata, points, output = None):
+def local_linear_1d(bw, xdata, ydata, points, output = None):
     bw = float(bw)
     xdata = np.ascontiguousarray(xdata, dtype=np.float)
     ydata = np.ascontiguousarray(ydata, dtype=np.float)

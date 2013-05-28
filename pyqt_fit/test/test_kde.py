@@ -128,7 +128,7 @@ class TestCyclicKDE1D(TestUnboundedKDE1D):
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method='cyclic')
-        cls.grid_accuracy = 1e-6
+        cls.grid_accuracy = 1e-5
         cls.accuracy = 1e-3
 
 class TestRenormKDE1D(TestUnboundedKDE1D):

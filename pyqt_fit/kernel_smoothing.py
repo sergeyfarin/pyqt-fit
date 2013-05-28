@@ -12,8 +12,11 @@ import scipy
 import numpy as np
 from .compat import irange
 
-from . import cyth
-from . import cy_local_linear
+try:
+    from . import cyth
+    from . import cy_local_linear as local_linear
+except ImportError:
+    from . import py_local_linear as local_linear
 
 from .kde import scotts_bandwidth
 from .kernels import normal_kernel, normal_kernel1d
@@ -205,21 +208,9 @@ class LocalLinearKernel1D(object):
         :param ndarray points: Points to evaluate the averaging on
         :param ndarray result: If provided, the result will be put in this array
         """
-        li2, output = cy_local_linear.cy_local_linear_1d(self._bw, self.xdata, self.ydata, points, output)
+        li2, output = local_linear.local_linear_1d(self._bw, self.xdata, self.ydata, points, output)
         self.li2 = li2
         return output
-        #points = np.atleast_1d(points).astype(self.xdata.dtype)
-        #m = points.shape[0]
-        #x0 = points - self.xdata[:,np.newaxis]
-        #x02 = x0*x0
-        #wi = np.exp(-self.inv_cov*x02/2.0)
-        #X = np.sum(wi*x0, axis=0)
-        #X2 = np.sum(wi*x02, axis=0)
-        #wy = wi*self.ydata[:,np.newaxis]
-        #Y = np.sum(wy, axis=0)
-        #Y2 = np.sum(wy*x0, axis=0)
-        #W = np.sum(wi, axis=0)
-        #return np.divide(X2*Y-Y2*X, W*X2-X*X, output)
 
     def __call__(self, *args, **kwords):
         """
@@ -601,4 +592,11 @@ class LocalPolynomialKernel(object):
         This method is an alias for :py:meth:`LocalLinearKernel1D.evaluate`
         """
         return self.evaluate(*args, **kwords)
+
+def useCython():
+    from . import cyth
+    from . import cy_local_linear as local_linear
+
+def usePython():
+    from . import py_local_linear as local_linear
 

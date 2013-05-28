@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from __future__ import division, print_function, absolute_import
-from . import cyth
 from . import functions, residuals, plot_fit, bootstrap
 from .compat import izip, user_text, CSV_READ_FLAGS
 from .compat import unicode_csv_reader as csv_reader
