@@ -1,3 +1,5 @@
+v1.1.16, ??
+ - Remove need for cython in any module (was partial)
 v1.1.15, 28/5/2013
  - Changed description
  - Doc now hosted at readthedocs.org
