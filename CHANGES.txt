@@ -1,3 +1,7 @@
+v1.1.15, 28/5/2013
+ - Changed description
+ - Doc now hosted at readthedocs.org
+ - Hosting package at PyPi
 v1.1.14, 27/5/2013
  - Unifying code base using a compatibility module
  - sharedmem.py is now the same for Python2 and Python3 (and working with python3!)
