@@ -110,8 +110,8 @@ class CurveFitting(object):
 
             \hat{\theta} = \argmin_{\theta\in \mathbb{R}^p} \sum_i r(y_i, f(\theta, x_i))^2
 
-        Where :math:`\theta` is the vector of :math:`p` parameters to optimise, :math:`r` is the residual function and :math:`f` is
-        the function being fitted.
+        Where :math:`\theta` is the vector of :math:`p` parameters to optimise,
+        :math:`r` is the residual function and :math:`f` is the function being fitted.
     """
 
     def __init__(self, xdata, ydata, p0, fct, args=(), residuals=None, fix_params=(),
@@ -167,7 +167,9 @@ class CurveFitting(object):
                     y0 = fct(p, xdata, *args)
                     return Dres(ydata, y0, dfct)
 
-        popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, Dfun=df, col_deriv=col_deriv, *lsq_args, **lsq_kword)
+        popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1,
+                                                           Dfun=df, col_deriv=col_deriv,
+                                                           *lsq_args, **lsq_kword)
         #infodict['est_jacobian'] = not use_derivs
 
         if fix_params:

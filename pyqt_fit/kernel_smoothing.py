@@ -45,24 +45,26 @@ from .kernels import normal_kernel, normal_kernel1d
 
 class SpatialAverage(object):
     r"""
-    Perform a Nadaraya-Watson regression on the data (i.e. also called local-constant regression) using a gaussian kernel.
+    Perform a Nadaraya-Watson regression on the data (i.e. also called
+    local-constant regression) using a gaussian kernel.
 
     The Nadaraya-Watson estimate is given by:
 
     .. math::
 
-        f_n(x) \triangleq \frac{\sum_i K\left(\frac{x-X_i}{h}\right) Y_i}{\sum_i K\left(\frac{x-X_i}{h}\right)}
+        f_n(x) \triangleq \frac{\sum_i K\left(\frac{x-X_i}{h}\right) Y_i}
+        {\sum_i K\left(\frac{x-X_i}{h}\right)}
 
-    Where :math:`K(x)` is the kernel and must be such that :math:`E(K(x)) = 0` and :math:`h` is the bandwidth of the
-    method.
+    Where :math:`K(x)` is the kernel and must be such that :math:`E(K(x)) = 0`
+    and :math:`h` is the bandwidth of the method.
 
     :param ndarray xdata: Explaining variables (at most 2D array)
     :param ndarray ydata: Explained variables (should be 1D array)
 
     :type  cov: ndarray or callable
-    :param cov: If an ndarray, it should be a 2D array giving the matrix of covariance of the gaussian kernel.
-        Otherwise, it should be a function ``cov(xdata, ydata)`` returning the covariance matrix.
-
+    :param cov: If an ndarray, it should be a 2D array giving the matrix of
+        covariance of the gaussian kernel. Otherwise, it should be a function
+        ``cov(xdata, ydata)`` returning the covariance matrix.
     """
 
     def __init__(self, xdata, ydata, cov=scotts_bandwidth):
@@ -81,7 +83,8 @@ class SpatialAverage(object):
     @property
     def bandwidth(self):
         """
-        Bandwidth of the kernel. It cannot be set directly, but rather should be set via the covariance attribute.
+        Bandwidth of the kernel. It cannot be set directly, but rather should
+        be set via the covariance attribute.
         """
         if self._bw is None and self._covariance is not None:
             self._bw = np.real(sqrtm(self._covariance))
@@ -91,8 +94,9 @@ class SpatialAverage(object):
     def covariance(self):
         """
         Covariance of the gaussian kernel.
-        Can be set either as a fixed value or using a bandwith calculator, that is a function
-        of signature ``w(xdata, ydata)`` that returns a 2D matrix for the covariance of the kernel.
+        Can be set either as a fixed value or using a bandwith calculator,
+        that is a function of signature ``w(xdata, ydata)`` that returns
+        a 2D matrix for the covariance of the kernel.
         """
         return self._covariance
 
@@ -111,7 +115,8 @@ class SpatialAverage(object):
         Evaluate the spatial averaging on a set of points
 
         :param ndarray points: Points to evaluate the averaging on
-        :param ndarray result: If provided, the result will be put in this array
+        :param ndarray result: If provided, the result will be put in this
+            array
         """
         points = np.atleast_2d(points).astype(self.xdata.dtype)
         #norm = self.kde(points)
@@ -121,8 +126,10 @@ class SpatialAverage(object):
         norm = np.zeros((m,), points.dtype)
 
         # iterate on the internal points
-        for i, ci in np.broadcast(irange(self.n), irange(self._correction.shape[0])):
-            diff = np.dot(self._correction[ci], self.xdata[:, i, np.newaxis] - points)
+        for i, ci in np.broadcast(irange(self.n),
+                                  irange(self._correction.shape[0])):
+            diff = np.dot(self._correction[ci],
+                          self.xdata[:, i, np.newaxis] - points)
             tdiff = np.dot(self._inv_cov, diff)
             energy = np.exp(-np.sum(diff * tdiff, axis=0) / 2.0)
             result += self.ydata[i] * energy
@@ -141,8 +148,10 @@ class SpatialAverage(object):
     @property
     def correction(self):
         """
-        The correction coefficient allows to change the width of the kernel depending on the point considered.
-        It can be either a constant (to correct globaly the kernel width), or a 1D array of same size as the input.
+        The correction coefficient allows to change the width of the kernel
+        depending on the point considered. It can be either a constant (to
+        correct globaly the kernel width), or a 1D array of same size as the
+        input.
         """
         return self._correction
 
@@ -165,22 +174,25 @@ class LocalLinearKernel1D(object):
     r"""
     Perform a local-linear regression using a gaussian kernel.
 
-    The local constant regression is the function that minimises, for each position:
+    The local constant regression is the function that minimises, for each
+    position:
 
     .. math::
 
-        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 -
-        a_1(x-X_i)\right)^2
+        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}}
+            \sum_i K\left(\frac{x-X_i}{h}\right)
+            \left(Y_i - a_0 - a_1(x-X_i)\right)^2
 
-    Where :math:`K(x)` is the kernel and must be such that :math:`E(K(x)) = 0` and :math:`h` is the bandwidth of the
-    method.
+    Where :math:`K(x)` is the kernel and must be such that :math:`E(K(x)) = 0`
+    and :math:`h` is the bandwidth of the method.
 
     :param ndarray xdata: Explaining variables (at most 2D array)
     :param ndarray ydata: Explained variables (should be 1D array)
 
     :type  cov: float or callable
     :param cov: If an float, it should be a variance of the gaussian kernel.
-        Otherwise, it should be a function ``cov(xdata, ydata)`` returning the variance.
+        Otherwise, it should be a function ``cov(xdata, ydata)`` returning the
+        variance.
 
     """
     def __init__(self, xdata, ydata, cov=scotts_bandwidth):
@@ -204,12 +216,14 @@ class LocalLinearKernel1D(object):
     def covariance(self):
         """
         Covariance of the gaussian kernel.
-        Can be set either as a fixed value or using a bandwith calculator, that is a function
-        of signature ``w(xdata, ydata)`` that returns a single value.
+        Can be set either as a fixed value or using a bandwith calculator,
+        that is a function of signature ``w(xdata, ydata)`` that returns
+        a single value.
 
         .. note::
 
-            A ndarray with a single value will be converted to a floating point value.
+            A ndarray with a single value will be converted to a floating
+            point value.
         """
         return self._covariance
 
@@ -227,9 +241,11 @@ class LocalLinearKernel1D(object):
         Evaluate the spatial averaging on a set of points
 
         :param ndarray points: Points to evaluate the averaging on
-        :param ndarray result: If provided, the result will be put in this array
+        :param ndarray result: If provided, the result will be put in this
+            array
         """
-        li2, output = local_linear.local_linear_1d(self._bw, self.xdata, self.ydata, points, output)
+        li2, output = local_linear.local_linear_1d(self._bw, self.xdata,
+                                                   self.ydata, points, output)
         self.li2 = li2
         return output
 
@@ -243,10 +259,8 @@ class LocalLinearKernel1D(object):
 class PolynomialDesignMatrix1D(object):
     def __init__(self, dim):
         self.dim = dim
-        powers = np.arange(0, dim + 1).reshape((1, dim + 1))  # This is a line vector
-        #frac = gamma(powers+1) # gamma(x+1) = x! if x is integer
+        powers = np.arange(0, dim + 1).reshape((1, dim + 1))
         self.powers = powers
-        #self.frac = frac
 
     def __call__(self, dX, out=None):
         return np.power(dX, self.powers, out)  # / self.frac
@@ -254,14 +268,18 @@ class PolynomialDesignMatrix1D(object):
 
 class LocalPolynomialKernel1D(object):
     r"""
-    Perform a local-polynomial regression using a user-provided kernel (Gaussian by default).
+    Perform a local-polynomial regression using a user-provided kernel
+    (Gaussian by default).
 
-    The local constant regression is the function that minimises, for each position:
+    The local constant regression is the function that minimises, for each
+    position:
 
     .. math::
 
-        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 -
-        a_1(x-X_i) - \ldots - a_q \frac{(x-X_i)^q}{q!}\right)^2
+        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}}
+            \sum_i K\left(\frac{x-X_i}{h}\right)
+            \left(Y_i - a_0 - a_1(x-X_i) - \ldots -
+                a_q \frac{(x-X_i)^q}{q!}\right)^2
 
     Where :math:`K(x)` is the kernel such that :math:`E(K(x)) = 0`, :math:`q`
     is the order of the fitted polynomial  and :math:`h` is the bandwidth of
@@ -276,7 +294,9 @@ class LocalPolynomialKernel1D(object):
 
     :type  cov: float or callable
     :param cov: If an float, it should be a variance of the gaussian kernel.
-        Otherwise, it should be a function ``cov(xdata, ydata)`` returning the variance. **Default:** ``scotts_bandwidth``
+        Otherwise, it should be a function ``cov(xdata, ydata)`` returning
+        the variance.
+        **Default:** ``scotts_bandwidth``
 
     """
     def __init__(self, xdata, ydata, q=3, **kwords):
@@ -320,12 +340,14 @@ class LocalPolynomialKernel1D(object):
     def covariance(self):
         """
         Covariance of the gaussian kernel.
-        Can be set either as a fixed value or using a bandwith calculator, that is a function
-        of signature ``w(xdata, ydata)`` that returns a single value.
+        Can be set either as a fixed value or using a bandwith calculator,
+        that is a function of signature ``w(xdata, ydata)`` that returns
+        a single value.
 
         .. note::
 
-            A ndarray with a single value will be converted to a floating point value.
+            A ndarray with a single value will be converted to a floating
+            point value.
         """
         return self._covariance
 
@@ -342,12 +364,14 @@ class LocalPolynomialKernel1D(object):
     def cov(self):
         """
         Covariance of the gaussian kernel.
-        Can be set either as a fixed value or using a bandwith calculator, that is a function
-        of signature ``w(xdata, ydata)`` that returns a single value.
+        Can be set either as a fixed value or using a bandwith calculator,
+        that is a function of signature ``w(xdata, ydata)`` that returns
+        a single value.
 
         .. note::
 
-            A ndarray with a single value will be converted to a floating point value.
+            A ndarray with a single value will be converted to a floating
+            point value.
         """
         return self.covariance
 
@@ -363,7 +387,8 @@ class LocalPolynomialKernel1D(object):
         ``kernel.pdf(xs)``
             Density of the kernel, denoted :math:`K(x)`
 
-        By default, the kernel is an instance of :py:class:`kernels.normal_kernel1d`
+        By default, the kernel is an instance of
+        :py:class:`kernels.normal_kernel1d`
         """
         return self._kernel
 
@@ -376,7 +401,8 @@ class LocalPolynomialKernel1D(object):
         Evaluate the spatial averaging on a set of points
 
         :param ndarray points: Points to evaluate the averaging on
-        :param ndarray result: If provided, the result will be put in this array
+        :param ndarray result: If provided, the result will be put
+            in this array
         """
         xdata = self.xdata[:, np.newaxis]  # make it a column vector
         ydata = self.ydata[:, np.newaxis]  # make it a column vector
@@ -415,16 +441,17 @@ class PolynomialDesignMatrix(object):
 
     def _designMatrixSize(self):
         """
-        Compute the size of the design matrix for a n-D problem of order d. Can also
-        compute the Taylors factors (i.e. the factors that would be applied for the
-        taylor decomposition)
+        Compute the size of the design matrix for a n-D problem of order d.
+        Can also compute the Taylors factors (i.e. the factors that would be
+        applied for the taylor decomposition)
 
         :param int dim: Dimension of the problem
         :param int deg: Degree of the fitting polynomial
         :param bool factors: If true, the output includes the Taylor factors
 
-        :returns: The number of columns in the design matrix and, if required, a
-            ndarray with the taylor coefficients for each column of the design matrix.
+        :returns: The number of columns in the design matrix and, if required,
+            a ndarray with the taylor coefficients for each column of
+            the design matrix.
         """
         dim = self.dim
         deg = self.deg
@@ -453,14 +480,16 @@ class PolynomialDesignMatrix(object):
         """
         Creates the design matrix for polynomial fitting using the points x.
 
-        :param ndarray x: Points to create the design matrix. Shape must be (D,N)
-            or (N,), where D is the dimension of the problem, 1 if not there.
+        :param ndarray x: Points to create the design matrix.
+            Shape must be (D,N) or (N,), where D is the dimension of
+            the problem, 1 if not there.
 
         :param int deg: Degree of the fitting polynomial
 
         :param ndarray factors: Scaling factor for the columns of the design
-            matrix. The shape should be (M,) or (M,1), where M is the number of columns
-            of the output. This value can be obtained using the :py:func:`designMatrixSize` function.
+            matrix. The shape should be (M,) or (M,1), where M is the number
+            of columns of the output. This value can be obtained using
+            the :py:func:`designMatrixSize` function.
 
         :returns: The design matrix as a (M,N) matrix.
         """
@@ -492,37 +521,45 @@ class PolynomialDesignMatrix(object):
 
 class LocalPolynomialKernel(object):
     r"""
-    Perform a local-polynomial regression in N-D using a user-provided kernel (Gaussian by default).
+    Perform a local-polynomial regression in N-D using a user-provided kernel
+    (Gaussian by default).
 
-    The local constant regression is the function that minimises, for each position:
+    The local constant regression is the function that minimises,
+    for each position:
 
     .. math::
 
-        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}} \sum_i K\left(\frac{x-X_i}{h}\right)\left(Y_i - a_0 - \mathcal{P}_q(X_i-x)\right)^2
+        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}}
+            \sum_i K\left(\frac{x-X_i}{h}\right)
+            \left(Y_i - a_0 - \mathcal{P}_q(X_i-x)\right)^2
 
     Where :math:`K(x)` is the kernel such that :math:`E(K(x)) = 0`, :math:`q`
     is the order of the fitted polynomial, :math:`\mathcal{P}_q(x)` is a
-    polynomial of order :math:`d` in :math:`x` and :math:`h` is the bandwidth of
-    the method.
+    polynomial of order :math:`d` in :math:`x` and :math:`h` is the bandwidth
+    of the method.
 
     The polynomial :math:`\mathcal{P}_q(x)` is of the form:
 
     .. math::
 
-        \mathcal{F}_d(k) = \left\{ \n \in \mathbb{N}^d \middle| \sum_{i=1}^d n_i = k \right\}
+        \mathcal{F}_d(k) = \left\{ \n \in \mathbb{N}^d \middle|
+            \sum_{i=1}^d n_i = k \right\}
 
-        \mathcal{P}_q(x_1,\ldots,x_d) = \sum_{k=1}^q \sum_{\n\in\mathcal{F}_d(k)} a_{k,\n} \prod_{i=1}^d x_i^{n_i}
+        \mathcal{P}_q(x_1,\ldots,x_d) = \sum_{k=1}^q
+            \sum_{\n\in\mathcal{F}_d(k)} a_{k,\n}
+            \prod_{i=1}^d x_i^{n_i}
 
     For example we have:
 
     .. math::
 
-        \mathcal{P}_2(x,y) = a_{110} x + a_{101} y + a_{220} x^2 + a_{211} xy + a_{202} y^2
+        \mathcal{P}_2(x,y) = a_{110} x + a_{101} y + a_{220} x^2 +
+            a_{211} xy + a_{202} y^2
 
-    :param ndarray xdata: Explaining variables (at most 2D array). The shape should be
-        (N,D) with D the dimension of the problem and N the number of points.
-        For 1D array, the shape can be (N,), in which case it will be converted
-        to (N,1) array.
+    :param ndarray xdata: Explaining variables (at most 2D array).
+        The shape should be (N,D) with D the dimension of the problem
+        and N the number of points. For 1D array, the shape can be (N,),
+        in which case it will be converted to (N,1) array.
     :param ndarray ydata: Explained variables (should be 1D array). The shape
         must be (N,).
     :param int q: Order of the polynomial to fit. **Default:** 3
@@ -532,8 +569,9 @@ class LocalPolynomialKernel(object):
 
     :type  cov: float or callable
     :param cov: If an float, it should be a variance of the gaussian kernel.
-        Otherwise, it should be a function ``cov(xdata, ydata)`` returning the variance. **Default:** ``scotts_bandwidth``
-
+        Otherwise, it should be a function ``cov(xdata, ydata)`` returning
+        the variance.
+        **Default:** ``scotts_bandwidth``
     """
     def __init__(self, xdata, ydata, q=3, cov=scotts_bandwidth, kernel=None):
         self.xdata = np.atleast_2d(xdata)
@@ -560,12 +598,14 @@ class LocalPolynomialKernel(object):
     def covariance(self):
         """
         Covariance of the gaussian kernel.
-        Can be set either as a fixed value or using a bandwith calculator, that is a function
-        of signature ``w(xdata, ydata)`` that returns a DxD matrix.
+        Can be set either as a fixed value or using a bandwith calculator,
+        that is a function of signature ``w(xdata, ydata)`` that returns
+        a DxD matrix.
 
         .. note::
 
-            A ndarray with a single value will be converted to a floating point value.
+            A ndarray with a single value will be converted to a floating
+            point value.
         """
         return self._covariance
 
@@ -583,7 +623,7 @@ class LocalPolynomialKernel(object):
         Evaluate the spatial averaging on a set of points
 
         :param ndarray points: Points to evaluate the averaging on
-        :param ndarray result: If provided, the result will be put in this array
+        :param ndarray output: Pre-allocated array for the result
         """
         xdata = self.xdata
         ydata = self.ydata[:, np.newaxis]  # make it a column vector

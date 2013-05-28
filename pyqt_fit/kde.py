@@ -37,7 +37,8 @@ def silverman_bandwidth(xdata, ydata=None, model=None):
     """
     xdata = np.atleast_2d(xdata)
     d, n = xdata.shape
-    return variance_bandwidth(np.power(n * (d + 2.) / 4., -1. / (d + 4.)), xdata)
+    return variance_bandwidth(np.power(n * (d + 2.) / 4.,
+                              -1. / (d + 4.)), xdata)
 
 
 def scotts_bandwidth(xdata, ydata=None, model=None):
@@ -58,12 +59,14 @@ def _botev_fixed_point(t, M, I, a2):
     I = np.float128(I)
     M = np.float128(M)
     a2 = np.float128(a2)
-    f = 2 * np.pi ** (2 * l) * np.sum(I ** l * a2 * np.exp(-I * np.pi ** 2 * t))
+    f = 2 * np.pi ** (2 * l) * np.sum(I ** l * a2 *
+                                      np.exp(-I * np.pi ** 2 * t))
     for s in irange(l, 1, -1):
         K0 = np.prod(np.arange(1, 2 * s, 2)) / np.sqrt(2 * np.pi)
         const = (1 + (1 / 2) ** (s + 1 / 2)) / 3
         time = (2 * const * K0 / M / f) ** (2 / (3 + 2 * s))
-        f = 2 * np.pi ** (2 * s) * np.sum(I ** s * a2 * np.exp(-I * np.pi ** 2 * time))
+        f = 2 * np.pi ** (2 * s) * \
+            np.sum(I ** s * a2 * np.exp(-I * np.pi ** 2 * time))
     return t - (2 * M * np.sqrt(np.pi) * f) ** (-2 / 5)
 
 
@@ -84,7 +87,8 @@ class botev_bandwidth(object):
     """
     def __init__(self, N=None, **kword):
         if 'lower' in kword or 'upper' in kword:
-            print("Warning, using 'lower' and 'uper' for botev bandwidth is deprecated. Argument is ignored")
+            print("Warning, using 'lower' and 'uper' for botev bandwidth is "
+                  "deprecated. Argument is ignored")
         self.N = N
 
     def __call__(self, data, model, ydata=None):
@@ -113,19 +117,21 @@ class botev_bandwidth(object):
         SqDCTData = (DCTData[1:] / 2) ** 2
         guess = 0.1
 
-        t_star = optimize.brentq(_botev_fixed_point, 0, guess, args=(M, I, SqDCTData))
+        t_star = optimize.brentq(_botev_fixed_point, 0, guess,
+                                 args=(M, I, SqDCTData))
 
         return np.sqrt(t_star) * span
 
 
 class KDE1D(object):
     r"""
-    Perform a kernel based density estimation in 1D, possibly on a bounded domain
-    :math:`[L,U]`.
+    Perform a kernel based density estimation in 1D, possibly on a bounded
+    domain :math:`[L,U]`.
 
     :param ndarray data: 1D array with the data points
 
-    Any other named argument will be equivalent to setting the property after the fact. For example::
+    Any other named argument will be equivalent to setting the property
+    after the fact. For example::
 
         >>> k = KDE1D(xs, lower=0)
 
@@ -138,15 +144,17 @@ class KDE1D(object):
 
     .. math::
 
-        f(x) \triangleq \frac{1}{hW} \sum_{i=1}^n \frac{w_i}{\lambda_i} K\left(\frac{X-x}{h\lambda_i}\right)
+        f(x) \triangleq \frac{1}{hW} \sum_{i=1}^n \frac{w_i}{\lambda_i}
+        K\left(\frac{X-x}{h\lambda_i}\right)
 
         W = \sum_{i=1}^n w_i
 
-    where :math:`h` is the bandwidth of the kernel (:py:attr:`bandwidth`), and :math:`K` is the kernel
-    used for the density estimation (:py:attr:`kernel`), :math:`w_i` are the
-    weights of the data points (:py:attr:`weights`) and :math:`\lambda_i` are
-    the adaptation factor of the kernel width (:py:attr:`lambdas`). :math:`K`
-    should be a function such that:
+    where :math:`h` is the bandwidth of the kernel (:py:attr:`bandwidth`),
+    and :math:`K` is the kernel used for the density estimation
+    (:py:attr:`kernel`), :math:`w_i` are the weights of the data points
+    (:py:attr:`weights`) and :math:`\lambda_i` are the adaptation factor
+    of the kernel width (:py:attr:`lambdas`). :math:`K` should be a function
+    such that:
 
     .. math::
 
@@ -167,9 +175,11 @@ class KDE1D(object):
 
     .. math::
 
-        f(x) \triangleq \frac{1}{hW} \sum_{i=1}^n \frac{w_i}{\lambda_i} \hat{K}(x;X,\lambda_i h,L,U)
+        f(x) \triangleq \frac{1}{hW} \sum_{i=1}^n \frac{w_i}{\lambda_i}
+        \hat{K}(x;X,\lambda_i h,L,U)
 
-    Where :math:`\hat{K}` is a modified kernel that depends on the exact method used.
+    Where :math:`\hat{K}` is a modified kernel that depends on the exact method
+    used.
 
     To express the various methods, we will refer to the following functions:
 
@@ -198,27 +208,32 @@ class KDE1D(object):
 
     2. Renormalization
 
-        This method consists in using the normal kernel method, but renormalize to
-        only take into account the part of the kernel within the domain of the
-        density [1]_.
+        This method consists in using the normal kernel method, but renormalize
+        to only take into account the part of the kernel within the domain of
+        the density [1]_.
 
         The kernel is then replaced with:
 
         .. math::
 
-            \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0\left(\frac{L-x}{h},\frac{U-x}{h}\right)} K\left(\frac{x-X}{h}\right)
+            \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0\left(\frac{L-x}{h},
+            \frac{U-x}{h}\right)} K\left(\frac{x-X}{h}\right)
 
     3. Reflexion
 
-        This method consist in simulating the reflection of the data left and right of the boundaries.
-        If one of the boundary is infinite, then the data is not reflected in that direction. To this
-        purpose, the kernel is replaced with:
+        This method consist in simulating the reflection of the data left and
+        right of the boundaries. If one of the boundary is infinite, then the
+        data is not reflected in that direction. To this purpose, the kernel is
+        replaced with:
 
         .. math::
 
-            \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right) + K\left(\frac{x+X-2L}{h}\right) + K\left(\frac{x+X-2U}{h}\right)
+            \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right)
+            + K\left(\frac{x+X-2L}{h}\right)
+            + K\left(\frac{x+X-2U}{h}\right)
 
-        When computing grids, if the bandwidth is constant, the result is computing using CDT.
+        When computing grids, if the bandwidth is constant, the result is
+        computing using CDT.
 
     4. Linear Combination
 
@@ -228,23 +243,29 @@ class KDE1D(object):
 
         .. math::
 
-            K_r(x;X,h,L,U) = \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u) - a_1(-u,-l)^2} K(z)
+            K_r(x;X,h,L,U) = \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u)
+            - a_1(-u,-l)^2} K(z)
 
             z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
 
     5. Cyclic
 
-        This method assumes cyclic boundary conditions and works only for closed boundaries.
+        This method assumes cyclic boundary conditions and works only for
+        closed boundaries.
 
         The estimation is done with a modified kernel given by:
 
         .. math::
 
-            \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right) + K\left(\frac{x-X-(U-L)}{h}\right) + K\left(\frac{x-X+(U-L)}{h}\right)
+            \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right)
+            + K\left(\frac{x-X-(U-L)}{h}\right)
+            + K\left(\frac{x-X+(U-L)}{h}\right)
 
-        When computing grids, if the bandwidth is constant, the result is computing using FFT.
+        When computing grids, if the bandwidth is constant, the result is
+        computing using FFT.
 
-    .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density estimation. Statistics and Computing 3: 135--146.
+    .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density
+        estimation. Statistics and Computing 3: 135--146.
 
     """
 
@@ -277,9 +298,9 @@ class KDE1D(object):
         Shallow copy of the KDE object
         """
         res = KDE1D.__new__(KDE1D)
-        mems = ['_xdata', '_upper', '_lower', '_kernel', '_bw_fct', '_bw', '_cov_fct',
-                '_covariance', '_method', '_weights', '_total_weights', '_lambdas', '_evaluate',
-                '_grid_eval']
+        mems = ['_xdata', '_upper', '_lower', '_kernel', '_bw_fct', '_bw',
+                '_cov_fct', '_covariance', '_method', '_weights',
+                '_total_weights', '_lambdas', '_evaluate', '_grid_eval']
         for m in mems:
             setattr(res, m, getattr(self, m))
         return res
@@ -317,13 +338,16 @@ class KDE1D(object):
             Density of the kernel, denoted :math:`K(x)`
 
         ``kernel.cdf(z)``
-            Cumulative density of probability, that is :math:`F^K(z) = \int_{-\infty}^z K(x) dx`
+            Cumulative density of probability, that is
+            :math:`F^K(z) = \int_{-\infty}^z K(x) dx`
 
         ``kernel.pm1(z)``
-            First partial moment, defined by :math:`\mathcal{M}^K_1(z) = \int_{-\infty}^z xK(x)dx`
+            First partial moment, defined by
+            :math:`\mathcal{M}^K_1(z) = \int_{-\infty}^z xK(x)dx`
 
         ``kernel.pm2(z)``
-            Second partial moment, defined by :math:`\mathcal{M}^K_2(z) = \int_{-\infty}^z x^2K(x)dx`
+            Second partial moment, defined by
+            :math:`\mathcal{M}^K_2(z) = \int_{-\infty}^z x^2K(x)dx`
 
         ``kernel.fft(z)``
             FFT of the kernel on the points of ``z``. The points will always be
@@ -336,7 +360,8 @@ class KDE1D(object):
             provided as a grid with :math:`2^n` points, representing the whole
             frequency range to be explored.
 
-        By default, the kernel is an instance of :py:class:`kernels.normal_kernel1d`
+        By default, the kernel is an instance of
+        :py:class:`kernels.normal_kernel1d`
         """
         return self._kernel
 
@@ -347,7 +372,8 @@ class KDE1D(object):
     @property
     def lower(self):
         r"""
-        Lower bound of the density domain. If deleted, becomes set to :math:`-\infty`
+        Lower bound of the density domain. If deleted, becomes set to
+        :math:`-\infty`
         """
         return self._lower
 
@@ -362,7 +388,8 @@ class KDE1D(object):
     @property
     def upper(self):
         r"""
-        Upper bound of the density domain. If deleted, becomes set to :math:`\infty`
+        Upper bound of the density domain. If deleted, becomes set to
+        :math:`\infty`
         """
         return self._upper
 
@@ -431,12 +458,14 @@ class KDE1D(object):
     def bandwidth(self):
         """
         Bandwidth of the kernel.
-        Can be set either as a fixed value or using a bandwidth calculator, that is a function
-        of signature ``w(xdata)`` that returns a single value.
+        Can be set either as a fixed value or using a bandwidth calculator,
+        that is a function of signature ``w(xdata)`` that returns a single
+        value.
 
         .. note::
 
-            A ndarray with a single value will be converted to a floating point value.
+            A ndarray with a single value will be converted to a floating point
+            value.
         """
         return self._bw
 
@@ -456,12 +485,14 @@ class KDE1D(object):
     def covariance(self):
         """
         Covariance of the gaussian kernel.
-        Can be set either as a fixed value or using a bandwidth calculator, that is a function
-        of signature ``w(xdata)`` that returns a single value.
+        Can be set either as a fixed value or using a bandwidth calculator,
+        that is a function of signature ``w(xdata)`` that returns a single
+        value.
 
         .. note::
 
-            A ndarray with a single value will be converted to a floating point value.
+            A ndarray with a single value will be converted to a floating point
+            value.
         """
         return self._covariance
 
@@ -549,7 +580,8 @@ class KDE1D(object):
 
     def _evaluate_cyclic(self, points, output=None):
         if not self.closed:
-            raise ValueError("Cyclic boundary conditions can only be used with closed domains.")
+            raise ValueError("Cyclic boundary conditions can only be used with"
+                             "closed domains.")
 
         xdata = self.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
@@ -643,7 +675,8 @@ class KDE1D(object):
                        'linear_combination': self.grid_eval,
                        'cyclic': self._grid_cyclic}
         if m not in _known_methods:
-            raise ValueError("Error, method must be one of 'renormalization', 'reflexion', 'cyclic' or 'linear_combination'")
+            raise ValueError("Error, method must be one of 'renormalization', "
+                             "'reflexion', 'cyclic' or 'linear_combination'")
         self._evaluate = _known_methods[m]
         self._grid_eval = _known_grid[m]
         self._method = m
@@ -651,7 +684,8 @@ class KDE1D(object):
     @property
     def closed(self):
         """
-        Returns true if the density domain is closed (i.e. lower and upper are both finite)
+        Returns true if the density domain is closed (i.e. lower and upper
+        are both finite)
         """
         return self.lower > -np.inf and self.upper < np.inf
 
@@ -664,21 +698,24 @@ class KDE1D(object):
 
     def grid_eval(self, N=None):
         N = 2 ** 10 if N is None else N
-        lower = np.min(self.xdata) - 2 * self.bandwidth if self.lower == -np.inf else self.lower
-        upper = np.max(self.xdata) + 2 * self.bandwidth if self.upper == np.inf else self.upper
+        lower = np.min(self.xdata) - 2 * self.bandwidth \
+            if self.lower == -np.inf else self.lower
+        upper = np.max(self.xdata) + 2 * self.bandwidth \
+            if self.upper == np.inf else self.upper
         g = np.r_[lower:upper:N * 1j]
         return g, self(g)
 
     def _grid_cyclic(self, N):
         """
-        FFT-based estimation of KDE estimation, i.e. with cyclic boundary conditions.
-        This works only for closed domains, fixed bandwidth (i.e. lambdas = 1)
-        and gaussian kernel.
+        FFT-based estimation of KDE estimation, i.e. with cyclic boundary
+        conditions. This works only for closed domains, fixed bandwidth
+        (i.e. lambdas = 1) and gaussian kernel.
         """
         if self.lambdas.shape:
             return self.grid_eval(N)
         if not self.closed:
-            raise ValueError("Error, cyclic boundary conditions require a closed domain.")
+            raise ValueError("Error, cyclic boundary conditions require "
+                             "a closed domain.")
         bw = self.bandwidth * self.lambdas
         data = self.xdata
         N = 2 ** 14 if N is None else N
@@ -690,7 +727,8 @@ class KDE1D(object):
         weights = self.weights
         if not weights.shape:
             weights = None
-        DataHist, bin_edges = np.histogram(data, bins=mesh - dN / 2, weights=weights)
+        DataHist, bin_edges = np.histogram(data, bins=mesh - dN / 2,
+                                           weights=weights)
         DataHist[0] += DataHist[-1]
         DataHist = DataHist / self._total_weights
         FFTData = fftpack.fft(DataHist[:-1])
@@ -720,8 +758,10 @@ class KDE1D(object):
         bw = self.bandwidth * self.lambdas
         data = self.xdata
         N = 2 ** 14 if N is None else N
-        lower = np.min(data) - 3 * self.bandwidth if self.lower == -np.inf else self.lower
-        upper = np.max(data) + 3 * self.bandwidth if self.upper == np.inf else self.upper
+        lower = np.min(data) - 3 * self.bandwidth \
+            if self.lower == -np.inf else self.lower
+        upper = np.max(data) + 3 * self.bandwidth \
+            if self.upper == np.inf else self.upper
 
         R = upper - lower
 
@@ -729,7 +769,8 @@ class KDE1D(object):
         weights = self.weights
         if not weights.shape:
             weights = None
-        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper), weights=weights)
+        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper),
+                                      weights=weights)
         DataHist = DataHist / self._total_weights
         DCTData = fftpack.dct(DataHist, norm=None)
 
@@ -757,7 +798,8 @@ class KDE1D(object):
         and CDT, which are a lots faster on a regular grid. FFT and CDT cannot
         be used if the bandwidth vary depending on the sample though.
 
-        :returns: a tuple with the mesh on which the density is evaluated and the density itself
+        :returns: a tuple with the mesh on which the density is evaluated and
+        the density itself
         """
         if not self.bounded:
             return self._grid_reflexion(N)
@@ -790,7 +832,8 @@ def create_transform(obj, inv=None, Dinv=None):
     fct = obj.__call__
     if inv is None:
         if not hasattr(obj, 'inv'):
-            raise AttributeError("Error, transform object must have a 'inv' attribute or you must specify 'inv'")
+            raise AttributeError("Error, transform object must have a 'inv' "
+                                 "attribute or you must specify 'inv'")
         inv = obj.inv if hasattr(obj, 'inv') else inv
     if Dinv is None:
         if hasattr(obj, Dinv):
@@ -836,8 +879,10 @@ class TransformKDE(object):
 
     :param kde: KDE evaluation object
     :param trans: Either a simple function, or a function object with
-           attributes `inv` and `Dinv` to use in case they are not provided as arguments.
-    :param inv: Invert of the function. If not provided, `trans` must have it as attribute.
+        attributes `inv` and `Dinv` to use in case they are not provided
+        as arguments.
+    :param inv: Invert of the function. If not provided, `trans` must have
+        it as attribute.
     :param Dinv: Derivative of the invert function.
 
     Any unknown member is forwarded to the underlying KDE object.
@@ -881,7 +926,8 @@ class TransformKDE(object):
         """
         Evaluate the KDE on a grid of points with N points.
 
-        The grid is regular *in the transformed domain*, so as to use FFT or CDT methods when applicable.
+        The grid is regular *in the transformed domain*, so as to use FFT or
+        CDT methods when applicable.
         """
         xs, ys = self.kde.grid(N)
         trans = self.trans

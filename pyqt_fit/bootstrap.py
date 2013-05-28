@@ -58,9 +58,10 @@ def bootstrap_residuals(fct, xdata, ydata, repeats=3000, residuals=None,
     :param repeats: Number of repeats for the bootstrapping
 
     :type  add_residual: callable or None
-    :param add_residual: Function that add a residual to a value. The call ``add_residual(ydata,
-        residual)`` should return the new ydata, with the residuals 'applied'. If
-        None, it is considered the residuals should simply be added.
+    :param add_residual: Function that add a residual to a value. The call
+        ``add_residual(ydata, residual)`` should return the new ydata, with
+        the residuals 'applied'. If None, it is considered the residuals should
+        simply be added.
 
     :type  correct_bias: boolean
     :param correct_bias: If true, the additive bias of the residuals is computed and restored
@@ -71,10 +72,11 @@ def bootstrap_residuals(fct, xdata, ydata, repeats=3000, residuals=None,
     :rtype: (ndarray, ndarray)
     :returns:
 
-        1. xdata, with a new axis at position -2. This correspond to the 'shuffled' xdata (as they are *not* shuffled
-        here)
+        1. xdata, with a new axis at position -2. This correspond to the 'shuffled' xdata
+        (as they are *not* shuffled here)
 
-        2.Second item is the shuffled ydata. There is a line per repeat, each line is shuffled independently.
+        2.Second item is the shuffled ydata. There is a line per repeat, each line is
+        shuffled independently.
 
     .. todo::
 
@@ -130,7 +132,9 @@ def bootstrap_regression(fct, xdata, ydata, repeats=3000, **kwrds):
 
     :rtype: (ndarray, ndarray)
     :returns:
-        1. The shuffled x data. The axis -2 has one element per repeat, the other axis are shuffled independently.
+        1. The shuffled x data. The axis -2 has one element per repeat, the other axis
+        are shuffled independently.
+
         2. The shuffled ydata. There is a line per repeat, each line is shuffled independently.
 
     .. todo::
@@ -159,14 +163,17 @@ def getCIs(CI, *arrays):
 
     return CIs
 
-BootstrapResult = namedtuple('BootstrapResult', 'y_fit y_est y_eval CIs shuffled_xs shuffled_ys full_results')
+BootstrapResult = namedtuple('BootstrapResult', '''y_fit y_est y_eval CIs
+shuffled_xs shuffled_ys full_results''')
 
 
 def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals, shuffle_args=(),
-              shuffle_kwrds = {}, repeats = 3000, eval_points = None, full_results = False, nb_workers = None, extra_attrs = (), fit_args=(), fit_kwrds={}):
+              shuffle_kwrds={}, repeats=3000, eval_points=None, full_results=False,
+              nb_workers=None, extra_attrs=(), fit_args=(), fit_kwrds={}):
     """
-    This function implement the bootstrap algorithm for a regression algorithm. It is capable of spreading the load
-    across many threads using shared memory and the :py:mod:`multiprocess` module.
+    This function implement the bootstrap algorithm for a regression algorithm.
+    It is capable of spreading the load across many threads using shared memory
+    and the :py:mod:`multiprocess` module.
 
     :type  fit: callable
     :param fit:
@@ -174,7 +181,8 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals, shuffle
 
             f = fit(xdata, ydata, *fit_args, **fit_kwrds)
 
-        Fit should return an object that would evaluate the regression on a set of points. The next call will be::
+        Fit should return an object that would evaluate the regression on a set of points.
+        The next call will be::
 
             f(eval_points)
 
@@ -211,11 +219,12 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals, shuffle
     :param full_results: if True, output also the whole set of evaluations
 
     :type  nb_workers: int or None
-    :param nb_worders: Number of worker threads. If None, the number of detected CPUs will be used. And if 1 or less,
-        a single thread will be used.
+    :param nb_worders: Number of worker threads. If None, the number of detected
+        CPUs will be used. And if 1 or less, a single thread will be used.
 
     :type  extra_attrs: tuple of str
-    :param extra_attrs: List of attributes of the fitting method to extract on top of the y values for confidence intervals
+    :param extra_attrs: List of attributes of the fitting method to extract on top
+        of the y values for confidence intervals
 
     :type  fit_args: tuple
     :param fit_args: List of extra arguments for the fit callable
@@ -224,11 +233,12 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals, shuffle
     :param fit_kwrds: Dictionnary of extra named arguments for the fit callable
 
     :rtype: :py:class:`BootstrapResult`
-    :return: Estimated y on the data, on the evaluation points, the requested confidence intervals and, if requested,
-        the shuffled X, Y and the full estimated distributions.
+    :return: Estimated y on the data, on the evaluation points, the requested confidence
+        intervals and, if requested, the shuffled X, Y and the full estimated distributions.
     """
     y_fit = fit(xdata, ydata, *fit_args, **fit_kwrds)
-    shuffled_x, shuffled_y = shuffle_method(y_fit, xdata, ydata, repeats=repeats, *shuffle_args, **shuffle_kwrds)
+    shuffled_x, shuffled_y = shuffle_method(y_fit, xdata, ydata, repeats=repeats,
+                                            *shuffle_args, **shuffle_kwrds)
     nx = shuffled_x.shape[-2]
     ny = shuffled_y.shape[0]
     extra_values = []
@@ -256,7 +266,9 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals, shuffle
     else:
         result_array = np.empty((repeats + 1, len(eval_points)), dtype=float)
         extra_arrays = [np.empty((repeats + 1, len(ev)), dtype=float) for ev in extra_values]
-        bootstrap_workers.initialize(nx, ny, result_array, extra_arrays, shuffled_x, shuffled_y, eval_points, extra_attrs, fit, fit_args, fit_kwrds)
+        bootstrap_workers.initialize(nx, ny, result_array, extra_arrays, shuffled_x,
+                                     shuffled_y, eval_points, extra_attrs, fit, fit_args,
+                                     fit_kwrds)
 
     result_array[0] = y_fit(eval_points)
 
@@ -272,7 +284,8 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals, shuffle
         if end_repeats > repeats:
             end_repeats = repeats
         if multiprocess:
-            pool.apply_async(bootstrap_workers.bootstrap_result, (i, i * base_repeat, end_repeats))
+            pool.apply_async(bootstrap_workers.bootstrap_result,
+                             (i, i * base_repeat, end_repeats))
         else:
             bootstrap_workers.bootstrap_result(i, i * base_repeat, end_repeats)
 
@@ -329,7 +342,8 @@ def test():
 
     print("Residual bootstrap calculation")
     result_r = bootstrap(test, x, y, init, (95, 99),
-                         shuffle_method=bootstrap_residuals, eval_points=xr, fit=curve_fit)
+                         shuffle_method=bootstrap_residuals, eval_points=xr,
+                         fit=curve_fit)
     popt_r, pcov_r, res_r, CI_r, CIp_r, extra_r = result_r
     yopt_r = test(xr, popt_r)
 
@@ -345,7 +359,10 @@ def test():
     title('Residual Bootstrapping')
 
     print("Regression bootstrap calculation")
-    popt_c, pcov_c, res_c, CI_c, CIp_r, extra_c = bootstrap(test, x, y, init, CI=(95, 99), shuffle_method=bootstrap_regression, eval_points = xr, fit=curve_fit)
+    (popt_c, pcov_c, res_c, CI_c, CIp_r,
+     extra_c) = bootstrap(test, x, y, init, CI=(95, 99),
+                          shuffle_method=bootstrap_regression, eval_points=xr,
+                          fit=curve_fit)
     yopt_c = test(xr, popt_c)
 
     figure(3)
