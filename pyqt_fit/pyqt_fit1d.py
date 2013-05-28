@@ -1,51 +1,51 @@
 #!/usr/bin/env python
-from . import cyth
+from __future__ import division, print_function, absolute_import
+from . import functions, residuals, plot_fit, bootstrap
+from .compat import user_text, CSV_READ_FLAGS
+from .compat import unicode_csv_reader as csv_reader
+
 from PyQt4 import QtGui, QtCore, uic
-from PyQt4.QtCore import QObject, pyqtSignature, Qt
+from PyQt4.QtCore import pyqtSignature, Qt
 import matplotlib
-matplotlib.use('Qt4Agg')
-from numpy import nan, array, ma, isnan, arange, c_
-from . import functions
-from . import residuals
-from .path import path
-from .curve_fitting import curve_fit
-from .plot_fit import fit
-from .plot_fit import plot_fit as _plot_fit
-from .plot_fit import write_fit as _write_fit
-from . import bootstrap
-from csv import reader as csv_reader
-from csv import writer as csv_writer
+from numpy import nan, array, ma, arange
+from path import path
+from .curve_fitting import CurveFitting
 import sys
 from pylab import close as close_figure
-from itertools import chain
 import traceback
+import re
+
+CIsplitting = re.compile(r'[;, :-]')
+
 
 def get_args(*a, **k):
-    return a,k
+    return a, k
+
 
 def find(array):
     return arange(len(array))[array]
 
+
 class ParametersModel(QtCore.QAbstractTableModel):
-    def __init__(self, data, function, res, idxX, idxY, parent = None):
+    def __init__(self, data, function, res, idxX, idxY, parent=None):
         QtCore.QAbstractTableModel.__init__(self, parent)
-        values = data[:,[idxX, idxY]]
-        values = values.data[values.mask.sum(axis=1)==0]
-        self.valuesX = values[:,0]
-        self.valuesY = values[:,1]
+        values = data[:, [idxX, idxY]]
+        values = values.data[values.mask.sum(axis=1) == 0]
+        self.valuesX = values[:, 0]
+        self.valuesY = values[:, 1]
         self.fct = function
         self.res = res
         self.parm_names = function.args
         self.parm_values = list(function.init_args(self.valuesX, self.valuesY))
-        self.fixed = [False]*len(function.args)
+        self.fixed = [False] * len(function.args)
 
-    def rowCount(self, idx = QtCore.QModelIndex()):
+    def rowCount(self, idx=QtCore.QModelIndex()):
         return len(self.parm_names)
 
-    def columnCount(self, idx = QtCore.QModelIndex()):
+    def columnCount(self, idx=QtCore.QModelIndex()):
         return 3
 
-    def headerData(self, section, orientation, role = Qt.DisplayRole):
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
             return
         if orientation == Qt.Horizontal:
@@ -65,7 +65,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
         return Qt.NoItemFlags
 
-    def data(self, index, role = Qt.DisplayRole):
+    def data(self, index, role=Qt.DisplayRole):
         r = index.row()
         c = index.column()
         if 0 <= r < len(self.parm_names) and 0 <= c < 3:
@@ -81,12 +81,12 @@ class ParametersModel(QtCore.QAbstractTableModel):
                 if role == Qt.CheckStateRole:
                     return self.fixed[r]
 
-    def setData(self, index, value, role = Qt.DisplayRole):
+    def setData(self, index, value, role=Qt.DisplayRole):
         r = index.row()
         c = index.column()
         if 0 <= r < len(self.parm_names) and 0 < c < 3:
             if c == 1 and role == Qt.EditRole:
-                f,ok = value.toDouble()
+                f, ok = value.toDouble()
                 if ok:
                     self.parm_values[r] = f
                     self.dataChanged.emit(index, index)
@@ -94,7 +94,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
                 else:
                     print("Error, cannot convert value to double")
             elif c == 2 and role == Qt.CheckStateRole:
-                self.fixed[r] = value.toPyObject()
+                self.fixed[r] = value
                 self.dataChanged.emit(index, index)
                 return True
         return False
@@ -143,12 +143,12 @@ class QtFitDlg(QtGui.QDialog):
 
     @pyqtSignature("const QString&")
     def on_function_currentIndexChanged(self, txt):
-        print("New function: %s" % txt)
+        print("New function: {}".format(txt))
         self.fct = functions.get(str(txt))
 
     @pyqtSignature("const QString&")
     def on_residuals_currentIndexChanged(self, txt):
-        print("New residual: %s" % txt)
+        print("New residual: {}".format(txt))
         self.res = residuals.get(str(txt))
 
     @pyqtSignature("")
@@ -186,6 +186,7 @@ class QtFitDlg(QtGui.QDialog):
 
     def _getRes(self):
         return self._res
+
     def _setRes(self, res):
         if res != self._res:
             self._res = res
@@ -200,16 +201,17 @@ class QtFitDlg(QtGui.QDialog):
 
     def _getInput(self):
         return self._input
+
     def _setInput(self, txt):
         txt = path(txt)
         if txt != self._input and txt.isfile():
             try:
                 data = None
                 header = None
-                with open(txt, "rt") as f:
+                with open(txt, CSV_READ_FLAGS) as f:
                     try:
                         r = csv_reader(f)
-                        header = next(r) # [ t.decode('utf_8') for t in next(r) ]
+                        header = next(r)
                         if len(header) < 2:
                             QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
                             return
@@ -217,9 +219,9 @@ class QtFitDlg(QtGui.QDialog):
                         for line in r:
                             if not line:
                                 break
-                            data.append([float(f) if f else nan for f in line])
+                            data.append([float(field) if field else nan for field in line])
                         max_length = max(len(l) for l in data)
-                        data = array([l + [nan]*(max_length-len(l)) for l in data], dtype=float)
+                        data = array([line + [nan] * (max_length - len(line)) for line in data], dtype=float)
                         data = ma.masked_invalid(data)
                     except Exception as ex:
                         QtGui.QMessageBox.critical(self, "Error reading CSV file", str(ex))
@@ -227,7 +229,7 @@ class QtFitDlg(QtGui.QDialog):
                         header = None
                 if data is not None:
                     self._input = txt
-                    print("input: %s" % (self._input,))
+                    print("input: {}".format(self._input))
                     if self._input != self.inputFile.text():
                         self.inputFile.setText(self._input)
                     self.setData(header, data)
@@ -253,6 +255,7 @@ class QtFitDlg(QtGui.QDialog):
 
     def _getOutput(self):
         return self._output
+
     def _setOutput(self, txt):
         txt = path(txt)
         if self._output != txt:
@@ -269,6 +272,7 @@ class QtFitDlg(QtGui.QDialog):
 
     def _getWriteResult(self):
         return self._write
+
     def _setWriteResult(self, on):
         on = bool(on)
         if on != self._write:
@@ -286,6 +290,7 @@ class QtFitDlg(QtGui.QDialog):
 
     def _getFieldX(self):
         return self._fieldX
+
     def _setFieldX(self, txt):
         if txt != self._fieldX and txt in self.header:
             self._fieldX = txt
@@ -296,6 +301,7 @@ class QtFitDlg(QtGui.QDialog):
 
     def _getFieldY(self):
         return self._fieldY
+
     def _setFieldY(self, txt):
         if txt != self._fieldY and txt in self.header:
             self._fieldY = txt
@@ -306,12 +312,12 @@ class QtFitDlg(QtGui.QDialog):
 
     def updateParameters(self):
         if self._data is not None and self.fct is not None and self.res is not None and self.fieldX is not None and self.fieldY is not None:
-            idxX = self.header.index(str(self.fieldX))
-            idxY = self.header.index(str(self.fieldY))
+            idxX = self.header.index(user_text(self.fieldX))
+            idxY = self.header.index(user_text(self.fieldY))
             self.param_model = ParametersModel(self._data, self.fct, self.res, idxX, idxY)
             self.parameters.setModel(self.param_model)
-            minx = self._data[:,idxX].min()
-            maxx = self._data[:,idxX].max()
+            minx = self._data[:, idxX].min()
+            maxx = self._data[:, idxX].max()
             self.xMin.setText(str(minx))
             self.xMax.setText(str(maxx))
         #elif self._data is None:
@@ -329,7 +335,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_computeCI_toggled(self, on):
         if on:
             meth = self.CImethod.currentText()
-            ints = [float(f) for f in str(self.CIvalues.text()).split(";")]
+            ints = [float(f) for f in CIsplitting.split(user_text(self.CIvalues.text())) if f]
             self.CI = [meth, ints]
         else:
             self.CI = None
@@ -342,12 +348,12 @@ class QtFitDlg(QtGui.QDialog):
     def on_CIvalues_editingFinished(self):
         if self.CI:
             try:
-                ints = [float(f) for f in str(self.CIvalues.text()).split(";")]
+                ints = [float(f) for f in CIsplitting.split(user_text(self.CIvalues.text())) if f]
                 self.setIntervals(ints)
             except:
                 pass
             if self.CI[1]:
-                self.CIvalues.setText(";".join("%g"%f for f in self.CI[1]))
+                self.CIvalues.setText(";".join("{:g}".format(f) for f in self.CI[1]))
             else:
                 self.CIvalues.setText("")
             self._CIchanged = False
@@ -355,21 +361,22 @@ class QtFitDlg(QtGui.QDialog):
     @pyqtSignature("const QString&")
     def on_CImethod_currentIndexChanged(self, txt):
         if self.CI:
-            meth = str(txt)
+            meth = user_text(txt)
             self.setCIMethod(meth)
 
     def _getCI(self):
         return self._CI
+
     def _setCI(self, val):
         if val is not None:
-            val = (str(val[0]), [float(f) for f in val[1]])
+            val = (user_text(val[0]), [float(f) for f in val[1]])
         if val != self._CI:
             self._CI = val
             if val is not None:
                 meth, ints = val
                 if meth != self.CImethod.currentText():
                     self.CImethod.setCurrentIndex(self.CImethod.findText(meth))
-                self.CIvalues.setText(";".join("%g"%f for f in ints))
+                self.CIvalues.setText(";".join("{:g}".format(f) for f in ints))
     CI = property(_getCI, _setCI)
 
     def setCIMethod(self, meth):
@@ -381,7 +388,7 @@ class QtFitDlg(QtGui.QDialog):
     def setIntervals(self, ints):
         if ints != self._CI[1]:
             self._CI = (self._CI[0], ints)
-            self.CIvalues.setText(";".join("%g"%f for f in ints))
+            self.CIvalues.setText(";".join("{:g}".format(f) for f in ints))
 
     @pyqtSignature("QAbstractButton*")
     def on_buttonBox_clicked(self, button):
@@ -409,7 +416,6 @@ class QtFitDlg(QtGui.QDialog):
             p0 = model.parm_values
             parm_names = model.parm_names
             eval_points = None
-            repeats = self.repeats.value()
             fixed = tuple(find(array(model.fixed) > 0))
             if self.interpolate.isChecked():
                 if self.autoScale.isChecked():
@@ -418,11 +424,12 @@ class QtFitDlg(QtGui.QDialog):
                 else:
                     xmin = float(self.xMin.text())
                     xmax = float(self.xMax.text())
-                eval_points = arange(xmin, xmax, (xmax-xmin)/1024)
+                eval_points = arange(xmin, xmax, (xmax - xmin) / 1024)
             CImethod = None
-            if str(self.CImethod.currentText()) == "Bootstrapping":
+            CImethodName = user_text(self.CImethod.currentText())
+            if CImethodName == u"Bootstrapping":
                 CImethod = bootstrap.bootstrap_regression
-            elif str(self.CImethod.currentText()) == "Residual resampling":
+            elif CImethodName == u"Residual resampling":
                 CImethod = bootstrap.bootstrap_residuals
             outfile = self.output
             CI = ()
@@ -430,33 +437,34 @@ class QtFitDlg(QtGui.QDialog):
             loc = str(self.legendLocation.currentText())
             fct_desc = "$%s$" % (fct.description,)
             try:
+                cf_args = (p0, fct)
+                cf_kwrds = {"residuals": res.__call__, "maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv": 1}
                 if self.CI is not None:
-                    method = self.CI[0]
                     CI = self.CI[1]
-                    result = fit(fct, xdata, ydata, p0,
-                            eval_points=eval_points, CI = CI,
-                            xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                            param_names = parm_names, res_name = res.name, repeats=repeats, residuals = res.fct,
-                            fit_args={"maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv":1 },
-                            shuffle_method=CImethod, shuffle_args={"add_residual": res.invert, "fit":curve_fit})
+                    bs = bootstrap.bootstrap(CurveFitting, xdata, ydata, CI,
+                                             shuffle_method=CImethod, shuffle_kwrds={"add_residual": res.invert, "fit": CurveFitting},
+                                             extra_attrs=('popt',), eval_points=eval_points,
+                                             fit_args=cf_args, fit_kwrds=cf_kwrds)
+                    result = plot_fit.fit_evaluation(bs.y_fit, xdata, ydata, eval_points=eval_points,
+                                                     xname=self.fieldX, yname=self.fieldY, fct_desc=fct_desc,
+                                                     param_names=parm_names, res_name=res.name, CI=CI, CIresults=bs)
                 else:
-                    result = fit(fct, xdata, ydata, p0, fit=curve_fit, fix_params=fixed,
-                            eval_points=eval_points,
-                            xname = self.fieldX, yname = self.fieldY, fct_desc = fct_desc,
-                            Dfun = fct.Dfun, Dres = res.Dfun, col_deriv=1,
-                            param_names = parm_names, res_name = res.name,
-                            residuals = res.fct, maxfev=10000)
+                    fit = CurveFitting(xdata, ydata, *cf_args, **cf_kwrds)
+                    result = plot_fit.fit_evaluation(fit, xdata, ydata, eval_points=eval_points,
+                                                     xname=self.fieldX, yname=self.fieldY, fct_desc=fct_desc,
+                                                     param_names=parm_names, res_name=res.name)
             except Exception as ex:
                 traceback.print_exc()
                 QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
-                        "%s exception: %s" % (type(ex).__name__, ex.message))
+                                           "{1} exception: {2}".format(type(ex).__name__, ex.message))
                 return
-            _plot_fit(result, loc=loc)
+            plot_fit.plot1d(result, loc=loc)
             if self.writeResult and outfile:
-                #print "output to file '%s'" % (outfile,)
-                _write_fit(outfile, result, res.description, parm_names, self.CI[0] if self.CI is not None else None)
+                #print("output to file '%s'" % (outfile,))
+                plot_fit.write1d(outfile, result, res.description, CImethodName)  # parm_names, self.CI[0] if self.CI is not None else None)
             #else:
-                #print "self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile)
+                #print("self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile))
+
 
 def main():
     wnd = QtFitDlg()
@@ -465,9 +473,7 @@ def main():
     return wnd
 
 if __name__ == "__main__":
-    import sys
     app = QtGui.QApplication(sys.argv)
     matplotlib.interactive(True)
     wnd = main()
     app.exec_()
-

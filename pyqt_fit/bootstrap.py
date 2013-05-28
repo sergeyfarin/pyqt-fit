@@ -1,241 +1,325 @@
-from numpy import iterable, zeros, floor, exp, sort, newaxis, array
-from numpy.random import rand, randn, randint
+"""
+:Author: Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>
+
+This modules provides function for bootstrapping a regression method.
+"""
+
+from __future__ import division, print_function, absolute_import
+import numpy as np
+from numpy.random import randint
 from scipy import optimize
+from collections import namedtuple
+from . import kernel_smoothing
+from . import sharedmem
+import multiprocessing as mp
+from . import bootstrap_workers
+from .compat import irange, izip
+
 
 def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
     popt, pcov = optimize.curve_fit(fct, x, y, **kwrds)
     return (popt, pcov, fct(popt, x, *args) - y)
 
-def _percentile(array, p):
-    n = len(array)*p
-    n0 = floor(n)
-    n1 = n0+1
-    #print "%g percentile on %d = [%d-%d]" % (p*100, len(array), n0, n1)
-    d = n-n0
+
+def percentile(array, p, axis=0):
+    """
+    Compute the percentiles of the values in array
+    """
+    a = np.asarray(array).sort(axis=axis)
+    n = (len(a) - 1) * p / 100
+    n0 = np.floor(n)
+    n1 = n0 + 1
+    #print("%g percentile on %d = [%d-%d]" % (p*100, len(array), n0, n1))
+    d = n - n0
     v0 = array[n0]
     v1 = array[n1]
-    return v0 + d*(v1-v0)
+    return v0 + d * (v1 - v0)
 
-def bootstrap_residuals(fct, xdata, ydata, popt, res, repeats = 3000, args = (), add_residual = None, **kwrds):
+
+def bootstrap_residuals(fct, xdata, ydata, repeats=3000, residuals=None,
+                        add_residual=None, correct_bias=False, **kwrds):
     """
     This implements the residual bootstrapping method for non-linear regression.
 
-    Parameters
-    ----------
-    fct: callable
-        This is the function to optimize
-    xdata: ndarray of shape (N,) or (k,N) for function with k perdictors
-        The independent variable where the data is measured
-    ydata: ndarray
-        The dependant data
-    popt: ndarray
-        Array of optimal parameters
-    res: ndarray
-        List of residuals for the given parameters
-    repeats: int
-        Number of repeats for the bootstrapping
-    args: tuple
-        Extra arguments for the ``fct`` function
-    add_residual: callable or None
-        Function that add a residual to a value. The call ``add_residual(ydata,
+    :type  fct: callable
+    :param fct: Function evaluating the function on xdata at least with ``fct(xdata)``
+
+    :type  xdata: ndarray of shape (N,) or (k,N) for function with k predictors
+    :param xdata: The independent variable where the data is measured
+
+    :type  ydata: ndarray
+    :param ydata: The dependant data
+
+    :type  residuals: ndarray or callable or None
+    :param residuals: Residuals for the estimation on each xdata. If callable,
+        the call will be ``residuals(ydata, yopt)``.
+
+    :type  repeats: int
+    :param repeats: Number of repeats for the bootstrapping
+
+    :type  add_residual: callable or None
+    :param add_residual: Function that add a residual to a value. The call ``add_residual(ydata,
         residual)`` should return the new ydata, with the residuals 'applied'. If
         None, it is considered the residuals should simply be added.
-    kwrds: dict
-        Dictionnary to absorbed unknown named parameters
 
-    Returns
-    -------
-    shuffled_x: ndarray
-        Return xdata, with a new axis at position -2.
-    shuffled_y: ndarray
-        Return the shuffled ydata. There is a line per repeat, each line is shuffled independently.
+    :type  correct_bias: boolean
+    :param correct_bias: If true, the additive bias of the residuals is computed and restored
 
-    Notes
-    -----
-    TODO explain the method here, as well as how to create add_residual
+    :type  kwrds: dict
+    :param kwrds: Dictionnary present to absorbed unknown named parameters
+
+    :rtype: (ndarray, ndarray)
+    :returns:
+
+        1. xdata, with a new axis at position -2. This correspond to the 'shuffled' xdata (as they are *not* shuffled
+        here)
+
+        2.Second item is the shuffled ydata. There is a line per repeat, each line is shuffled independently.
+
+    .. todo::
+
+        explain the method here, as well as how to create add_residual
     """
+    if residuals is None:
+        residuals = np.subtract
+
+    yopt = fct(xdata)
+
+    if not isinstance(residuals, np.ndarray):
+        res = residuals(ydata, yopt)
+    else:
+        res = np.array(residuals)
+
+    res -= np.mean(res)
 
     shuffle = randint(0, len(ydata), size=(repeats, len(ydata)))
+
     shuffled_res = res[shuffle]
 
+    if correct_bias:
+        kde = kernel_smoothing.LocalLinearKernel1D(xdata, res)
+        bias = kde(xdata)
+        shuffled_res += bias
+
     if add_residual is None:
-        add_residual = lambda y,r: y+r
+        add_residual = np.add
 
-    yopt = fct(popt, xdata, *args)
-    modified_ydata = add_residual(yopt,shuffled_res)
+    modified_ydata = add_residual(yopt, shuffled_res)
 
-    return xdata[...,newaxis,:], modified_ydata
+    return xdata[..., np.newaxis, :], modified_ydata
 
-def bootstrap_regression(fct, xdata, ydata, popt, res, repeats = 3000, eval_points = None, args = (), **kwrds):
+
+def bootstrap_regression(fct, xdata, ydata, repeats=3000, **kwrds):
     """
     This implements the shuffling of standard bootstrapping method for non-linear regression.
 
-    Parameters
-    ----------
-    fct: callable
-        This is the function to optimize
-    xdata: ndarray of shape (N,) or (k,N) for function with k perdictors
-        The independent variable where the data is measured
-    ydata: ndarray
-        The dependant data
-    popt: ndarray
-        Array of optimal parameters
-    res: ndarray
-        List of residuals for the given parameters
-    repeats: int
-        Number of repeats for the bootstrapping
-    args: tuple
-        Extra arguments for the ``fct`` function
-    kwrds: dict
-        Dictionnary to absorbed unknown named parameters
+    :type  fct: callable
+    :param fct: This is the function to optimize
 
-    Returns
-    -------
-    shuffled_x: ndarray
-        Return the shuffled x data. The axis -2 has one element per repeat, the other axis are shuffled independently.
-    shuffled_y: ndarray
-        Return the shuffled ydata. There is a line per repeat, each line is shuffled independently.
+    :type  xdata: ndarray of shape (N,) or (k,N) for function with k predictors
+    :param xdata: The independent variable where the data is measured
 
-    Notes
-    -----
-    TODO explain the method here
+    :type  ydata: ndarray
+    :param ydata: The dependant data
+
+    :type  repeats: int
+    :param repeats: Number of repeats for the bootstrapping
+
+    :type  kwrds: dict
+    :param kwrds: Dictionnary to absorbed unknown named parameters
+
+    :rtype: (ndarray, ndarray)
+    :returns:
+        1. The shuffled x data. The axis -2 has one element per repeat, the other axis are shuffled independently.
+        2. The shuffled ydata. There is a line per repeat, each line is shuffled independently.
+
+    .. todo::
+
+        explain the method here
     """
     shuffle = randint(0, len(ydata), size=(repeats, len(ydata)))
-    shuffled_x = xdata[...,shuffle]
+    shuffled_x = xdata[..., shuffle]
     shuffled_y = ydata[shuffle]
     return shuffled_x, shuffled_y
 
-def bootstrap(fct, xdata, ydata, p0, CI, shuffle_method = bootstrap_residuals, shuffle_args={}, repeats = 3000, eval_points = None, args=(), fit=adapt_curve_fit, fit_args={}):
+
+def getCIs(CI, *arrays):
+    #sorted_arrays = [ np.sort(a, axis=0) for a in arrays ]
+
+    if not np.iterable(CI):
+        CI = (CI,)
+
+    CIs = tuple(np.zeros((len(CI), 2,) + a.shape[1:], dtype=float) for a in arrays)
+    for i, ci in enumerate(CI):
+        ci = (100. - ci) / 2
+        for cis, arr in izip(CIs, arrays):
+            low = np.percentile(arr, ci, axis=0)
+            high = np.percentile(arr, 100 - ci, axis=0)
+            cis[i] = [low, high]
+
+    return CIs
+
+BootstrapResult = namedtuple('BootstrapResult', 'y_fit y_est y_eval CIs shuffled_xs shuffled_ys full_results')
+
+
+def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals, shuffle_args=(),
+              shuffle_kwrds = {}, repeats = 3000, eval_points = None, full_results = False, nb_workers = None, extra_attrs = (), fit_args=(), fit_kwrds={}):
     """
-    Implement the standard bootstrap method applied to a regression method.
+    This function implement the bootstrap algorithm for a regression algorithm. It is capable of spreading the load
+    across many threads using shared memory and the :py:mod:`multiprocess` module.
 
-    Parameters
-    ----------
-    fct: callable
-        Function calculating the output, given x, the call is ``fct(xdata, p0, *args)``
-    xdata: ndarray of shape (N,) or (k,N) for function with k perdictors
-        The independent variable where the data is measured
-    ydata: ndarray of dimension (N,)
-        The dependant data
-    p0: ndarray
-        Initial values for the estimated parameters
-    CI: tuple of float
-        List of percentiles to calculate
-    shuffle_method: callable
-        Create shuffled dataset. The call is:
-        ``shuffle_method(fct, xdata, ydata, popt, residuals, repeat=repeats, args=args, **shuffle_args)``
-    shuffle_args: dict
-        Dictionnary of arguments for the shuffle method
-    repeats: int
-        Number of repeats for the bootstrapping
-    eval_points: None or ndarray
-        Point on which the function is evaluated for the output of the
-        bootstrapping. If None, it will use xdata.
-    args: tuple
-        Extra arguments for the function ``fct``
-    fit: callable
-        Function used to estimate a new set of parameters. The call must be
-        ``fit(fct, xdata, ydata, p0, args=args, **fit_args)`` and the
-        first returned arguments are the estimated p, their covariance matrix
-        and the residuals
-    fit_args: dict
-        Extra keyword arguments for the fit function
+    :type  fit: callable
+    :param fit:
+        Method used to compute regression. The call is::
 
-    Returns
-    -------
-    popt: ndarray
-        Optimized parameters
-    pcov : 2d array
-        The estimated covariance of popt.  The diagonals provide the variance
-        of the parameter estimate.
-    res: ndarray
-        Residuals for the optimal values
-    CIs: list of pair of ndarray
-        For each CI value, a pair of ndarray is provided for the lower and
-        upper bound of the function on the points specified in eval_points
-    CIparams: list of pair of ndarray
-        For each CI value, a pair of ndarray is provided for the lower and
-        upper bound of the parameters
-    extra_output: tuple
-        Any extra output of fit during the first evaluation
+            f = fit(xdata, ydata, *fit_args, **fit_kwrds)
 
-    Notes
-    -----
-    TODO explain the method here
+        Fit should return an object that would evaluate the regression on a set of points. The next call will be::
+
+            f(eval_points)
+
+    :type  xdata: ndarray of shape (N,) or (k,N) for function with k predictors
+    :param xdata: The independent variable where the data is measured
+
+    :type  ydata: ndarray
+    :param ydata: The dependant data
+
+    :type  CI: tuple of float
+    :param CI: List of percentiles to extract
+
+    :type  shuffle_method: callable
+    :param shuffle_method:
+        Create shuffled dataset. The call is::
+
+          shuffle_method(xdata, ydata, y_est, repeat=repeats, *shuffle_args, **shuffle_kwrds)
+
+        where ``y_est`` is the estimated dependant variable on the xdata.
+
+    :type  shuffle_args: tuple
+    :param shuffle_args: List of arguments for the shuffle method
+
+    :type  shuffle_kwrds: dict
+    :param shuffle_kwrds: Dictionnary of arguments for the shuffle method
+
+    :type  repeats: int
+    :param repeats: Number of repeats for the bootstraping
+
+    :type  eval_points: ndarray or None
+    :param eval_points: List of points to evaluate. If None, eval_point is xdata.
+
+    :type  full_results: bool
+    :param full_results: if True, output also the whole set of evaluations
+
+    :type  nb_workers: int or None
+    :param nb_worders: Number of worker threads. If None, the number of detected CPUs will be used. And if 1 or less,
+        a single thread will be used.
+
+    :type  extra_attrs: tuple of str
+    :param extra_attrs: List of attributes of the fitting method to extract on top of the y values for confidence intervals
+
+    :type  fit_args: tuple
+    :param fit_args: List of extra arguments for the fit callable
+
+    :type  fit_kwrds: dict
+    :param fit_kwrds: Dictionnary of extra named arguments for the fit callable
+
+    :rtype: :py:class:`BootstrapResult`
+    :return: Estimated y on the data, on the evaluation points, the requested confidence intervals and, if requested,
+        the shuffled X, Y and the full estimated distributions.
     """
-    result = fit(fct, xdata, ydata, p0, args=args, **fit_args)
-    popt, pcov, residuals = result[:3]
-    extra_output = result[3:]
-
-    shuffled_x, shuffled_y = shuffle_method(fct, xdata, ydata, popt, residuals, repeats=repeats, args=args, **shuffle_args)
+    y_fit = fit(xdata, ydata, *fit_args, **fit_kwrds)
+    shuffled_x, shuffled_y = shuffle_method(y_fit, xdata, ydata, repeats=repeats, *shuffle_args, **shuffle_kwrds)
     nx = shuffled_x.shape[-2]
     ny = shuffled_y.shape[0]
+    extra_values = []
+    for attr in extra_attrs:
+        extra_values.append(getattr(y_fit, attr))
 
     if eval_points is None:
         eval_points = xdata
+    if nb_workers is None:
+        nb_workers = mp.cpu_count()
 
-    result_array = zeros((repeats+1, len(eval_points)), dtype=float)
-    params_array = zeros((repeats+1, len(popt)), dtype=float)
+    multiprocess = nb_workers > 1
 
-    result_array[0] = fct(popt, eval_points, *args)
-    params_array[0] = popt
-    for i in range(0,repeats):
-        new_result = fit(fct, shuffled_x[...,i%nx,:], shuffled_y[i%ny,:], popt, args=args, **fit_args)
-        result_array[i+1] = fct(new_result[0], eval_points, *args)
-        params_array[i+1] = new_result[0]
+# Copy everything in shared mem
+    if multiprocess:
+        ra = sharedmem.zeros((repeats + 1, len(eval_points)), dtype=float)
+        result_array = ra.np
+        sx = sharedmem.array(shuffled_x)
+        sy = sharedmem.array(shuffled_y)
+        ep = sharedmem.array(eval_points)
+        eas = [sharedmem.zeros((repeats + 1, len(ev)), dtype=float) for ev in extra_values]
+        extra_arrays = [ea.np for ea in eas]
+        pool = mp.Pool(mp.cpu_count(), bootstrap_workers.initialize_shared,
+                       (nx, ny, ra, eas, sx, sy, ep, extra_attrs, fit, fit_args, fit_kwrds))
+    else:
+        result_array = np.empty((repeats + 1, len(eval_points)), dtype=float)
+        extra_arrays = [np.empty((repeats + 1, len(ev)), dtype=float) for ev in extra_values]
+        bootstrap_workers.initialize(nx, ny, result_array, extra_arrays, shuffled_x, shuffled_y, eval_points, extra_attrs, fit, fit_args, fit_kwrds)
 
-    CIs, CIparams = getCIs(CI, result_array, params_array)
-    return popt, pcov, residuals, CIs, CIparams, extra_output
+    result_array[0] = y_fit(eval_points)
 
-def getCIs(CI, result_array, params_array):
-    sorted_array = sort(result_array, axis=0)
-    sorted_params = sort(params_array, axis=0)
+    for ea, ev in izip(extra_arrays, extra_values):
+        ea[0] = ev
 
-    if not iterable(CI):
-        CI = (CI,)
+    base_repeat = repeats // nb_workers
+    if base_repeat * nb_workers < repeats:
+        base_repeat += 1
 
-    CIs = []
-    CIparams = []
-    for ci in CI:
-        ci = (1-ci/100.0)/2
-        low = _percentile(sorted_array, ci)
-        high = _percentile(sorted_array, 1-ci)
-        CIs.append((low, high))
-        low = _percentile(sorted_params, ci)
-        high = _percentile(sorted_params, 1-ci)
-        CIparams.append((low, high))
+    for i in irange(nb_workers):
+        end_repeats = (i + 1) * base_repeat
+        if end_repeats > repeats:
+            end_repeats = repeats
+        if multiprocess:
+            pool.apply_async(bootstrap_workers.bootstrap_result, (i, i * base_repeat, end_repeats))
+        else:
+            bootstrap_workers.bootstrap_result(i, i * base_repeat, end_repeats)
 
-    return CIs, CIparams
+    if multiprocess:
+        pool.close()
+        pool.join()
+    CIs = getCIs(CI, result_array, *extra_arrays)
+
+    y_eval = np.array(result_array[0])  # copy the array to not return a view on a larger array
+
+    if not full_results:
+        shuffled_y = shuffled_x = result_array = None
+        extra_arrays = ()
+    elif multiprocess:
+        result_array = result_array.copy()  # copy in local memory
+        extra_arrays = [ea.copy for ea in extra_arrays]
+
+    return BootstrapResult(y_fit, y_fit(xdata), y_eval, CIs, shuffled_x, shuffled_y, result_array)
+
 
 def test():
-    from . import cyth
     import quad
     from numpy.random import rand, randn
-    from pylab import plot, savefig, clf, legend, arange, figure, title, show
-    from .curve_fitting import curve_fit
-    from . import residuals
+    from pylab import plot, clf, legend, arange, figure, title, show
+    from curve_fitting import curve_fit
 
-    def quadratic(x, xxx_todo_changeme):
-        (p0,p1,p2) = xxx_todo_changeme
-        return p0 + p1*x + p2*x**2
+    def quadratic(x, params):
+        p0, p1, p2 = params
+        return p0 + p1 * x + p2 * x ** 2
     #test = quadratic
     test = quad.quadratic
 
-    init = (10,1,1)
-    target = array([10,4,1.2])
-    print("Target parameters: %s" % (target,))
-    x = 6*rand(200) - 3
-    y = test(x, target)*(1+0.3*randn(x.shape[0]))
+    init = (10, 1, 1)
+    target = np.array([10, 4, 1.2])
+    print("Target parameters: {}".format(target))
+    x = 6 * rand(200) - 3
+    y = test(x, target) * (1 + 0.3 * randn(x.shape[0]))
     xr = arange(-3, 3, 0.01)
-    yr = test(xr,target)
+    yr = test(xr, target)
 
     print("Estimage best parameters, fixing the first one")
     popt, pcov, _, _ = curve_fit(test, x, y, init, fix_params=(0,))
-    print("Best parameters: %s" % (popt,))
+    print("Best parameters: {}".format(popt))
 
     print("Estimate best parameters from data")
     popt, pcov, _, _ = curve_fit(test, x, y, init)
-    print("Best parameters: %s" % (popt,))
+    print("Best parameters: {}".format(popt))
 
     figure(1)
     clf()
@@ -244,7 +328,8 @@ def test():
     legend(loc='upper left')
 
     print("Residual bootstrap calculation")
-    result_r = bootstrap(test, x, y, init, (95, 99), shuffle_method=bootstrap_residuals, eval_points = xr, fit=curve_fit)
+    result_r = bootstrap(test, x, y, init, (95, 99),
+                         shuffle_method=bootstrap_residuals, eval_points=xr, fit=curve_fit)
     popt_r, pcov_r, res_r, CI_r, CIp_r, extra_r = result_r
     yopt_r = test(xr, popt_r)
 
@@ -280,7 +365,8 @@ def test():
 
     return locals()
 
-def profile(filename = 'bootstrap_profile'):
+
+def profile(filename='bootstrap_profile'):
     import cProfile
     import pstats
     cProfile.run('res = bootstrap.test()', 'bootstrap_profile')
@@ -289,4 +375,3 @@ def profile(filename = 'bootstrap_profile'):
 
 if __name__ == "__main__":
     test()
-

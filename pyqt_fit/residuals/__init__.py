@@ -1,55 +1,60 @@
+from __future__ import print_function
+
 __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 from ..utils import namedtuple
-import collections
 from .. import loader
+from path import path
+import os
+
+_fields = ['name', 'description', 'invert', 'Dfun', '__call__']
+
+residuals = None
 
 Residual = namedtuple('Residual', ['fct', 'name', 'description', 'invert', 'Dfun', '__call__'])
 
+
 def find_functions(module):
+    """
+    Find and all the residual functions defined in the given module
+    """
     content = dir(module)
     result = {}
     for c in content:
-        attr = getattr(module, c)
-        if hasattr(attr, '__doc__'):
-            doc = getattr(attr, '__doc__')
-            if doc is None:
-                continue
-            doc = doc.split('\n')
-            name = None
-            desc = None
-            invert = None
-            dfun = None
-            for l in doc:
-                l = l.strip()
-                fields = l.split(':', 1)
-                if len(fields) == 2:
-                    if fields[0] == 'Name':
-                        name = fields[1].strip()
-                    elif fields[0] == 'Invert':
-                        inv_name = fields[1].strip()
-                        if hasattr(module, inv_name):
-                            invert = getattr(module, inv_name)
-                            if not isinstance(invert, collections.Callable):
-                                invert = None
-                    elif fields[0] == 'Formula':
-                        desc = fields[1].strip()
-                    elif fields[0] == 'Dfun':
-                        dfun_name = fields[1].strip()
-                        if hasattr(module, dfun_name):
-                            dfun = getattr(module, dfun_name)
-                            if not isinstance(dfun, collections.Callable):
-                                dfun = None
-            if name and desc and invert: # dfun is optional
-                result[name] = Residual(attr, name, desc, invert, dfun, attr)
+        obj = getattr(module, c)
+        try:
+            if isinstance(obj, type):
+                obj = obj()
+            for attr in _fields:
+                if not hasattr(obj, attr):
+                    break
+            else:
+                result[obj.name] = obj
+        except Exception as ex:  # Silently ignore any exception
+            print("Error: '{}'".format(ex))
+            pass
     return result
 
+
 def load():
+    """
+    Load and register all the residual functions available.
+
+    It will be looking in the current folder, but also in the "residuals"
+    subfolders of the paths defined in the PYQTFIT_PATH environment
+    variable.
+    """
     global residuals
     residuals = loader.load(find_functions)
+    extra_path = os.environ.get("PYQTFIT_PATH", "").split(":")
+    for ep in extra_path:
+        ep = path(ep)
+        if ep and (ep / "residuals").exists():
+            residuals.update(loader.load(find_functions, ep / "residuals"))
     return residuals
 
 load()
+
 
 def get(name):
     """
@@ -73,11 +78,11 @@ def get(name):
         invert: callable
             Function to add residuals to a data set
     """
-    return residuals.get(name,None)
+    return residuals.get(name, None)
+
 
 def names():
     """
     List the names of available residuals
     """
-    return list(residuals.keys())
-
+    return residuals.keys()

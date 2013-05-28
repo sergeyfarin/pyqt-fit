@@ -1,0 +1,13 @@
+include *.txt
+recursive-include docs *.rst
+recursive-include docs *.txt
+recursive-include docs *.html
+include docs/Makefile
+include docs/conf.py
+include pyqt_fit/version.txt
+include pyqt_fit/qt_fit.ui
+include pyqt_fit/cy_local_linear.pyx
+include pyqt_fit/_kernels.pyx
+include pyqt_fit/_kde.pyx
+include pyqt_fit/math.pxd
+

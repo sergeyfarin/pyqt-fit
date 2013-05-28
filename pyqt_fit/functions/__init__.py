@@ -1,58 +1,59 @@
+from __future__ import print_function
+
 __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 from ..utils import namedtuple
-import collections
 from .. import loader
+import os
+from path import path
 
-Function = namedtuple('Function', ['fct', 'name', 'description', 'args', 'init_args', 'Dfun', '__call__'])
+_fields = ['name', 'description', 'args', 'init_args', 'Dfun', '__call__']
+
+functions = None
+
+Function = namedtuple('Function', _fields)
+
 
 def find_functions(module):
+    """
+    Find and register the functions defined in the given module
+    """
     content = dir(module)
     result = {}
     for c in content:
-        attr = getattr(module, c)
-        if hasattr(attr, '__doc__'):
-            doc = getattr(attr, '__doc__')
-            if doc is None:
-                continue
-            doc = doc.split('\n')
-            name = None
-            desc = None
-            args = None
-            dfun = None
-            init_args = None
-            for l in doc:
-                l = l.strip()
-                fields = l.split(':', 1)
-                if len(fields) == 2:
-                    if fields[0] == 'Name':
-                        name = fields[1].strip()
-                    elif fields[0] == 'Parameters':
-                        args = fields[1].strip().split()
-                    elif fields[0] == 'Function':
-                        desc = fields[1].strip()
-                    elif fields[0] == 'ParametersEstimate':
-                        params_name = fields[1].strip()
-                        if hasattr(module, params_name):
-                            init_args = getattr(module, params_name)
-                            if not isinstance(init_args, collections.Callable):
-                                init_args = None
-                    elif fields[0] == 'Dfun':
-                        dfun_name = fields[1].strip()
-                        if hasattr(module, dfun_name):
-                            dfun = getattr(module, dfun_name)
-                            if not isinstance(dfun, collections.Callable):
-                                dfun = None
-            if name and desc and args and init_args: # dfun is optional
-                result[name] = Function(attr, name, desc, args, init_args, dfun, attr)
+        obj = getattr(module, c)
+        try:
+            if isinstance(obj, type):
+                obj = obj()
+            for attr in _fields:
+                if not hasattr(obj, attr):
+                    break
+            else:
+                result[obj.name] = obj
+        except Exception as ex:  # Silently ignore any exception
+            print("Error: '{}'".format(ex))
+            pass
     return result
 
+
 def load():
+    """
+    Find and register the all the functions available.
+
+    It will be looking in the current folder, but also in the "functions"
+    subfolders of the paths specified in the PYQTFIT_PATH environment variable.
+    """
     global functions
     functions = loader.load(find_functions)
+    extra_path = os.environ.get("PYQTFIT_PATH", "").split(":")
+    for ep in extra_path:
+        ep = path(ep)
+        if ep and (ep / "functions").exists():
+            functions.update(loader.load(find_functions, ep / "functions"))
     return functions
 
 load()
+
 
 def get(name):
     """
@@ -81,14 +82,14 @@ def get(name):
             Jacobian of the function (in column, so call leastsq with col_deriv=1)
     """
     f = functions.get(name, None)
-    print("Getting function '%s'" % name)
-    if f is not None:
-        print("  Dfun = %s" % f.Dfun)
+    #print("Getting function '{}'".format(name))
+    #if f is not None:
+        #print("  Dfun = {}".format(f.Dfun))
     return f
+
 
 def names():
     """
     Return the list of names for the functions
     """
-    return list(functions.keys())
-
+    return functions.keys()

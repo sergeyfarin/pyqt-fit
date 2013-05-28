@@ -1,45 +1,50 @@
+from __future__ import division
 from numpy import log, exp, newaxis
 
-def standard(y1, y0):
-    """
-    Name: Standard
-    Formula: y_1 - y_0
-    Invert: add_standard
-    Dfun: deriv_standard
-    """
-    return y1-y0
 
-def add_standard(y, res):
-    """
-    Add the residual to the value
-    """
-    return y+res
+class Standard(object):
+    name = "Standard"
+    description = "y_1 - y_0"
 
-def deriv_standard(y1, y0, dy):
-    """
-    J(y1-y0) = J(y1)-J(y0) = -J(y0)
-    where J is the jacobian
-    """
-    return -dy
+    @staticmethod
+    def __call__(y1, y0):
+        return y1 - y0
 
-def log_residual(y1, y0):
-    """
-    Name: Difference of the logs
-    Formula: log(y1/y0)
-    Invert: add_log_residual
-    Dfun: deriv_log
-    """
-    return log(y1/y0)
+    @staticmethod
+    def invert(y, res):
+        """
+        Add the residual to the value
+        """
+        return y + res
 
-def deriv_log(y1, y0, dy):
-    """
-    J(log(y1/y0)) = -J(y0)/y0
-    where J is the jacobian and division is element-wise (per row)
-    """
-    return -dy/y0[newaxis,:]
+    @staticmethod
+    def Dfun(y1, y0, dy):
+        """
+        J(y1-y0) = J(y1)-J(y0) = -J(y0)
+        where J is the jacobian
+        """
+        return -dy
 
-def add_log_residual(y, res):
-    """
-    Multiply the value by the exponential of the residual
-    """
-    return y*exp(res)
+
+class LogResiduals(object):
+    name = "Difference of the logs"
+    description = "log(y1/y0)"
+
+    @staticmethod
+    def __call__(y1, y0):
+        return log(y1 / y0)
+
+    @staticmethod
+    def Dfun(y1, y0, dy):
+        """
+        J(log(y1/y0)) = -J(y0)/y0
+        where J is the jacobian and division is element-wise (per row)
+        """
+        return -dy / y0[newaxis, :]
+
+    @staticmethod
+    def invert(y, res):
+        """
+        Multiply the value by the exponential of the residual
+        """
+        return y * exp(res)

@@ -1,7 +1,16 @@
+"""
+:Author: Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>
+
+Module contained a variety of small useful functions.
+"""
+
+from __future__ import division, print_function, absolute_import
 from collections import OrderedDict
 from keyword import iskeyword as _iskeyword
-from operator import itemgetter as _itemgetter, eq as _eq
+from operator import itemgetter as _itemgetter
 import sys
+from .compat import text_type
+
 
 def namedtuple(typename, field_names, verbose=False, rename=False):
     """Returns a new subclass of tuple with named fields.
@@ -29,22 +38,24 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
 
     # Parse and validate the field names.  Validation serves two purposes,
     # generating informative error messages and preventing template injection attacks.
-    if isinstance(field_names, str):
-        field_names = field_names.replace(',', ' ').split() # names separated by whitespace and/or commas
+    if isinstance(field_names, text_type):
+        # names separated by whitespace and/or commas
+        field_names = field_names.replace(',', ' ').split()
     field_names = tuple(map(str, field_names))
     forbidden_fields = {'__init__', '__slots__', '__new__', '__repr__', '__getnewargs__'}
     if rename:
         names = list(field_names)
         seen = set()
         for i, name in enumerate(names):
-            if (not all(c.isalnum() or c=='_' for c in name) or _iskeyword(name)
-                or not name or name[0].isdigit() or name.startswith('_')
-                or name in seen):
+            need_suffix = (not all(c.isalnum() or c == '_' for c in name) or _iskeyword(name)
+                           or not name or name[0].isdigit() or name.startswith('_')
+                           or name in seen)
+            if need_suffix:
                 names[i] = '_%d' % i
             seen.add(name)
         field_names = tuple(names)
     for name in (typename,) + field_names:
-        if not all(c.isalnum() or c=='_' for c in name):
+        if not all(c.isalnum() or c == '_' for c in name):
             raise ValueError('Type names and field names can only contain alphanumeric characters and underscores: %r' % name)
         if _iskeyword(name):
             raise ValueError('Type names and field names cannot be a keyword: %r' % name)
@@ -93,7 +104,8 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
             return result \n
         def __getnewargs__(self):
             'Return self as a plain tuple.  Used by copy and pickle.'
-            return tuple(self) \n\n''' % locals()
+            return tuple(self) \n\n''' % dict(numfields=numfields, field_names=field_names,
+                                              typename=typename, argtxt=argtxt, reprtxt=reprtxt)
     for i, name in enumerate(field_names):
         template += "        %s = _property(_itemgetter(%d), doc='Alias for field number %d')\n" % (name, i, i)
     if verbose:
@@ -123,34 +135,36 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
 
 #
 from scipy import sqrt
-from numpy import finfo, asfarray, zeros
+from numpy import finfo, asarray, asfarray, zeros
 
 _epsilon = sqrt(finfo(float).eps)
 
-def approx_jacobian(x,func,epsilon,*args):
-    """Approximate the Jacobian matrix of callable function func
-    
-       * Parameters
-         x       - The state vector at which the Jacobian matrix is desired        
-         func    - A vector-valued function of the form f(x,*args)
-         epsilon - The peturbation used to determine the partial derivatives
-         *args   - Additional arguments passed to func
-       
-       * Returns
-         An array of dimensions (lenf, lenx) where lenf is the length 
-         of the outputs of func, and lenx is the number of 
-              
-       * Notes
-         The approximation is done using forward differences
-                
-    """
-    x0 = asfarray(x)
-    f0 = func(*((x0,)+args))
-    jac = zeros([len(x0),len(f0)])
-    dx = zeros(len(x0))
-    for i in range(len(x0)):
-       dx[i] = epsilon
-       jac[i] = (func(*((x0+dx,)+args)) - f0)/epsilon
-       dx[i] = 0.0
-    return jac.transpose()
 
+def approx_jacobian(x, func, epsilon, *args):
+    """
+    Approximate the Jacobian matrix of callable function func
+
+    :param ndarray x: The state vector at which the Jacobian matrix is desired
+    :param callable func: A vector-valued function of the form f(x,*args)
+    :param ndarray epsilon: The peturbation used to determine the partial derivatives
+    :param tuple args: Additional arguments passed to func
+
+    :returns: An array of dimensions (lenf, lenx) where lenf is the length
+         of the outputs of func, and lenx is the number of
+
+    .. note::
+
+         The approximation is done using forward differences
+
+    """
+    x0 = asarray(x)
+    x0 = asfarray(x0, dtype=x0.dtype)
+    epsilon = x0.dtype.type(epsilon)
+    f0 = func(*((x0,) + args))
+    jac = zeros([len(x0), len(f0)], dtype=x0.dtype)
+    dx = zeros(len(x0), dtype=x0.dtype)
+    for i in range(len(x0)):
+        dx[i] = epsilon
+        jac[i] = (func(*((x0 + dx,) + args)) - f0) / epsilon
+        dx[i] = 0.0
+    return jac.transpose()

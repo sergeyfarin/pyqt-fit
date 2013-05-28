@@ -69,7 +69,7 @@
      <item>
       <widget class="QGroupBox" name="groupBox_3">
        <property name="title">
-        <string>Estimation</string>
+        <string>Regression</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
         <item row="0" column="0">
