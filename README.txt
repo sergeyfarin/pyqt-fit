@@ -5,9 +5,9 @@ PyQt-Fit
 PyQt-Fit is a regression toolbox in Python with simple GUI and graphical tools
 to check your results. It currently handles regression based on user-defined
 functions with user-defined residuals (i.e. parametric regression) or
-non-parametric regression, either local-constant or local-linear, with the
-option to provide your own. The GUI currently provides an interface only to
-parametric regression.
+non-parametric regression, either local-constant or local-polynomial, with the
+option to provide your own. There is also a full-GUI access, that currently
+provides an interface only to parametric regression.
 
 The GUI for 1D data analysis is invoked with:
 
@@ -21,11 +21,12 @@ PyQt-Fit can also be used from the python interpreter. Here is a typical session
     >>> from matplotlib import pylab
     >>> x = np.arange(0,3,0.01)
     >>> y = 2*x + 4*x**2 + np.random.randn(*x.shape)
-    >>> def fct((a0, a1, a2), x):
+    >>> def fct(params, x):
+    ...     (a0, a1, a2) = params
     ...     return a0 + a1*x + a2*x*x
     >>> fit = pyqt_fit.CurveFitting(x, y, (0,1,0), fct)
     >>> result = plot_fit.fit_evaluation(fit, x, y)
-    >>> print fit(x) # Display the estimated values
+    >>> print(fit(x)) # Display the estimated values
     >>> plot_fit.plot1d(result)
     >>> pylab.show()
 

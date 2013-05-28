@@ -15,12 +15,10 @@ with open(version_filename, "r") as f:
     __version__ = f.read().strip()
 
 extra = {}
-if sys.version_info >= (3,):
-    extra['use_2to3'] = True
 
 setup(name='PyQt-Fit',
       version=__version__,
-      description='Least-square fitting of user-defined functions',
+      description='Parametric and non-parametric regression, with plotting and testing methods.',
       author='Pierre Barbier de Reuille',
       author_email='pierre.barbierdereuille@gmail.com',
       url=['https://code.google.com/p/pyqt-fit/'],
