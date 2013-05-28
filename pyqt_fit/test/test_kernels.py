@@ -1,6 +1,5 @@
 from __future__ import division, absolute_import, print_function
 
-import unittest
 from .. import kernels
 from .. import _kernels
 
@@ -9,17 +8,18 @@ from scipy.fftpack import fft, dct
 from scipy.integrate import quad
 import numpy as np
 
+
 class KernelTester(object):
     @classmethod
-    def initUpClass(cls, lower = -np.inf, test_width=3):
+    def initUpClass(cls, lower=-np.inf, test_width=3):
         cls.lower = float(lower)
         cls.hard_points = ()
         cls.quad_args = dict(limit=100)
-        cls.test_xs = np.r_[-test_width/2 : test_width/2 : 17j]
-        cls.pos_xs = 20 * (np.arange(1024) + 0.5)/ 1024
-        cls.xs = np.roll(20*(np.arange(1024)-512)/1024, 512)
-        cls.pos_freqs = np.pi/20*np.arange(1024)
-        freqs = 2*np.pi/20*(np.arange(1024)-512)
+        cls.test_xs = np.r_[-test_width / 2:test_width / 2:17j]
+        cls.pos_xs = 20 * (np.arange(1024) + 0.5) / 1024
+        cls.xs = np.roll(20 * (np.arange(1024) - 512) / 1024, 512)
+        cls.pos_freqs = np.pi / 20 * np.arange(1024)
+        freqs = 2 * np.pi / 20 * (np.arange(1024) - 512)
         freqs = np.roll(freqs, 512)
         cls.freqs = freqs
 
@@ -27,33 +27,35 @@ class KernelTester(object):
         val = self.kernel.cdf(upper)
         args = dict(self.quad_args)
         if self.hard_points:
-            args.update(points = [ p for p in self.hard_points if p > self.lower and p < upper ])
+            args.update(points=[p for p in self.hard_points if p > self.lower and p < upper])
         val1, err = quad(self.kernel.pdf, self.lower, upper, **args)
-        assert abs(val-val1) < tol, "cdf({3:.9g}) -- Expected: {0:g}, computed: {1:g}".format(val1, val, err, upper)
+        assert abs(val - val1) < tol, "cdf({3:.9g}) -- Expected: {0:g}, computed: {1:g}".format(val1, val, err, upper)
 
     def _pm1(self, upper, tol):
         val = self.kernel.pm1(upper)
+
         def fct(x):
-            return x*self.kernel.pdf(x)
+            return x * self.kernel.pdf(x)
         args = dict(self.quad_args)
         if self.hard_points:
-            args.update(points = [ p for p in self.hard_points if p > self.lower and p < upper ])
+            args.update(points=[p for p in self.hard_points if p > self.lower and p < upper])
         val1, err = quad(fct, self.lower, upper, **args)
         if err < 1e-8:
             err = 1e-8
-        assert abs(val-val1) < tol, "pm1({3:.9g}) -- Expected: {0:g}, computed: {1:g} (tol= {4:g})".format(val1, val, err, upper, tol)
+        assert abs(val - val1) < tol, "pm1({3:.9g}) -- Expected: {0:g}, computed: {1:g} (tol= {4:g})".format(val1, val, err, upper, tol)
 
     def _pm2(self, upper, tol):
         val = self.kernel.pm2(upper)
+
         def fct(x):
-            return x*x*self.kernel.pdf(x)
+            return x * x * self.kernel.pdf(x)
         args = dict(self.quad_args)
         if self.hard_points:
-            args.update(points = [ p for p in self.hard_points if p > self.lower and p < upper ])
+            args.update(points=[p for p in self.hard_points if p > self.lower and p < upper])
         val1, err = quad(fct, self.lower, upper, **args)
         if err < 1e-8:
             err = 1e-8
-        assert abs(val-val1) < tol, "pm2({3:.9g}) -- Expected: {0:g}, computed: {1:g}".format(val1, val, err, upper)
+        assert abs(val - val1) < tol, "pm2({3:.9g}) -- Expected: {0:g}, computed: {1:g}".format(val1, val, err, upper)
 
     def test_cdf_fct(self, tol=1e-5):
         for x in self.test_xs:
@@ -79,9 +81,10 @@ class KernelTester(object):
         if hasattr(self.kernel, 'fft'):
             k = self.kernel
             p = k.pdf(self.xs)
-            fft_ref = fft(p*(self.xs[1] - self.xs[0])).real
+            fft_ref = fft(p * (self.xs[1] - self.xs[0])).real
             fft_tst = k.fft(self.freqs)
             np.testing.assert_array_almost_equal(fft_ref, fft_tst, 10)
+
 
 class TestNormal1d(KernelTester):
 
@@ -116,9 +119,10 @@ class TestNormal1d(KernelTester):
         n_ref = self.norm_ref
         n_tst = self.kernel
         p = n_ref.pdf(self.xs)
-        fft_ref = fft(p*(self.xs[1] - self.xs[0])).real
+        fft_ref = fft(p * (self.xs[1] - self.xs[0])).real
         fft_tst = n_tst.fft(self.freqs)
         np.testing.assert_array_almost_equal(fft_ref, fft_tst, 10)
+
 
 class TestEpanechnikov(KernelTester):
     @classmethod
@@ -126,12 +130,14 @@ class TestEpanechnikov(KernelTester):
         cls.initUpClass()
         cls.kernel = kernels.Epanechnikov()
 
+
 class TestTricube(KernelTester):
     @classmethod
     def setUpClass(cls):
         cls.initUpClass(lower=-5)
         cls.kernel = kernels.tricube()
-        cls.hard_points = (-1/_kernels.tricube_width, 1/_kernels.tricube_width)
+        cls.hard_points = (-1 / _kernels.tricube_width, 1 / _kernels.tricube_width)
+
 
 class TestEpanechnikov_order4(KernelTester):
     @classmethod
@@ -139,11 +145,13 @@ class TestEpanechnikov_order4(KernelTester):
         cls.initUpClass(lower=-5)
         cls.kernel = kernels.Epanechnikov_order4()
 
+
 class Testnormal_order4(KernelTester):
     @classmethod
     def setUpClass(cls):
         cls.initUpClass()
         cls.kernel = kernels.normal_order4()
+
 
 class ComparePythonCython(object):
     @classmethod
@@ -193,5 +201,3 @@ class ComparePythonCython(object):
     def testing_pm2(self):
         for cls in kernels.kernels1D:
             yield self._pm2, cls
-
-

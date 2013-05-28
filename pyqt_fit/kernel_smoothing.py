@@ -11,18 +11,19 @@ import scipy
 import numpy as np
 from .compat import irange
 
+from .cyth import HAS_CYTHON
+
+local_linear = None
+
 
 def useCython():
     """
     Switch to using Cython methods if available
     """
     global local_linear
-    try:
-        from . import cyth
-        from . import cy_local_linear as local_linear
-        return True
-    except ImportError:
-        return False
+    if HAS_CYTHON:
+        from . import cy_local_linear
+        local_linear = cy_local_linear
 
 
 def usePython():
@@ -30,10 +31,12 @@ def usePython():
     Switch to using the python implementation of the methods
     """
     global local_linear
-    from . import py_local_linear as local_linear
+    from . import py_local_linear
+    local_linear = py_local_linear
 
-
-if not useCython():
+if HAS_CYTHON:
+    useCython()
+else:
     usePython()
 
 from .kde import scotts_bandwidth
@@ -93,7 +96,7 @@ class SpatialAverage(object):
         """
         return self._covariance
 
-    @covariance.setter
+    @covariance.setter  # noqa
     def covariance(self, cov):
         if callable(cov):
             _cov = np.atleast_2d(cov(self.xdata, self.ydata))
@@ -143,7 +146,7 @@ class SpatialAverage(object):
         """
         return self._correction
 
-    @correction.setter
+    @correction.setter  # noqa
     def correction(self, value):
         self._correction = np.atleast_1d(value)
 
@@ -210,7 +213,7 @@ class LocalLinearKernel1D(object):
         """
         return self._covariance
 
-    @covariance.setter
+    @covariance.setter  # noqa
     def covariance(self, cov):
         if callable(cov):
             _cov = float(cov(self.xdata, self.ydata))
@@ -304,7 +307,7 @@ class LocalPolynomialKernel1D(object):
         """
         return self._bw
 
-    @bandwidth.setter
+    @bandwidth.setter  # noqa
     def bandwidth(self, bw):
         if callable(bw):
             _bw = float(bw(self.xdata, self.ydata))
@@ -326,7 +329,7 @@ class LocalPolynomialKernel1D(object):
         """
         return self._covariance
 
-    @covariance.setter
+    @covariance.setter  # noqa
     def covariance(self, cov):
         if callable(cov):
             _cov = float(cov(self.xdata, self.ydata))
@@ -348,7 +351,7 @@ class LocalPolynomialKernel1D(object):
         """
         return self.covariance
 
-    @cov.setter
+    @cov.setter  # noqa
     def cov(self, val):
         self.covariance = val
 
@@ -364,7 +367,7 @@ class LocalPolynomialKernel1D(object):
         """
         return self._kernel
 
-    @kernel.setter
+    @kernel.setter  # noqa
     def kernel(self, val):
         self._kernel = val
 
@@ -566,7 +569,7 @@ class LocalPolynomialKernel(object):
         """
         return self._covariance
 
-    @covariance.setter
+    @covariance.setter  # noqa
     def covariance(self, cov):
         if callable(cov):
             _cov = cov(self.xdata, self.ydata)
@@ -612,4 +615,3 @@ class LocalPolynomialKernel(object):
         This method is an alias for :py:meth:`LocalLinearKernel1D.evaluate`
         """
         return self.evaluate(*args, **kwords)
-

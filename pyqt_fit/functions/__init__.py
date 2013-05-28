@@ -6,13 +6,18 @@ from ..utils import namedtuple
 from .. import loader
 import os
 from path import path
-from ..compat import izip
 
 _fields = ['name', 'description', 'args', 'init_args', 'Dfun', '__call__']
 
+functions = None
+
 Function = namedtuple('Function', _fields)
 
+
 def find_functions(module):
+    """
+    Find and register the functions defined in the given module
+    """
     content = dir(module)
     result = {}
     for c in content:
@@ -25,22 +30,30 @@ def find_functions(module):
                     break
             else:
                 result[obj.name] = obj
-        except Exception as ex: # Silently ignore any exception
+        except Exception as ex:  # Silently ignore any exception
             print("Error: '{}'".format(ex))
             pass
     return result
 
+
 def load():
+    """
+    Find and register the all the functions available.
+
+    It will be looking in the current folder, but also in the "functions"
+    subfolders of the paths specified in the PYQTFIT_PATH environment variable.
+    """
     global functions
     functions = loader.load(find_functions)
     extra_path = os.environ.get("PYQTFIT_PATH", "").split(":")
     for ep in extra_path:
         ep = path(ep)
-        if ep and (ep/"functions").exists():
-            functions.update(loader.load(find_functions, ep/"functions"))
+        if ep and (ep / "functions").exists():
+            functions.update(loader.load(find_functions, ep / "functions"))
     return functions
 
 load()
+
 
 def get(name):
     """
@@ -74,9 +87,9 @@ def get(name):
         #print("  Dfun = {}".format(f.Dfun))
     return f
 
+
 def names():
     """
     Return the list of names for the functions
     """
     return functions.keys()
-

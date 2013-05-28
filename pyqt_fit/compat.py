@@ -42,4 +42,3 @@ else:
     izip = zip
     unicode_csv_reader = csv.reader
     unicode_csv_writer = csv.writer
-

@@ -1,24 +1,50 @@
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special import erf
-try:
-    from . import cyth
-    from . import _kernels as kernels_imp
-    HAS_CYTHON=True
-except ImportError:
-    from . import _kernels_py as kernels_imp
+
+from .cyth import HAS_CYTHON
+
+kernels_imp = None
+
+
+def usePython():
+    """
+    Force the use of the Python implementation of the kernels
+    """
+    global kernels_imp
+    from .import _kernels_py
+    kernels_imp = _kernels_py
+
+
+def useCython():
+    """
+    Force the use of the Cython implementation of the kernels, if available
+    """
+    global kernels_imp
+    if HAS_CYTHON:
+        from . import _kernels
+        kernels_imp = _kernels
+
+
+if HAS_CYTHON:
+    useCython()
+else:
+    usePython()
     import sys
     print("Warning, cannot import Cython kernel functions, pure python functions will be used instead", file=sys.stderr)
 
-S2PI = np.sqrt(2*np.pi)
+S2PI = np.sqrt(2 * np.pi)
+
+
 S2 = np.sqrt(2)
+
 
 class normal_kernel1d(object):
     """
     1D normal density kernel with extra integrals for 1D bounded kernel estimation.
     """
 
-    def pdf(self, z, out = None):
+    def pdf(self, z, out=None):
         r"""
         Return the probability density of the function. The formula used is:
 
@@ -31,13 +57,13 @@ class normal_kernel1d(object):
         """
         return kernels_imp.norm1d_pdf(z, out)
 
-    def _pdf(self, z, out = None):
+    def _pdf(self, z, out=None):
         """
         Full-python implementation of :py:func:`normal_kernel1d.pdf`
         """
         z = np.asarray(z)
         if out is None:
-            out = np.empty(z.shape, dtype = z.dtype)
+            out = np.empty(z.shape, dtype=z.dtype)
         np.multiply(z, z, out)
         out *= -0.5
         np.exp(out, out)
@@ -46,7 +72,7 @@ class normal_kernel1d(object):
 
     __call__ = pdf
 
-    def fft(self, z, out = None):
+    def fft(self, z, out=None):
         """
         Returns the FFT of the normal distribution
         """
@@ -55,7 +81,7 @@ class normal_kernel1d(object):
         np.exp(out, out)
         return out
 
-    def dct(self, z, out = None):
+    def dct(self, z, out=None):
         """
         Returns the DCT of the normal distribution
         """
@@ -64,7 +90,7 @@ class normal_kernel1d(object):
         np.exp(out, out)
         return out
 
-    def cdf(self, z, out = None):
+    def cdf(self, z, out=None):
         r"""
         Cumulative density of probability. The formula used is:
 
@@ -80,14 +106,14 @@ class normal_kernel1d(object):
         """
         z = np.asarray(z)
         if out is None:
-            out = np.empty(z.shape, dtype = z.dtype)
+            out = np.empty(z.shape, dtype=z.dtype)
         np.divide(z, S2, out)
         erf(out, out)
         out *= 0.5
         out += 0.5
         return out
 
-    def pm1(self, z, out = None):
+    def pm1(self, z, out=None):
         r"""
         Partial moment of order 1:
 
@@ -110,7 +136,7 @@ class normal_kernel1d(object):
         out /= -S2PI
         return out
 
-    def pm2(self, z, out = None):
+    def pm2(self, z, out=None):
         r"""
         Partial moment of order 2:
 
@@ -133,11 +159,12 @@ class normal_kernel1d(object):
         if z.shape:
             zz = np.isfinite(z)
             sz = z[zz]
-            out[zz] -= sz*np.exp(-0.5*sz*sz)/S2PI
+            out[zz] -= sz * np.exp(-0.5 * sz * sz) / S2PI
         elif np.isfinite(z):
-            out -= z*np.exp(-0.5*z*z)/S2PI
+            out -= z * np.exp(-0.5 * z * z) / S2PI
         out += 0.5
         return out
+
 
 class normal_kernel(object):
     """
@@ -154,7 +181,7 @@ class normal_kernel(object):
         return object.__new__(klass, dim)
 
     def __init__(self, dim):
-        self.factor = 1/np.sqrt(2*np.pi)**dim
+        self.factor = 1 / np.sqrt(2 * np.pi) ** dim
 
     def pdf(self, xs):
         """
@@ -164,9 +191,10 @@ class normal_kernel(object):
         :returns: an array of shape (N,) with the density on each point of ``xs``
         """
         xs = np.atleast_2d(xs)
-        return self.factor*np.exp(-0.5*np.sum(xs*xs, axis=0))
+        return self.factor * np.exp(-0.5 * np.sum(xs * xs, axis=0))
 
     __call__ = pdf
+
 
 class tricube(object):
     r"""
@@ -191,12 +219,12 @@ class tricube(object):
 
     """
 
-    def pdf(self, z, out = None):
+    def pdf(self, z, out=None):
         return kernels_imp.tricube_pdf(z, out)
 
     __call__ = pdf
 
-    def cdf(self, z, out = None):
+    def cdf(self, z, out=None):
         r"""
         CDF of the distribution:
 
@@ -210,7 +238,7 @@ class tricube(object):
         """
         return kernels_imp.tricube_cdf(z, out)
 
-    def pm1(self, z, out = None):
+    def pm1(self, z, out=None):
         r"""
         Partial moment of order 1:
 
@@ -223,7 +251,7 @@ class tricube(object):
         """
         return kernels_imp.tricube_pm1(z, out)
 
-    def pm2(self, z, out = None):
+    def pm2(self, z, out=None):
         r"""
         Partial moment of order 2:
 
@@ -236,6 +264,7 @@ class tricube(object):
             \end{array}\right.
         """
         return kernels_imp.tricube_pm2(z, out)
+
 
 class Epanechnikov(object):
     r"""
@@ -261,7 +290,7 @@ class Epanechnikov(object):
         return kernels_imp.epanechnikov_pdf(xs, out)
     __call__ = pdf
 
-    def cdf(self, xs, out = None):
+    def cdf(self, xs, out=None):
         r"""
         CDF of the distribution. The CDF is defined on the interval :math:`[-\sqrt{5}:\sqrt{5}]` as:
 
@@ -275,7 +304,7 @@ class Epanechnikov(object):
         """
         return kernels_imp.epanechnikov_cdf(xs, out)
 
-    def pm1(self, xs, out = None):
+    def pm1(self, xs, out=None):
         r"""
         First partial moment of the distribution:
 
@@ -288,7 +317,7 @@ class Epanechnikov(object):
         """
         return kernels_imp.epanechnikov_pm1(xs, out)
 
-    def pm2(self, xs, out = None):
+    def pm2(self, xs, out=None):
         r"""
         Second partial moment of the distribution:
 
@@ -302,6 +331,7 @@ class Epanechnikov(object):
         """
         return kernels_imp.epanechnikov_pm2(xs, out)
 
+
 class Epanechnikov_order4(object):
     r"""
     Order 4 Epanechnikov kernel. That is:
@@ -312,18 +342,19 @@ class Epanechnikov_order4(object):
 
     where :math:`K` is the non-normalized Epanechnikov kernel.
     """
-    def pdf(self, xs, out = None):
+    def pdf(self, xs, out=None):
         return kernels_imp.epanechnikov_o4_pdf(xs, out)
     __call__ = pdf
 
-    def cdf(self, xs, out = None):
+    def cdf(self, xs, out=None):
         return kernels_imp.epanechnikov_o4_cdf(xs, out)
 
-    def pm1(self, xs, out = None):
+    def pm1(self, xs, out=None):
         return kernels_imp.epanechnikov_o4_pm1(xs, out)
 
-    def pm2(self, xs, out = None):
+    def pm2(self, xs, out=None):
         return kernels_imp.epanechnikov_o4_pm2(xs, out)
+
 
 class normal_order4(object):
     r"""
@@ -348,14 +379,6 @@ class normal_order4(object):
 
     def pm2(self, xs, out=None):
         return kernels_imp.normal_o4_pm2(xs, out)
-
-def usePython():
-    global kernels_imp
-    from .import _kernels_py as kernels_imp
-
-def useCython():
-    global kernels_imp
-    from . import _kernels as kernels_imp
 
 kernels1D = [normal_kernel1d, tricube, Epanechnikov, Epanechnikov_order4, normal_order4]
 kernelsnD = [normal_kernel]

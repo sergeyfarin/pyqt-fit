@@ -7,7 +7,9 @@ functions. It also provides a GUI that can use pre-defined fitting methods.
 
 from __future__ import absolute_import, print_function
 
-__all__ = ['bootstrap', 'plot_fit', 'curve_fitting', 'kernel_smoothing']
+__all__ = ['bootstrap', 'plot_fit',
+           'curve_fitting', 'kernel_smoothing',
+           'functions', 'residuals', 'CurveFitting']
 
 from . import functions
 from . import residuals
@@ -16,4 +18,3 @@ from path import path
 
 with (path(__file__).dirname() / 'version.txt').open() as f:
     __version__ = f.read().strip()
-

@@ -11,6 +11,7 @@ from .utils import namedtuple
 from scipy import fftpack, optimize
 from .compat import irange
 
+
 def variance_bandwidth(factor, xdata):
     r"""
     Returns the covariance matrix:
@@ -22,10 +23,11 @@ def variance_bandwidth(factor, xdata):
     where :math:`\tau` is a correcting factor that depends on the method.
     """
     data_covariance = np.atleast_2d(np.cov(xdata, rowvar=1, bias=False))
-    sq_bandwidth = data_covariance*factor*factor
+    sq_bandwidth = data_covariance * factor * factor
     return sq_bandwidth
 
-def silverman_bandwidth(xdata, ydata = None, model=None):
+
+def silverman_bandwidth(xdata, ydata=None, model=None):
     r"""
     The Silverman bandwidth is defined as a variance bandwidth with factor:
 
@@ -34,10 +36,11 @@ def silverman_bandwidth(xdata, ydata = None, model=None):
         \tau = \left( n \frac{d+2}{4} \right)^\frac{-1}{d+4}
     """
     xdata = np.atleast_2d(xdata)
-    d,n = xdata.shape
-    return variance_bandwidth(np.power(n*(d+2.)/4., -1./(d+4.)), xdata)
+    d, n = xdata.shape
+    return variance_bandwidth(np.power(n * (d + 2.) / 4., -1. / (d + 4.)), xdata)
 
-def scotts_bandwidth(xdata, ydata = None, model=None):
+
+def scotts_bandwidth(xdata, ydata=None, model=None):
     r"""
     The Scotts bandwidth is defined as a variance bandwidth with factor:
 
@@ -46,24 +49,27 @@ def scotts_bandwidth(xdata, ydata = None, model=None):
         \tau = n^\frac{-1}{d+4}
     """
     xdata = np.atleast_2d(xdata)
-    d,n = xdata.shape
-    return variance_bandwidth(np.power(n, -1./(d+4.)), xdata)
+    d, n = xdata.shape
+    return variance_bandwidth(np.power(n, -1. / (d + 4.)), xdata)
+
 
 def _botev_fixed_point(t, M, I, a2):
-    l=7
+    l = 7
     I = np.float128(I)
     M = np.float128(M)
     a2 = np.float128(a2)
-    f = 2*np.pi**(2*l)*np.sum(I**l*a2*np.exp(-I*np.pi**2*t))
+    f = 2 * np.pi ** (2 * l) * np.sum(I ** l * a2 * np.exp(-I * np.pi ** 2 * t))
     for s in irange(l, 1, -1):
-        K0 = np.prod(np.arange(1, 2*s, 2))/np.sqrt(2*np.pi)
-        const = (1 + (1/2)**(s + 1/2))/3
-        time=(2*const*K0/M/f)**(2/(3+2*s))
-        f=2*np.pi**(2*s)*np.sum(I**s*a2*np.exp(-I*np.pi**2*time))
-    return t-(2*M*np.sqrt(np.pi)*f)**(-2/5)
+        K0 = np.prod(np.arange(1, 2 * s, 2)) / np.sqrt(2 * np.pi)
+        const = (1 + (1 / 2) ** (s + 1 / 2)) / 3
+        time = (2 * const * K0 / M / f) ** (2 / (3 + 2 * s))
+        f = 2 * np.pi ** (2 * s) * np.sum(I ** s * a2 * np.exp(-I * np.pi ** 2 * time))
+    return t - (2 * M * np.sqrt(np.pi) * f) ** (-2 / 5)
+
 
 def finite(val):
     return val is not None and np.isfinite(val)
+
 
 class botev_bandwidth(object):
     """
@@ -85,7 +91,7 @@ class botev_bandwidth(object):
         """
         Returns the optimal bandwidth based on the data
         """
-        N = 2**10 if self.N is None else int(2**np.ceil(np.log2(self.N)))
+        N = 2 ** 10 if self.N is None else int(2 ** np.ceil(np.log2(self.N)))
         lower = getattr(model, 'lower', None)
         upper = getattr(model, 'upper', None)
         if not finite(lower) or not finite(upper):
@@ -103,13 +109,13 @@ class botev_bandwidth(object):
         DataHist = DataHist / M
         DCTData = fftpack.dct(DataHist, norm=None)
 
-        I = np.arange(1,N,dtype=int)**2
-        SqDCTData = (DCTData[1:]/2)**2
+        I = np.arange(1, N, dtype=int) ** 2
+        SqDCTData = (DCTData[1:] / 2) ** 2
         guess = 0.1
 
         t_star = optimize.brentq(_botev_fixed_point, 0, guess, args=(M, I, SqDCTData))
 
-        return np.sqrt(t_star)*span
+        return np.sqrt(t_star) * span
 
 
 class KDE1D(object):
@@ -273,7 +279,7 @@ class KDE1D(object):
         res = KDE1D.__new__(KDE1D)
         mems = ['_xdata', '_upper', '_lower', '_kernel', '_bw_fct', '_bw', '_cov_fct',
                 '_covariance', '_method', '_weights', '_total_weights', '_lambdas', '_evaluate',
-                '_grid_eval' ]
+                '_grid_eval']
         for m in mems:
             setattr(res, m, getattr(self, m))
         return res
@@ -284,7 +290,7 @@ class KDE1D(object):
         """
         if self._bw_fct:
             _bw = float(self._bw_fct(self._xdata, model=self))
-            _cov = _bw*_bw
+            _cov = _bw * _bw
         elif self._cov_fct:
             _cov = float(self._cov_fct(self._xdata, model=self))
             _bw = np.sqrt(_cov)
@@ -297,7 +303,7 @@ class KDE1D(object):
     def xdata(self):
         return self._xdata
 
-    @xdata.setter
+    @xdata.setter  # noqa
     def xdata(self, xs):
         self._xdata = np.atleast_1d(xs)
         self.update_bandwidth()
@@ -334,7 +340,7 @@ class KDE1D(object):
         """
         return self._kernel
 
-    @kernel.setter
+    @kernel.setter  # noqa
     def kernel(self, val):
         self._kernel = val
 
@@ -345,11 +351,11 @@ class KDE1D(object):
         """
         return self._lower
 
-    @lower.setter
+    @lower.setter  # noqa
     def lower(self, val):
         self._lower = float(val)
 
-    @lower.deleter
+    @lower.deleter  # noqa
     def lower(self):
         self._lower = -np.inf
 
@@ -360,11 +366,11 @@ class KDE1D(object):
         """
         return self._upper
 
-    @upper.setter
+    @upper.setter  # noqa
     def upper(self, val):
         self._upper = float(val)
 
-    @upper.deleter
+    @upper.deleter  # noqa
     def upper(self):
         self._upper = np.inf
 
@@ -377,7 +383,7 @@ class KDE1D(object):
         """
         return self._weights
 
-    @weights.setter
+    @weights.setter  # noqa
     def weights(self, ws):
         try:
             ws = float(ws)
@@ -389,7 +395,7 @@ class KDE1D(object):
             self._total_weights = sum(ws)
             self._weights = ws
 
-    @weights.deleter
+    @weights.deleter  # noqa
     def weights(self):
         self._weights = np.asarray(1.)
         self._total_weights = float(self.xdata.shape[0])
@@ -408,7 +414,7 @@ class KDE1D(object):
         """
         return self._lambdas
 
-    @lambdas.setter
+    @lambdas.setter  # noqa
     def lambdas(self, ls):
         try:
             self._lambdas = np.asarray(float(ls))
@@ -417,7 +423,7 @@ class KDE1D(object):
             ls.shape = self.xdata.shape
             self._lambdas = ls
 
-    @lambdas.deleter
+    @lambdas.deleter  # noqa
     def lambdas(self):
         self._lambdas = np.asarray(1.)
 
@@ -434,7 +440,7 @@ class KDE1D(object):
         """
         return self._bw
 
-    @bandwidth.setter
+    @bandwidth.setter  # noqa
     def bandwidth(self, bw):
         self._bw_fct = None
         self._cov_fct = None
@@ -444,8 +450,7 @@ class KDE1D(object):
         else:
             bw = float(bw)
             self._bw = bw
-            self._covariance = bw*bw
-
+            self._covariance = bw * bw
 
     @property
     def covariance(self):
@@ -460,7 +465,7 @@ class KDE1D(object):
         """
         return self._covariance
 
-    @covariance.setter
+    @covariance.setter  # noqa
     def covariance(self, cov):
         self._bw_fct = None
         self._cov_fct = None
@@ -477,7 +482,7 @@ class KDE1D(object):
         Method to use if there is, effectively, no bounds
         """
         xdata = self.xdata
-        points = np.atleast_1d(points)[:,np.newaxis]
+        points = np.atleast_1d(points)[:, np.newaxis]
 
         bw = self.bandwidth * self.lambdas
 
@@ -496,12 +501,12 @@ class KDE1D(object):
 
     def _evaluate_renorm(self, points, output=None):
         xdata = self.xdata
-        points = np.atleast_1d(points)[:,np.newaxis]
+        points = np.atleast_1d(points)[:, np.newaxis]
 
         bw = self.bandwidth * self.lambdas
 
-        l = (self.lower - points)/bw
-        u = (self.upper - points)/bw
+        l = (self.lower - points) / bw
+        u = (self.upper - points) / bw
         z = (points - xdata) / bw
 
         kernel = self.kernel
@@ -517,7 +522,7 @@ class KDE1D(object):
 
     def _evaluate_reflexion(self, points, output=None):
         xdata = self.xdata
-        points = np.atleast_1d(points)[:,np.newaxis]
+        points = np.atleast_1d(points)[:, np.newaxis]
 
         bw = self.bandwidth * self.lambdas
 
@@ -531,10 +536,10 @@ class KDE1D(object):
         terms = kernel(z)
 
         if L > -np.inf:
-            terms += kernel(z1 - (2*L/bw))
+            terms += kernel(z1 - (2 * L / bw))
 
         if U < np.inf:
-            terms += kernel(z1 - (2*U/bw))
+            terms += kernel(z1 - (2 * U / bw))
 
         terms *= self.weights / bw
         output = terms.sum(axis=1, out=output)
@@ -547,7 +552,7 @@ class KDE1D(object):
             raise ValueError("Cyclic boundary conditions can only be used with closed domains.")
 
         xdata = self.xdata
-        points = np.atleast_1d(points)[:,np.newaxis]
+        points = np.atleast_1d(points)[:, np.newaxis]
 
         bw = self.bandwidth * self.lambdas
 
@@ -555,13 +560,13 @@ class KDE1D(object):
         L = self.lower
         U = self.upper
 
-        span = U-L
+        span = U - L
 
         kernel = self.kernel
 
         terms = kernel(z)
-        terms += kernel(z - (span/bw))
-        terms += kernel(z + (span/bw))
+        terms += kernel(z - (span / bw))
+        terms += kernel(z + (span / bw))
 
         terms *= self.weights / bw
         output = terms.sum(axis=1, out=output)
@@ -571,13 +576,13 @@ class KDE1D(object):
 
     def _evaluate_linear(self, points, output=None):
         xdata = self.xdata
-        points = np.atleast_1d(points)[:,np.newaxis]
+        points = np.atleast_1d(points)[:, np.newaxis]
 
         bw = self.bandwidth * self.lambdas
 
-        l = (self.lower - points)/bw
-        u = (self.upper - points)/bw
-        z = (points - xdata)/bw
+        l = (self.lower - points) / bw
+        u = (self.upper - points) / bw
+        z = (points - xdata) / bw
 
         kernel = self.kernel
 
@@ -585,8 +590,8 @@ class KDE1D(object):
         a1 = kernel.pm1(-l) - kernel.pm1(-u)
         a2 = kernel.pm2(u) - kernel.pm2(l)
 
-        denom = a2*a0 - a1*a1
-        upper = a2 - a1*z
+        denom = a2 * a0 - a1 * a1
+        upper = a2 - a1 * z
 
         upper /= denom
         upper *= (self.weights / bw) * kernel(z)
@@ -627,16 +632,16 @@ class KDE1D(object):
             return self._method
         return "unbounded"
 
-    @method.setter
+    @method.setter  # noqa
     def method(self, m):
-        _known_methods = { 'renormalization': self._evaluate_renorm,
-                           'reflexion': self._evaluate_reflexion,
-                           'linear_combination': self._evaluate_linear,
-                           'cyclic': self._evaluate_cyclic}
-        _known_grid = { 'renormalization': self.grid_eval,
-                        'reflexion': self._grid_reflexion,
-                        'linear_combination': self.grid_eval,
-                        'cyclic': self._grid_cyclic }
+        _known_methods = {'renormalization': self._evaluate_renorm,
+                          'reflexion': self._evaluate_reflexion,
+                          'linear_combination': self._evaluate_linear,
+                          'cyclic': self._evaluate_cyclic}
+        _known_grid = {'renormalization': self.grid_eval,
+                       'reflexion': self._grid_reflexion,
+                       'linear_combination': self.grid_eval,
+                       'cyclic': self._grid_cyclic}
         if m not in _known_methods:
             raise ValueError("Error, method must be one of 'renormalization', 'reflexion', 'cyclic' or 'linear_combination'")
         self._evaluate = _known_methods[m]
@@ -657,12 +662,11 @@ class KDE1D(object):
         """
         return self.lower > -np.inf or self.upper < np.inf
 
-
-    def grid_eval(self, N = None):
-        N = 2**10 if N is None else N
-        lower = np.min(self.xdata) - 2*self.bandwidth if self.lower == -np.inf else self.lower
-        upper = np.max(self.xdata) + 2*self.bandwidth if self.upper ==  np.inf else self.upper
-        g = np.r_[lower:upper:N*1j]
+    def grid_eval(self, N=None):
+        N = 2 ** 10 if N is None else N
+        lower = np.min(self.xdata) - 2 * self.bandwidth if self.lower == -np.inf else self.lower
+        upper = np.max(self.xdata) + 2 * self.bandwidth if self.upper == np.inf else self.upper
+        g = np.r_[lower:upper:N * 1j]
         return g, self(g)
 
     def _grid_cyclic(self, N):
@@ -677,31 +681,31 @@ class KDE1D(object):
             raise ValueError("Error, cyclic boundary conditions require a closed domain.")
         bw = self.bandwidth * self.lambdas
         data = self.xdata
-        N = 2**14 if N is None else N
+        N = 2 ** 14 if N is None else N
         lower = self.lower
         upper = self.upper
         R = upper - lower
-        dN = 1/N
-        mesh = np.r_[lower:upper+dN:(N+2)*1j]
+        dN = 1 / N
+        mesh = np.r_[lower:upper + dN:(N + 2) * 1j]
         weights = self.weights
         if not weights.shape:
             weights = None
-        DataHist, bin_edges = np.histogram(data, bins=mesh - dN/2, weights=weights)
+        DataHist, bin_edges = np.histogram(data, bins=mesh - dN / 2, weights=weights)
         DataHist[0] += DataHist[-1]
         DataHist = DataHist / self._total_weights
         FFTData = fftpack.fft(DataHist[:-1])
         if hasattr(self.kernel, 'fft'):
-            t_star = (2*bw/R)
-            gp = np.roll((np.arange(N)-N/2)*np.pi*t_star, N//2)
+            t_star = (2 * bw / R)
+            gp = np.roll((np.arange(N) - N / 2) * np.pi * t_star, N // 2)
             smth = self.kernel.fft(gp)
         else:
-            gp = np.roll((np.arange(N)-N/2)*R/N, N//2)
-            smth = fftpack.fft(self.kernel(gp/bw) * (gp[1]-gp[0]) / bw)
+            gp = np.roll((np.arange(N) - N / 2) * R / N, N // 2)
+            smth = fftpack.fft(self.kernel(gp / bw) * (gp[1] - gp[0]) / bw)
         SmoothFFTData = FFTData * smth
-        density = fftpack.ifft(SmoothFFTData) / (mesh[1]-mesh[0])
+        density = fftpack.ifft(SmoothFFTData) / (mesh[1] - mesh[0])
         return mesh[:-2], density.real
 
-    def _grid_reflexion(self, N = None):
+    def _grid_reflexion(self, N=None):
         """
         DCT-based estimation of KDE estimation, i.e. with reflexion boundary
         conditions. This works only for fixed bandwidth (i.e. lambdas = 1) and
@@ -715,9 +719,9 @@ class KDE1D(object):
 
         bw = self.bandwidth * self.lambdas
         data = self.xdata
-        N = 2**14 if N is None else N
-        lower = np.min(data) - 3*self.bandwidth if self.lower == -np.inf else self.lower
-        upper = np.max(data) + 3*self.bandwidth if self.upper ==  np.inf else self.upper
+        N = 2 ** 14 if N is None else N
+        lower = np.min(data) - 3 * self.bandwidth if self.lower == -np.inf else self.lower
+        upper = np.max(data) + 3 * self.bandwidth if self.upper == np.inf else self.upper
 
         R = upper - lower
 
@@ -725,28 +729,27 @@ class KDE1D(object):
         weights = self.weights
         if not weights.shape:
             weights = None
-        DataHist, bins = np.histogram(data, bins=N, range=(lower,upper), weights = weights)
+        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper), weights=weights)
         DataHist = DataHist / self._total_weights
         DCTData = fftpack.dct(DataHist, norm=None)
 
         if hasattr(self.kernel, 'dct'):
-            t_star = bw/R
-            gp = np.arange(N)*np.pi*t_star
+            t_star = bw / R
+            gp = np.arange(N) * np.pi * t_star
             smth = self.kernel.dct(gp)
         else:
-            gp = (np.arange(N)+0.5)*R/N
-            smth = fftpack.dct(self.kernel(gp/bw) * (gp[1]-gp[0]) / bw)
+            gp = (np.arange(N) + 0.5) * R / N
+            smth = fftpack.dct(self.kernel(gp / bw) * (gp[1] - gp[0]) / bw)
 
         # Smooth the DCTransformed data using t_star
         SmDCTData = DCTData * smth
         # Inverse DCT to get density
-        density = fftpack.idct(SmDCTData, norm=None)/(2*R)
-        mesh = np.array([(bins[i]+bins[i+1])/2 for i in irange(N)])
+        density = fftpack.idct(SmDCTData, norm=None) / (2 * R)
+        mesh = np.array([(bins[i] + bins[i + 1]) / 2 for i in irange(N)])
 
         return mesh, density
 
-
-    def grid(self, N = None):
+    def grid(self, N=None):
         """
         Evaluate the density on a grid of N points spanning the whole dataset.
 
@@ -760,12 +763,13 @@ class KDE1D(object):
             return self._grid_reflexion(N)
         return self._grid_eval(N)
 
-Transform = namedtuple('Tranform', ['__call__', 'inv', 'Dinv' ])
+Transform = namedtuple('Tranform', ['__call__', 'inv', 'Dinv'])
 
 LogTransform = Transform(np.log, np.exp, np.exp)
-ExpTransform = Transform(np.exp, np.log, lambda x: 1/x)
+ExpTransform = Transform(np.exp, np.log, lambda x: 1 / x)
 
-def transform_distribution(xs, ys, Dfct, output = None):
+
+def transform_distribution(xs, ys, Dfct, output=None):
     """
     Transform a distribution into another one by a change a variable.
 
@@ -777,9 +781,10 @@ def transform_distribution(xs, ys, Dfct, output = None):
         f_Y(y) = \left| \frac{1}{g'(g^{-1}(y))} \right| \cdot f_X(g^{-1}(y))
 
     """
-    return np.multiply(np.abs(1/Dfct(xs)),ys,output)
+    return np.multiply(np.abs(1 / Dfct(xs)), ys, output)
 
-def create_transform(obj, inv=None, Dinv = None):
+
+def create_transform(obj, inv=None, Dinv=None):
     if isinstance(obj, Transform):
         return obj
     fct = obj.__call__
@@ -794,9 +799,10 @@ def create_transform(obj, inv=None, Dinv = None):
             def Dinv(x):
                 x = np.asfarray(x)
                 dx = x * 1e-9
-                dx[x==0] = np.min(dx[x!=0])
-                return (inv(x+dx) - inv(x-dx))/(2*dx)
+                dx[x == 0] = np.min(dx[x != 0])
+                return (inv(x + dx) - inv(x - dx)) / (2 * dx)
     return Transform(fct, inv, Dinv)
+
 
 class TransformKDE(object):
     r"""
@@ -865,13 +871,13 @@ class TransformKDE(object):
         output = self.kde(pts, output)
         return transform_distribution(pts, output, trans.Dinv, output)
 
-    def __call__(self, points, output = None):
+    def __call__(self, points, output=None):
         """
         Evaluate the KDE on a set of points
         """
         return self.evaluate(points, output)
 
-    def grid(self, N = None):
+    def grid(self, N=None):
         """
         Evaluate the KDE on a grid of points with N points.
 

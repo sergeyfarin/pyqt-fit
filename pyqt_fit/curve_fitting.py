@@ -9,7 +9,8 @@ different kind of residual and added constraints function.
 from __future__ import division, print_function, absolute_import
 from scipy import optimize
 from numpy import array, inf
-from .compat import irange, lrange
+from .compat import lrange
+
 
 class CurveFitting(object):
     r"""
@@ -114,12 +115,12 @@ class CurveFitting(object):
     """
 
     def __init__(self, xdata, ydata, p0, fct, args=(), residuals=None, fix_params=(),
-                  Dfun=None, Dres = None, col_deriv=1, constraints = None,
-                  *lsq_args, **lsq_kword):
+                 Dfun=None, Dres = None, col_deriv=1, constraints = None,
+                 *lsq_args, **lsq_kword):
         self.fct = fct
         if residuals is None:
-            residuals = lambda x,y: (x-y)
-            Dres = lambda y1,y0,dy: -dy
+            residuals = lambda x, y: (x - y)
+            Dres = lambda y1, y0, dy: -dy
 
         use_derivs = (Dres is not None) and (Dfun is not None)
         #print("use_derivs = %s\nDres = %s\nDfun = %s\n" % (use_derivs, Dres, Dfun))
@@ -136,31 +137,34 @@ class CurveFitting(object):
             except ValueError:
                 raise ValueError("List of parameters to fix is incorrect: contains either duplicates or values out of range.")
             p0 = p_save[change_params]
+
             def f(p, *args):
                 p1 = array(p_save)
                 p1[change_params] = p
-                y0 = fct(p1,xdata,*args)
+                y0 = fct(p1, xdata, *args)
                 return residuals(ydata, y0)
             if use_derivs:
                 def df(p, *args):
                     p1 = array(p_save)
                     p1[change_params] = p
-                    y0 = fct(p1,xdata,*args)
-                    dfct = Dfun(p1,xdata,*args)
+                    y0 = fct(p1, xdata, *args)
+                    dfct = Dfun(p1, xdata, *args)
                     result = Dres(ydata, y0, dfct)
                     if col_deriv != 0:
                         return result[change_params]
                     else:
-                        return result[:,change_params]
+                        return result[:, change_params]
                     return result
         else:
-            def f(p,*args):
-                y0 = fct(p,xdata,*args)
+
+            def f(p, *args):  # noqa
+                y0 = fct(p, xdata, *args)
                 return residuals(ydata, y0)
             if use_derivs:
-                def df(p, *args):
+
+                def df(p, *args):  # noqa
                     dfct = Dfun(p, xdata, *args)
-                    y0 = fct(p,xdata,*args)
+                    y0 = fct(p, xdata, *args)
                     return Dres(ydata, y0, dfct)
 
         popt, pcov, infodict, mesg, ier = optimize.leastsq(f, p0, args, full_output=1, Dfun=df, col_deriv=col_deriv, *lsq_args, **lsq_kword)
@@ -170,12 +174,12 @@ class CurveFitting(object):
             p_save[change_params] = popt
             popt = p_save
 
-        if not ier in [1,2,3,4]:
+        if not ier in [1, 2, 3, 4]:
             raise RuntimeError("Unable to determine number of fit parameters. Error returned by scipy.optimize.leastsq:\n%s" % (mesg,))
 
         res = residuals(ydata, fct(popt, xdata, *args))
         if (len(res) > len(p0)) and pcov is not None:
-            s_sq = (res**2).sum()/(len(ydata)-len(p0))
+            s_sq = (res ** 2).sum() / (len(ydata) - len(p0))
             pcov = pcov * s_sq
         else:
             pcov = inf
@@ -190,5 +194,3 @@ class CurveFitting(object):
         Return the value of the fitted function for each of the points in ``xdata``
         """
         return self.fct(self.popt, xdata)
-
-

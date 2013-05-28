@@ -5,19 +5,16 @@ This modules implement functions to test and plot parametric regression.
 """
 
 from __future__ import division, print_function, absolute_import
-from .curve_fitting import CurveFitting
-from numpy import sort, iterable, argsort, std, abs, sqrt, arange, pi, c_
-from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, clf, ylim, hist, suptitle, gca
+from numpy import argsort, std, abs, sqrt, arange, pi, c_
+from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, ylim, hist, suptitle, gca
 from .compat import izip
-from . import bootstrap
 from itertools import chain
 from scipy.special import erfinv, gamma
 from scipy import stats
 #try:
 #    from cy_kernel_smoothing import SpatialAverage
 #except ImportError:
-from .kernel_smoothing import SpatialAverage, LocalLinearKernel1D
-import inspect
+from .kernel_smoothing import LocalLinearKernel1D
 from .compat import unicode_csv_writer as csv_writer
 from collections import namedtuple
 
@@ -29,20 +26,22 @@ if sys.version_info >= (3,):
 else:
     CSV_WRITE_FLAGS = "wb"
 
+
 def plot_dist_residuals(res):
     """
     Plot the distribution of the residuals.
 
     :returns: the handle toward the histogram and the plot of the fitted normal distribution
     """
-    ph = hist(res,normed=True)
-    xr = arange(res.min(), res.max(), (res.max()-res.min())/1024)
+    ph = hist(res, normed=True)
+    xr = arange(res.min(), res.max(), (res.max() - res.min()) / 1024)
     yr = stats.norm(0, res.std()).pdf(xr)
     pn = plot(xr, yr, 'r--')
     xlabel('Residuals')
     ylabel('Frequency')
     title('Distributions of the residuals')
     return ph, pn
+
 
 def plot_residuals(xname, xdata, res_desc, res):
     """
@@ -58,9 +57,9 @@ def plot_residuals(xname, xdata, res_desc, res):
     :returns: The handles of the the plots of the residuals and of the smoothed residuals.
     """
     p_res = plot(xdata, res, '+', label='residuals')[0]
-    plot([xdata.min(), xdata.max()], [0,0], 'r--')
+    plot([xdata.min(), xdata.max()], [0, 0], 'r--')
     av = LocalLinearKernel1D(xdata, res)
-    xr = arange(xdata.min(), xdata.max(), (xdata.max()-xdata.min())/1024)
+    xr = arange(xdata.min(), xdata.max(), (xdata.max() - xdata.min()) / 1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g', label='smoothed residuals')
     xlabel(xname)
@@ -70,6 +69,7 @@ def plot_residuals(xname, xdata, res_desc, res):
     ylim(-ymax, ymax)
     title("Residuals (%s) vs. fitted" % (res_desc,))
     return p_res, p_smooth
+
 
 def scaled_location_plot(yname, yopt, scaled_res):
     """
@@ -85,16 +85,17 @@ def scaled_location_plot(yname, yopt, scaled_res):
     scr = sqrt(abs(scaled_res))
     p_scaled = plot(yopt, scr, '+')[0]
     av = LocalLinearKernel1D(yopt, scr)
-    xr = arange(yopt.min(), yopt.max(), (yopt.max() - yopt.min())/1024)
+    xr = arange(yopt.min(), yopt.max(), (yopt.max() - yopt.min()) / 1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g')[0]
-    expected_mean = 2**(1/4)*gamma(3/4)/sqrt(pi)
+    expected_mean = 2 ** (1 / 4) * gamma(3 / 4) / sqrt(pi)
     plot([yopt.min(), yopt.max()], [expected_mean, expected_mean], 'r--')
     title('Scale-location')
     xlabel(yname)
     ylabel('$|$Normalized residuals$|^{1/2}$')
-    gca().set_yticks([0,1,2])
+    gca().set_yticks([0, 1, 2])
     return [p_scaled, p_smooth]
+
 
 def qqplot(scaled_res, normq):
     """
@@ -107,18 +108,20 @@ def qqplot(scaled_res, normq):
     :returns: handle to the data plot
     """
     qqp = []
-    qqp += plot(normq, scaled_res, '+');
-    qqp += plot(normq, normq, 'r--');
-    xlabel('Theoretical quantiles');
-    ylabel('Normalized residuals');
-    title('Normal Q-Q plot');
+    qqp += plot(normq, scaled_res, '+')
+    qqp += plot(normq, normq, 'r--')
+    xlabel('Theoretical quantiles')
+    ylabel('Normalized residuals')
+    title('Normal Q-Q plot')
     return qqp
 
 ResultStruct = namedtuple('ResultStruct', """fct fct_desc param_names xdata ydata xname yname res_name residuals popt res
         yopts eval_points interpolation sorted_yopts scaled_res normq CI CIs CIresults""")
 
+
 def fit_evaluation(fit, xdata, ydata, eval_points=None,
-        CI=(), CIresults = None, xname="X", yname="Y", fct_desc = None, param_names = (), residuals=None, res_name = 'Standard'):
+                   CI=(), CIresults = None, xname="X", yname="Y",
+                   fct_desc=None, param_names=(), residuals=None, res_name='Standard'):
     """
     This function takes the output of a curve fitting experiment and store all the relevant information for evaluating
     its success in the result.
@@ -161,15 +164,12 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
     :returns: Data structure summarising the fitting and its evaluation
     """
     popt = fit.popt
-    pcov = fit.pcov
     res = fit.res
-    infodict = fit.infodict
 
     if CI:
         CIs = CIresults.CIs
     else:
         CIs = []
-
 
     yopts = fit(xdata)
     if eval_points is None:
@@ -209,6 +209,7 @@ def fit_evaluation(fit, xdata, ydata, eval_points=None,
 
 ResidualMeasures = namedtuple("ResidualMeasures", "scaled_res res_IX prob normq")
 
+
 def residual_measures(res):
     """
     Compute quantities needed to evaluate the quality of the estimation, based solely on the residuals.
@@ -218,10 +219,10 @@ def residual_measures(res):
         for each quantile.
     """
     IX = argsort(res)
-    scaled_res = res[IX]/std(res)
+    scaled_res = res[IX] / std(res)
 
-    prob = (arange(len(scaled_res))+0.5) / len(scaled_res)
-    normq = sqrt(2)*erfinv(2*prob-1);
+    prob = (arange(len(scaled_res)) + 0.5) / len(scaled_res)
+    normq = sqrt(2) * erfinv(2 * prob - 1)
 
     return ResidualMeasures(scaled_res, IX, prob, normq)
 
@@ -229,7 +230,8 @@ _restestfields = "res_figure residuals scaled_residuals qqplot dist_residuals"
 ResTestResult = namedtuple("ResTestResult", _restestfields)
 Plot1dResult = namedtuple("Plot1dResult", "figure estimate data CIs " + _restestfields)
 
-def plot1d(result, loc=0, fig = None, res_fig = None):
+
+def plot1d(result, loc=0, fig=None, res_fig=None):
     """
     Use matplotlib to display the result of a fit, and return the list of plots used
 
@@ -248,12 +250,12 @@ def plot1d(result, loc=0, fig = None, res_fig = None):
     p_data = plot(result.xdata, result.ydata, '+', label='data')[0]
     p_CIs = []
     if result.CI:
-        for p, (low, high) in izip(result.CI,result.CIs[0]):
+        for p, (low, high) in izip(result.CI, result.CIs[0]):
             l = plot(result.eval_points, low, '--', label='%g%% CI' % (p,))[0]
-            h = plot(result.eval_points, high, l.get_color()+'--')[0]
-            p_CIs += [l,h]
+            h = plot(result.eval_points, high, l.get_color() + '--')[0]
+            p_CIs += [l, h]
     if result.param_names:
-        param_strs = ", ".join("%s=%g" % (n,v) for n,v in izip(result.param_names, result.popt))
+        param_strs = ", ".join("%s=%g" % (n, v) for n, v in izip(result.param_names, result.popt))
     else:
         param_strs = ", ".join("%g" % v for v in result.popt)
     param_strs = "$%s$" % (param_strs,)
@@ -266,18 +268,18 @@ def plot1d(result, loc=0, fig = None, res_fig = None):
 
     plots = {"figure": fig, "estimate": p_est, "data": p_data, "CIs": p_CIs}
 
-    prt = plot_residual_tests(
-            result.xdata, result.yopts, result.res,
-            "{0} with params {1}".format(result.fct_desc, param_strs),
-            result.xname, result.yname, result.res_name, result.sorted_yopts, result.scaled_res,
-            result.normq, res_fig)
+    prt = plot_residual_tests(result.xdata, result.yopts, result.res,
+                              "{0} with params {1}".format(result.fct_desc, param_strs),
+                              result.xname, result.yname, result.res_name, result.sorted_yopts, result.scaled_res,
+                              result.normq, res_fig)
 
     plots.update(prt._asdict())
 
     return Plot1dResult(**plots)
 
-def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', res_name = "residuals",
-        sorted_yopts = None, scaled_res = None, normq = None, fig = None):
+
+def plot_residual_tests(xdata, yopts, res, fct_name, xname="X", yname='Y', res_name="residuals",
+                        sorted_yopts=None, scaled_res=None, normq=None, fig=None):
     """
     Plot, in a single figure, all four residuals evaluation plots: :py:func:`plot_residuals`,
     :py:func:`plot_dist_residuals`, :py:func:`scaled_location_plot` and :py:func:`qqplot`.
@@ -306,7 +308,7 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
         except TypeError:
             figure(fig.number)
 
-    plot1 = subplot(2,2,1)
+    subplot(2, 2, 1)
 # First subplot is the residuals
     if len(xdata.shape) == 1 or xdata.shape[1] == 1:
         p_res = plot_residuals(xname, xdata.squeeze(), res_name, res)
@@ -317,20 +319,21 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname = "X", yname = 'Y', r
         scaled_res, res_IX, _, normq = residual_measures(res)
         sorted_yopts = yopts[res_IX]
 
-    plot2 = subplot(2,2,2)
+    subplot(2, 2, 2)
     p_scaled = scaled_location_plot(yname, sorted_yopts, scaled_res)
 
-    subplot(2,2,3)
+    subplot(2, 2, 3)
 # Q-Q plot
     qqp = qqplot(scaled_res, normq)
 
-    subplot(2,2,4)
+    subplot(2, 2, 4)
 # Distribution of residuals
     drp = plot_dist_residuals(res)
 
     suptitle("Residual Test for {}".format(fct_name))
 
     return ResTestResult(fig, p_res, p_scaled, qqp, drp)
+
 
 def write1d(outfile, result, res_desc, CImethod):
     """
@@ -343,9 +346,9 @@ def write1d(outfile, result, res_desc, CImethod):
     """
     with open(outfile, CSV_WRITE_FLAGS) as f:
         w = csv_writer(f)
-        w.writerow(["Function",result.fct.fct.description])
-        w.writerow(["Residuals",result.res_name,res_desc])
-        w.writerow(["Parameter","Value"])
+        w.writerow(["Function", result.fct.fct.description])
+        w.writerow(["Residuals", result.res_name, res_desc])
+        w.writerow(["Parameter", "Value"])
         for pn, pv in izip(result.param_names, result.popt):
             w.writerow([pn, "%.20g" % pv])
         #TODO w.writerow(["Regression Evaluation"])
@@ -365,7 +368,7 @@ def write1d(outfile, result, res_desc, CImethod):
         if result.CI:
             w.writerow([])
             w.writerow(["Confidence interval"])
-            w.writerow(["Method",CImethod])
+            w.writerow(["Method", CImethod])
             head = ["Parameters"] + list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in result.CI]))
             w.writerow(head)
             #print(result.CIs[1])
@@ -377,40 +380,5 @@ def write1d(outfile, result, res_desc, CImethod):
             w.writerow(head)
             w.writerows(c_[tuple(chain([result.eval_points], *result.CIs[0]))])
 
-def test():
-    import residuals
-    from numpy.random import rand, randn
-    from pylab import plot, savefig, clf, legend, arange, figure, title, show
-    from curve_fit import curve_fit
-
-    def test(x,params):
-        p0, p1, p2 = params
-        return p0 + p1*x + p2*x**2
-
-    init = (10,1,1)
-    target = (10,4,1.2)
-    print("Target parameters: %s" % (target,))
-    x = 6*rand(200) - 3
-    y = test(x, target)*(1+0.2*randn(x.shape[0]))
-    xr = arange(-3, 3, 0.01)
-    yr = test(xr,target)
-
-    res = residuals.get('Log residual')
-
-    result = plot_fit(test, x, y, init, eval_points=xr,
-                      param_names=("p_0", "p_1", "p_2"), CI=(95,99), fct_desc="$y = p_0 + p_1 x + p_2 x^2$",
-                      loc='upper left', fit_kwrds={"residuals":res}, shuffle_args={"add_residual":res.invert},
-                      res_desc=res.name)
-
-    result = plot_fit(test, x, y, init, eval_points=xr, shuffle_method=bootstrap.bootstrap_regression,
-                      param_names=("p_0", "p_1", "p_2"), CI=(95,99), fct_desc="$y = p_0 + p_1 x + p_2 x^2$",
-                      loc='upper left', fit_kwrds={"residuals":res},
-                      res_desc=res.name)
-
-    show()
-    return locals()
-
-if __name__ == "__main__":
-    test()
 
 # /home/barbier/prog/python/curve_fitting/test.csv

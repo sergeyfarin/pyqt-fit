@@ -6,13 +6,18 @@ from ..utils import namedtuple
 from .. import loader
 from path import path
 import os
-from ..compat import izip
 
 _fields = ['name', 'description', 'invert', 'Dfun', '__call__']
 
+residuals = None
+
 Residual = namedtuple('Residual', ['fct', 'name', 'description', 'invert', 'Dfun', '__call__'])
 
+
 def find_functions(module):
+    """
+    Find and all the residual functions defined in the given module
+    """
     content = dir(module)
     result = {}
     for c in content:
@@ -25,22 +30,31 @@ def find_functions(module):
                     break
             else:
                 result[obj.name] = obj
-        except Exception as ex: # Silently ignore any exception
+        except Exception as ex:  # Silently ignore any exception
             print("Error: '{}'".format(ex))
             pass
     return result
 
+
 def load():
+    """
+    Load and register all the residual functions available.
+
+    It will be looking in the current folder, but also in the "residuals"
+    subfolders of the paths defined in the PYQTFIT_PATH environment
+    variable.
+    """
     global residuals
     residuals = loader.load(find_functions)
     extra_path = os.environ.get("PYQTFIT_PATH", "").split(":")
     for ep in extra_path:
         ep = path(ep)
-        if ep and (ep/"residuals").exists():
-            residuals.update(loader.load(find_functions, ep/"residuals"))
+        if ep and (ep / "residuals").exists():
+            residuals.update(loader.load(find_functions, ep / "residuals"))
     return residuals
 
 load()
+
 
 def get(name):
     """
@@ -64,11 +78,11 @@ def get(name):
         invert: callable
             Function to add residuals to a data set
     """
-    return residuals.get(name,None)
+    return residuals.get(name, None)
+
 
 def names():
     """
     List the names of available residuals
     """
     return residuals.keys()
-
