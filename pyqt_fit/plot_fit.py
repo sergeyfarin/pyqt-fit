@@ -363,7 +363,7 @@ def write1d(outfile, result, res_desc, CImethod):
         if result.eval_points is not result.xdata:
             w.writerow([])
             w.writerow(["Interpolated data"])
-            w.writerow([result.yname, result.yname])
+            w.writerow([result.xname, result.yname])
             w.writerows(c_[result.eval_points, result.interpolation])
         if result.CI:
             w.writerow([])
