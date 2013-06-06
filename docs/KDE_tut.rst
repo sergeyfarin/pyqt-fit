@@ -22,6 +22,7 @@ Where:
      tend to :math:`\infty`;
   3. :math:`(w_i)` are the weights of each of the points, and :math:`W` is the sum of the weigths;
   4. :math:`(\lambda_i)` are the adaptation factor of the kernel.
+
 Also, it is desirable if the second moment of the kernel (i.e. the variance) is 1 for the bandwidth
 to keep a uniform meaning across the kernels.
 
