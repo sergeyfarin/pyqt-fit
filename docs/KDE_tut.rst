@@ -28,7 +28,8 @@ to keep a uniform meaning across the kernels.
 A simple example
 ----------------
 
-First, let's assume we have a random variable following a normal law :math:`\mathcal{N}(0,1)`::
+First, let's assume we have a random variable following a normal law :math:`\mathcal{N}(0,1)`, and
+let's plot its histogram::
 
   >>> import numpy as np
   >>> from scipy.stats import norm
@@ -37,20 +38,21 @@ First, let's assume we have a random variable following a normal law :math:`\mat
   >>> x = f.rvs(500)
   >>> xs = np.r_[-3:3:1024j]
   >>> ys = f.pdf(xs)
-  >>> h = plt.hist(x, bins=30, normed=True, label='data')
+  >>> h = plt.hist(x, bins=30, normed=True, color=(0,.5,0,1), label='Histogram')
   >>> plt.plot(xs, ys, 'r--', linewidth=2, label='$\mathcal{N}(0,1)$')
   >>> plt.xlim(-3,3)
   >>> plt.xlabel('X')
 
-We can get estimate the density with the default options with::
+We can get estimate the density with::
 
   >>> from pyqt_fit import kde
   >>> est = kde.KDE1D(x)
-  >>> plot(xs, est(xs), label='Estimate')
+  >>> plot(xs, est(xs), label='Estimate (bw={:.3g})'.format(est.bandwidth))
   >>> plt.legend(loc='best')
 
 .. figure:: KDE_tut_normal.png
    :align: center
+   :scale: 80%
 
 You may wonder why use KDE rather than a histogram. Let's test the variability of both method. To
 that purpose, let first generate a set of a thousand datasets and the corresponding histograms and
@@ -118,6 +120,125 @@ get a much narrower variation on the values.
 
 Boundary Conditions
 -------------------
+
+Simple Boundary
+```````````````
+
+One of the main focus of the implementation is the estimation of density on bounded domain. As an
+example, let's try to estimate the KDE of a dataset following a :math:`\chi^2_2` distribution. As a
+reminder, the PDF of this distribution is:
+
+.. math::
+
+   \chi^2_2(x) = \frac{1}{2}e^{-\frac{x}{2}}
+
+This distribution is only defined for :math:`x>0`. So first let's look at the histogram and the
+default KDE::
+
+  >>> from scipy import stats
+  >>> from matplotlib import pylab as plt
+  >>> from pyqt_fit import kde
+  >>> import numpy as np
+  >>> chi2 = stats.chi2(2)
+  >>> x = chi2.rvs(1000)
+  >>> plt.hist(x, bins=20, range=(0,8), color=(0,.5,0), label='Histogram', normed=True)
+  >>> est = kde.KDE1D(x)
+  >>> xs = np.r_[0:8:1024j]
+  >>> plt.plot(xs, est(xs), label='KDE (bw = {:.3g})'.format(est.bandwidth))
+  >>> plt.plot(xs, chi2.pdf(xs), 'r--', lw=2, label=r'$\chi^2_2$')
+  >>> plt.legend(loc='best')
+
+.. figure:: KDE_tut_chi2_unbounded.png
+   :scale: 50%
+   :align: center
+
+   Standard estimation of the :math:`\chi^2_2` distribution
+
+We can see that the estimation is correct far from the 0, but when closer than twice the bandwidth,
+the estimation becomes incorrect. The reason is that the method "sees" there are no points below 0,
+and therefore assumes the density continuously decreases to reach 0 in slightly negative values.
+
+There are a number of ways to take into account the bounded nature of the distribution. The default
+one consist in truncating the kernel if it goes below 0. This is called "renoamlizing" the kernel::
+
+  >>> est_ren = kde.KDE1D(x, lower=0)
+  >>> plt.plot(xs, est_ren(xs), 'm', label=est_ren.method)
+  >>> plt.legend(loc='best')
+
+.. figure:: KDE_tut_chi2_renorm.png
+   :scale: 50%
+   :align: center
+
+   Renormalized estimation of the :math:`\chi^2_2` distribution
+
+It can be shown that the convergence at the boundary with the renormalization method is slower than
+in the rest of the dataset. Another method is a linear approximation of the density toward the
+boundaries. The method, being an approximation, will not sum up to exactly 1. However, it often
+approximate the density much better::
+
+  >>> est_lin = kde.KDE1D(x, lower=0, method='linear_combination')
+  >>> plt.plot(xs, est_lin(xs), 'y', label=est_lin.method)
+  >>> plt.legend(loc='best')
+
+.. figure:: KDE_tut_chi2_lin.png
+   :scale: 50%
+   :align: center
+
+   Linear combination estimation of the :math:`\chi^2_2` distribution
+
+Reflexive Boundary
+``````````````````
+Sometimes, not only do we have a boundary, but we expect the density to be reflexive, that is the
+derivative on the boundary is 0, and the system is such that below or above is the same. An example
+is the distribution of the distance from a 2D point taken from a 2D gaussian distribution to the
+center:
+
+.. math::
+
+   Z = |X - Y| \qquad X \sim \mathcal{N}(0,1), Y \sim \mathcal{N}(0,1)
+
+We know that the answer is:
+
+.. math::
+
+  Z \sim \frac{1}{\sqrt{2\pi z}} e^{-z/2}
+
+First, let's look at the histogram::
+
+  >>> from scipy import stats, integrate
+  >>> from matplotlib import pylab as plt
+  >>> from pyqt_fit import kde
+  >>> import numpy as np
+  >>> f = stats.norm(loc=0, scale=1)
+  >>> x = f.rvs(1000)
+  >>> y = f.rvs(1000)
+  >>> z = np.abs(x-y)
+  >>> plt.hist(z, bins=20, normed=True)
+
+Then, the KDE assume reflexive boundary conditions::
+
+  >>> est = kde.KDE1D(z, lower=0, method='reflexion')
+  >>> plot(xs, est(xs), label=est.method)
+
+To estimate the "real" distribution, we will increase the number of samples::
+
+  >>> xx = f.rvs(1000000)
+  >>> yy = f.rvs(1000000)
+  >>> zz = np.abs(xx-yy)
+
+If you try to estimate the KDE, it will now be very slow. To speed up the process, you can use the
+``grid`` method. The ``grid`` method will compute the result using DCT or FFT if possible. It will
+work only if you don't have variable bandwidth and boundary conditions are either reflexive, cyclic,
+or non-existent (i.e. unbounded)::
+
+  >>> est_large = kde.KDE1D(zz, lower=0, method='reflexion')
+  >>> xxs, yys = est_large.grid()
+  >>> plt.plot(xxs, yys, 'r--', lw=2, label='Estimated')
+  >>> plt.xlim(0, 6)
+  >>> plt.ylim(ymin=0)
+
+Cyclic Boundaries
+`````````````````
 
 Confidence Intervals
 --------------------
