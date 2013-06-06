@@ -39,15 +39,18 @@ First, let's assume we have a random variable following a normal law :math:`\mat
   >>> ys = f.pdf(xs)
   >>> h = plt.hist(x, bins=30, normed=True, label='data')
   >>> plt.plot(xs, ys, 'r--', linewidth=2, label='$\mathcal{N}(0,1)$')
-  >>> plt.legend(loc='best')
+  >>> plt.xlim(-3,3)
+  >>> plt.xlabel('X')
 
 We can get estimate the density with the default options with::
 
   >>> from pyqt_fit import kde
   >>> est = kde.KDE1D(x)
-  >>> plot(xs, est(xs), label='$\hat{f}$')
+  >>> plot(xs, est(xs), label='Estimate')
   >>> plt.legend(loc='best')
 
+.. figure:: KDE_tut_normal.png
+   :align: center
 
 Boundary Conditions
 -------------------
