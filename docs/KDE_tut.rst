@@ -239,9 +239,59 @@ or non-existent (i.e. unbounded)::
 Cyclic Boundaries
 `````````````````
 
-Confidence Intervals
---------------------
+Cyclic boundaries work very much like reflexive boundary. The main difference is that they require
+two bounds, as reflexive conditions can be only with one bound.
+
+Methods for Bandwidth Estimation
+--------------------------------
 
 Transformations
 ---------------
+
+Sometimes, it is not really possible to estimate correctly the density is the current domain. A
+transformation is required. As an example, let's try to estimate a log-normal distribution, i.e. the
+distribution of a variable whose logarithm is normally distributed::
+
+  >>> from scipy import stats
+  >>> from matplotlib import pylab as plt
+  >>> from pyqt_fit import kde
+  >>> import numpy as np
+  >>> f = stats.lognorm(1)
+  >>> x = f.rvs(1000)
+  >>> xs = r_[0:10:4096j]
+  >>> plt.hist(x, bins=20, range=(0,10), color='g', normed=True)
+  >>> plt.plot(xs, f.pdf(xs), 'r--', lw=2, label='log-normal')
+  >>> est = kde.KDE1D(x, method='linear_combination', lower=0)
+  >>> plt.plot(xs, est(xs), color='b', label='KDE')
+  >>> plt.legend(loc='best')
+
+.. figure:: KDE_tut_lognorm1.png
+   :align: center
+   :scale: 50%
+
+You can note that even the histogram doesn't reflect very well the distribution here. The linear
+recombination method, although not perfect also gives a better idea of what is going on. But really,
+we should be working in log space::
+
+  >>> plt.figure()
+  >>> lx = np.log(x)
+  >>> h, edges = np.histogram(lx, bins=30)
+  >>> width = np.exp(edges[1:]) - np.exp(edges[:-1])
+  >>> h = h / width
+  >>> h /= sum(h*width)
+  >>> plt.bar(np.exp(edges[:-1]), h, width = width, facecolor='g', linewidth=0, ecolor='b')
+  >>> plt.plot(xs, f.pdf(xs), 'r--', lw=2, label='log-normal')
+  >>> plt.xlim(xmax=10)
+  >>> plt.legend(loc='best')
+
+We can do the same for the KDE by using the `TransformKDE` object, that work as an adaptor for a
+normal KDE::
+
+  >>> trans = kde.TransformKDE(est, kde.LogTransform)
+  >>> plt.plot(xs, trans(xs), color='b', lw=2, label='Transformed KDE')
+  >>> plt.legend(loc='best')
+
+.. figure:: KDE_tut_lognorm2.png
+   :align: center
+   :scale: 50%
 
