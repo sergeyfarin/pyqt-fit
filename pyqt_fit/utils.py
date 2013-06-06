@@ -56,7 +56,8 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
         field_names = tuple(names)
     for name in (typename,) + field_names:
         if not all(c.isalnum() or c == '_' for c in name):
-            raise ValueError('Type names and field names can only contain alphanumeric characters and underscores: %r' % name)
+            raise ValueError('Type names and field names can only contain alphanumeric characters '
+                             'and underscores: %r' % name)
         if _iskeyword(name):
             raise ValueError('Type names and field names cannot be a keyword: %r' % name)
         if name[0].isdigit():
@@ -107,7 +108,8 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
             return tuple(self) \n\n''' % dict(numfields=numfields, field_names=field_names,
                                               typename=typename, argtxt=argtxt, reprtxt=reprtxt)
     for i, name in enumerate(field_names):
-        template += "        %s = _property(_itemgetter(%d), doc='Alias for field number %d')\n" % (name, i, i)
+        template += "        %s = _property(_itemgetter(%d), " \
+                    "doc='Alias for field number %d')\n" % (name, i, i)
     if verbose:
         print(template)
 

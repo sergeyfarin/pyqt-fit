@@ -32,7 +32,9 @@ if HAS_CYTHON:
 
     elif os.name == 'posix':
         extra_flags = '-I' + numpy.get_include()
-        os.environ['CFLAGS'] = " ".join([os.environ.get('CFLAGS', ''), extra_flags])
-        os.environ['CXXFLAGS'] = " ".join([os.environ.get('CXXFLAGS', ''), extra_flags])
+        os.environ['CFLAGS'] = " ".join([os.environ.get('CFLAGS', ''),
+                                         extra_flags])
+        os.environ['CXXFLAGS'] = " ".join([os.environ.get('CXXFLAGS', ''),
+                                           extra_flags])
 
         pyximport.install(reload_support=True)

@@ -31,7 +31,8 @@ if HAS_CYTHON:
 else:
     usePython()
     import sys
-    print("Warning, cannot import Cython kernel functions, pure python functions will be used instead", file=sys.stderr)
+    print("Warning, cannot import Cython kernel functions, "
+          "pure python functions will be used instead", file=sys.stderr)
 
 S2PI = np.sqrt(2 * np.pi)
 
@@ -96,7 +97,8 @@ class normal_kernel1d(object):
 
         .. math::
 
-            \text{cdf}(z) \triangleq \int_{-\infty}^z \phi(z) dz = \frac{1}{2}\text{erf}\left(\frac{z}{\sqrt{2}}\right) + \frac{1}{2}
+            \text{cdf}(z) \triangleq \int_{-\infty}^z \phi(z)
+                dz = \frac{1}{2}\text{erf}\left(\frac{z}{\sqrt{2}}\right) + \frac{1}{2}
         """
         return kernels_imp.norm1d_cdf(z, out)
 
@@ -119,7 +121,8 @@ class normal_kernel1d(object):
 
         .. math::
 
-            \text{pm1}(z) \triangleq \int_{-\infty}^z z\phi(z) dz = -\frac{1}{\sqrt{2\pi}}e^{-\frac{z^2}{2}}
+            \text{pm1}(z) \triangleq \int_{-\infty}^z z\phi(z) dz
+                = -\frac{1}{\sqrt{2\pi}}e^{-\frac{z^2}{2}}
         """
         return kernels_imp.norm1d_pm1(z, out)
 
@@ -142,7 +145,9 @@ class normal_kernel1d(object):
 
         .. math::
 
-            \text{pm2}(z) \triangleq \int_{-\infty}^z z^2\phi(z) dz = \frac{1}{2}\text{erf}\left(\frac{z}{2}\right) - \frac{z}{\sqrt{2\pi}} e^{-\frac{z^2}{2}} + \frac{1}{2}
+            \text{pm2}(z) \triangleq \int_{-\infty}^z z^2\phi(z) dz
+                = \frac{1}{2}\text{erf}\left(\frac{z}{2}\right) - \frac{z}{\sqrt{2\pi}}
+                e^{-\frac{z^2}{2}} + \frac{1}{2}
         """
         return kernels_imp.norm1d_pm2(z, out)
 
@@ -187,7 +192,8 @@ class normal_kernel(object):
         """
         Return the probability density of the function.
 
-        :param ndarray xs: Array of shape (D,N) where D is the dimension of the kernel and N the number of points.
+        :param ndarray xs: Array of shape (D,N) where D is the dimension of the kernel
+            and N the number of points.
         :returns: an array of shape (N,) with the density on each point of ``xs``
         """
         xs = np.atleast_2d(xs)
@@ -198,7 +204,8 @@ class normal_kernel(object):
 
 class tricube(object):
     r"""
-    Return the kernel corresponding to a tri-cube distribution, whose expression is. The tri-cube function is given by:
+    Return the kernel corresponding to a tri-cube distribution, whose expression is.
+    The tri-cube function is given by:
 
     .. math::
 
@@ -231,7 +238,8 @@ class tricube(object):
         .. math::
 
             \text{cdf}(x) = \left\{\begin{array}{ll}
-                \frac{1}{162} {\left(60 (ax)^{7} - 7 {\left(2 (ax)^{10} + 15 (ax)^{4}\right)} \mathrm{sgn}\left(ax\right) + 140 ax + 81\right)} & \text{, if}x\in[-1/a;1/a]\\
+                \frac{1}{162} {\left(60 (ax)^{7} - 7 {\left(2 (ax)^{10} + 15 (ax)^{4}\right)}
+                \mathrm{sgn}\left(ax\right) + 140 ax + 81\right)} & \text{, if}x\in[-1/a;1/a]\\
                 0 & \text{, if} x < -1/a \\
                 1 & \text{, if} x > 1/a
                 \end{array}\right.
@@ -245,7 +253,9 @@ class tricube(object):
         .. math::
 
             \text{pm1}(x) = \left\{\begin{array}{ll}
-                \frac{7}{3564a} {\left(165 (ax)^{8} - 8 {\left(5 (ax)^{11} + 33 (ax)^{5}\right)} \mathrm{sgn}\left(ax\right) + 220 (ax)^{2} - 81\right)} & \text{, if} x\in [-1/a;1/a]\\
+                \frac{7}{3564a} {\left(165 (ax)^{8} - 8 {\left(5 (ax)^{11} + 33 (ax)^{5}\right)}
+                \mathrm{sgn}\left(ax\right) + 220 (ax)^{2} - 81\right)}
+                & \text{, if} x\in [-1/a;1/a]\\
                 0 & \text{, otherwise}
                 \end{array}\right.
         """
@@ -258,7 +268,8 @@ class tricube(object):
         .. math::
 
             \text{pm2}(x) = \left\{\begin{array}{ll}
-            \frac{35}{486a^2} {\left(4 (ax)^{9} + 4 (ax)^{3} - {\left((ax)^{12} + 6 (ax)^{6}\right)} \mathrm{sgn}\left(ax\right) + 1\right)} & \text{, if} x\in[-1/a;1/a] \\
+            \frac{35}{486a^2} {\left(4 (ax)^{9} + 4 (ax)^{3} - {\left((ax)^{12} + 6 (ax)^{6}\right)}
+            \mathrm{sgn}\left(ax\right) + 1\right)} & \text{, if} x\in[-1/a;1/a] \\
             0 & \text{, if } x < -1/a \\
             1 & \text{, if } x > 1/a
             \end{array}\right.
@@ -281,7 +292,8 @@ class Epanechnikov(object):
                                     0 & \text{, otherwise}
                             \end{array}\right.
 
-        As :math:`f_r` is not of variance 1 (and therefore would need adjustments for the bandwidth selection), we use a normalized function:
+        As :math:`f_r` is not of variance 1 (and therefore would need adjustments for
+        the bandwidth selection), we use a normalized function:
 
         .. math::
 
@@ -297,7 +309,8 @@ class Epanechnikov(object):
         .. math::
 
             \text{cdf}(x) = \left\{\begin{array}{ll}
-                    \frac{1}{2} + \frac{3}{4\sqrt{5}} x - \frac{3}{20\sqrt{5}}x^3 & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
+                    \frac{1}{2} + \frac{3}{4\sqrt{5}} x - \frac{3}{20\sqrt{5}}x^3
+                    & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
                     0 & \text{, if } x < -\sqrt{5} \\
                     1 & \text{, if } x > \sqrt{5}
                     \end{array}\right.
@@ -311,7 +324,8 @@ class Epanechnikov(object):
         .. math::
 
             \text{pm1}(x) = \left\{\begin{array}{ll}
-                    -\frac{3\sqrt{5}}{16}\left(1-\frac{2}{5}x^2+\frac{1}{25}x^4\right) & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
+                    -\frac{3\sqrt{5}}{16}\left(1-\frac{2}{5}x^2+\frac{1}{25}x^4\right)
+                    & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
                     0 & \text{, otherwise}
                     \end{array}\right.
         """
@@ -324,7 +338,8 @@ class Epanechnikov(object):
         .. math::
 
             \text{pm2}(x) = \left\{\begin{array}{ll}
-                    \frac{5}{20}\left(2 + \frac{1}{\sqrt{5}}x^3 - \frac{3}{5^{5/2}}x^5 \right) & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
+                    \frac{5}{20}\left(2 + \frac{1}{\sqrt{5}}x^3 - \frac{3}{5^{5/2}}x^5 \right)
+                    & \text{, if } x\in[-\sqrt{5}:\sqrt{5}] \\
                     0 & \text{, if } x < -\sqrt{5} \\
                     1 & \text{, if } x > \sqrt{5}
                     \end{array}\right.

@@ -38,7 +38,9 @@ class TestBootstrapMethods(object):
         def add_residual(y, r):
             return y + r - 1
 
-        for args in self.iterate_base_residuals(bootstrap.bootstrap_residuals, self.centered_res - 1, residuals=residuals, add_residual=add_residual):
+        for args in self.iterate_base_residuals(bootstrap.bootstrap_residuals,
+                                                self.centered_res - 1, residuals=residuals,
+                                                add_residual=add_residual):
             yield args
 
     def test_residuals_res_values(self):
@@ -47,7 +49,9 @@ class TestBootstrapMethods(object):
         def add_residual(y, r):
             return y + r - 1
 
-        for args in self.iterate_base_residuals(bootstrap.bootstrap_residuals, self.centered_res - 1, residuals=residuals, add_residual=add_residual):
+        for args in self.iterate_base_residuals(bootstrap.bootstrap_residuals,
+                                                self.centered_res - 1, residuals=residuals,
+                                                add_residual=add_residual):
             yield args
 
     def base_regression(self, rep, fct, args, kwords):
@@ -94,7 +98,8 @@ class CountShuffleSparse(object):
         repeats = kwords.pop('repeats', 3000)
         assert args == self.args
         assert kwords == self.kwords
-        return xdata[..., np.newaxis, :], np.zeros(ydata.shape) + np.r_[1:repeats:repeats * 1j][:, np.newaxis]
+        return (xdata[..., np.newaxis, :],
+                np.zeros(ydata.shape) + np.r_[1:repeats:repeats * 1j][:, np.newaxis])
 
 
 class CountShuffleFull(object):
@@ -106,7 +111,8 @@ class CountShuffleFull(object):
         repeats = kwords.pop('repeats', 3000)
         assert args == self.args
         assert kwords == self.kwords
-        return np.repeat(xdata[..., np.newaxis, :], repeats, axis=-2), np.zeros(ydata.shape) + np.r_[1:repeats:repeats * 1j][:, np.newaxis]
+        return (np.repeat(xdata[..., np.newaxis, :], repeats, axis=-2),
+                np.zeros(ydata.shape) + np.r_[1:repeats:repeats * 1j][:, np.newaxis])
 
 
 class TestBoostrap(object):
@@ -131,10 +137,13 @@ class TestBoostrap(object):
             assert result.shuffled_xs.shape[-2] in (1, rep)
             assert result.shuffled_ys.shape[-2] in (1, rep)
             assert result.full_results.shape == (rep + 1, len(self.eval_points))
-            np.testing.assert_array_equal(result.full_results, self.eval_points + np.r_[0:rep:(rep + 1) * 1j][:, np.newaxis])
+            expected = self.eval_points + np.r_[0:rep:(rep + 1) * 1j][:, np.newaxis]
+            np.testing.assert_array_equal(result.full_results,
+                                          expected)
         other_tests(result)
 
-    def iter_simple(self, fit, shuffle, CI, extra_attrs=(), other_tests = lambda x: None, *args, **kwords):
+    def iter_simple(self, fit, shuffle, CI, extra_attrs=(),
+                    other_tests = lambda x: None, *args, **kwords):
         for rep in (20, 129, 500):
             for worker in (1, None, 2, 4):
                 kw = dict(kwords)
@@ -142,15 +151,22 @@ class TestBoostrap(object):
                 yield self.simple, rep, fit, shuffle, CI, extra_attrs, other_tests, args, kw
 
     def test_simple_sparse(self):
-        for arg in self.iter_simple(VoidFitting(1, 2, a=3, b=4), CountShuffleSparse(10, 12, d=4, e=6), CI=(95,),
-                                    shuffle_args = (10, 12), shuffle_kwrds = {'d': 4, 'e': 6}, fit_args=(1, 2), fit_kwrds = {'a': 3, 'b': 4}):
+        for arg in self.iter_simple(VoidFitting(1, 2, a=3, b=4),
+                                    CountShuffleSparse(10, 12, d=4, e=6), CI=(95,),
+                                    shuffle_args = (10, 12), shuffle_kwrds = {'d': 4, 'e': 6},
+                                    fit_args=(1, 2), fit_kwrds = {'a': 3, 'b': 4}):
             yield arg
 
     def test_simple_attrs(self):
-        for arg in self.iter_simple(VoidFitting(1, 2, a=3, b=4), CountShuffleSparse(10, 12, d=4, e=6), CI=(95,), extra_attrs = ('args',),
-                                    shuffle_args = (10, 12), shuffle_kwrds = {'d': 4, 'e': 6}, fit_args=(1, 2), fit_kwrds = {'a': 3, 'b': 4}):
+        for arg in self.iter_simple(VoidFitting(1, 2, a=3, b=4),
+                                    CountShuffleSparse(10, 12, d=4, e=6),
+                                    CI=(95,), extra_attrs = ('args',),
+                                    shuffle_args = (10, 12),
+                                    shuffle_kwrds = {'d': 4, 'e': 6},
+                                    fit_args=(1, 2), fit_kwrds = {'a': 3, 'b': 4}):
             yield arg
 
     def test_simple_full(self):
-        for arg in self.iter_simple(VoidFitting(), CountShuffleSparse(), CI=(95,), full_results=True):
+        for arg in self.iter_simple(VoidFitting(), CountShuffleSparse(),
+                                    CI=(95,), full_results=True):
             yield arg

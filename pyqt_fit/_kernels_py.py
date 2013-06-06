@@ -98,8 +98,14 @@ def tricube_cdf(z, out=None):
     sel_pos = (out >= 0) & (~sel_up)
     out[sel_up] = 1
     out[sel_down] = 0
-    out[sel_pos] = 1. / 162 * (60 * (out[sel_pos] ** 7) - 7. * (2 * (out[sel_pos] ** 10) + 15 * (out[sel_pos] ** 4)) + 140 * out[sel_pos] + 81)
-    out[sel_neg] = 1. / 162 * (60 * (out[sel_neg] ** 7) + 7. * (2 * (out[sel_neg] ** 10) + 15 * (out[sel_neg] ** 4)) + 140 * out[sel_neg] + 81)
+    out[sel_pos] = 1. / 162 * \
+        (60 * (out[sel_pos] ** 7) - 7. *
+         (2 * (out[sel_pos] ** 10) + 15 * (out[sel_pos] ** 4)) +
+         140 * out[sel_pos] + 81)
+    out[sel_neg] = 1. / 162 * \
+        (60 * (out[sel_neg] ** 7) + 7. *
+         (2 * (out[sel_neg] ** 10) + 15 * (out[sel_neg] ** 4)) +
+         140 * out[sel_neg] + 81)
     return out
 
 
@@ -111,7 +117,9 @@ def tricube_pm1(z, out=None):
     out[out < 0] = -out[out < 0]
     sel = out < 1
     out[~sel] = 0
-    out[sel] = 7 / (3564 * tricube_width) * (165 * out[sel] ** 8 - 8 * (5 * out[sel] ** 11 + 33 * out[sel] ** 5) + 220 * out[sel] ** 2 - 81)
+    out[sel] = 7 / (3564 * tricube_width) * \
+        (165 * out[sel] ** 8 - 8 * (5 * out[sel] ** 11 + 33 * out[sel] ** 5) +
+         220 * out[sel] ** 2 - 81)
     return out
 
 
@@ -126,8 +134,12 @@ def tricube_pm2(z, out=None):
     sel_pos = (out >= 0) & ~sel_up
     out[sel_down] = 0
     out[sel_up] = 1
-    out[sel_pos] = 35. / (tricube_width * tricube_width * 486) * (4 * out[sel_pos] ** 9 - (out[sel_pos] ** 12 + 6 * out[sel_pos] ** 6) + 4 * out[sel_pos] ** 3 + 1)
-    out[sel_neg] = 35. / (tricube_width * tricube_width * 486) * (4 * out[sel_neg] ** 9 + (out[sel_neg] ** 12 + 6 * out[sel_neg] ** 6) + 4 * out[sel_neg] ** 3 + 1)
+    out[sel_pos] = 35. / (tricube_width * tricube_width * 486) * \
+        (4 * out[sel_pos] ** 9 - (out[sel_pos] ** 12 + 6 * out[sel_pos] ** 6) +
+         4 * out[sel_pos] ** 3 + 1)
+    out[sel_neg] = 35. / (tricube_width * tricube_width * 486) * \
+        (4 * out[sel_neg] ** 9 + (out[sel_neg] ** 12 + 6 * out[sel_neg] ** 6) +
+         4 * out[sel_neg] ** 3 + 1)
     return out
 
 
@@ -166,7 +178,8 @@ def epanechnikov_pm1(z, out=None):
     out = np.multiply(z, epanechnikov_width, out)
     sel = (out > -1) & (out < 1)
     out[~sel] = 0
-    out[sel] = -3 / (16 * epanechnikov_width) * (1 - 2 * out[sel] ** 2 + out[sel] ** 4)
+    out[sel] = -3 / (16 * epanechnikov_width) * \
+        (1 - 2 * out[sel] ** 2 + out[sel] ** 4)
     return out
 
 

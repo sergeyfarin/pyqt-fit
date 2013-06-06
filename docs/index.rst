@@ -20,6 +20,7 @@ Contents:
   GUI_tut
   Param_tut
   NonParam_tut
+  KDE_tut
   modules
 
 Indices and tables

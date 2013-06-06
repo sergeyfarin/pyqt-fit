@@ -27,10 +27,13 @@ if PY2:
             self.csv = csv.writer(*args, **kwords)
 
         def writerows(self, rows):
-            return self.csv.writerows([[unicode(val).encode('utf-8') for val in row] for row in rows])
+            rows = [[unicode(val).encode('utf-8') for val in row]
+                    for row in rows]
+            return self.csv.writerows(rows)
 
         def writerow(self, row):
-            return self.csv.writerow([unicode(val).encode('utf-8') for val in row])
+            row = [unicode(val).encode('utf-8') for val in row]
+            return self.csv.writerow(row)
 else:
     user_text = str
     text_type = str
