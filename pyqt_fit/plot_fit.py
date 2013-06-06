@@ -115,16 +115,17 @@ def qqplot(scaled_res, normq):
     title('Normal Q-Q plot')
     return qqp
 
-ResultStruct = namedtuple('ResultStruct', """fct fct_desc param_names xdata ydata xname yname res_name residuals popt res
-        yopts eval_points interpolation sorted_yopts scaled_res normq CI CIs CIresults""")
+ResultStruct = namedtuple('ResultStruct', "fct fct_desc param_names xdata ydata xname yname "
+                          "res_name residuals popt res yopts eval_points interpolation "
+                          "sorted_yopts scaled_res normq CI CIs CIresults")
 
 
 def fit_evaluation(fit, xdata, ydata, eval_points=None,
                    CI=(), CIresults = None, xname="X", yname="Y",
                    fct_desc=None, param_names=(), residuals=None, res_name='Standard'):
     """
-    This function takes the output of a curve fitting experiment and store all the relevant information for evaluating
-    its success in the result.
+    This function takes the output of a curve fitting experiment and store all the relevant
+    information for evaluating its success in the result.
 
     :type  fit: fitting object
     :param fit: object configured for the fitting
@@ -212,11 +213,12 @@ ResidualMeasures = namedtuple("ResidualMeasures", "scaled_res res_IX prob normq"
 
 def residual_measures(res):
     """
-    Compute quantities needed to evaluate the quality of the estimation, based solely on the residuals.
+    Compute quantities needed to evaluate the quality of the estimation, based solely
+    on the residuals.
 
     :rtype: :py:class:`ResidualMeasures`
-    :returns: the scaled residuals, their ordering, the theoretical quantile for each residuals, and the expected value
-        for each quantile.
+    :returns: the scaled residuals, their ordering, the theoretical quantile for each residuals,
+        and the expected value for each quantile.
     """
     IX = argsort(res)
     scaled_res = res[IX] / std(res)
@@ -270,7 +272,8 @@ def plot1d(result, loc=0, fig=None, res_fig=None):
 
     prt = plot_residual_tests(result.xdata, result.yopts, result.res,
                               "{0} with params {1}".format(result.fct_desc, param_strs),
-                              result.xname, result.yname, result.res_name, result.sorted_yopts, result.scaled_res,
+                              result.xname, result.yname, result.res_name, result.sorted_yopts,
+                              result.scaled_res,
                               result.normq, res_fig)
 
     plots.update(prt._asdict())
@@ -340,8 +343,10 @@ def write1d(outfile, result, res_desc, CImethod):
     Write the result of a fitting and its evaluation to a CSV file.
 
     :param str          outfile:  Name of the file to write to
-    :param ResultStruct result:   Result of the fitting evaluation (e.g. output of :py:func:`fit_evaluation`)
-    :param str          res_desc: Description of the residuals (in more details than just the name of the residuals)
+    :param ResultStruct result:   Result of the fitting evaluation
+        (e.g. output of :py:func:`fit_evaluation`)
+    :param str          res_desc: Description of the residuals
+        (in more details than just the name of the residuals)
     :param str          CImethod: Description of the confidence interval estimation method
     """
     with open(outfile, CSV_WRITE_FLAGS) as f:
@@ -369,7 +374,8 @@ def write1d(outfile, result, res_desc, CImethod):
             w.writerow([])
             w.writerow(["Confidence interval"])
             w.writerow(["Method", CImethod])
-            head = ["Parameters"] + list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in result.CI]))
+            head = ["Parameters"] + \
+                list(chain(*[["%g%% - low" % v, "%g%% - high" % v] for v in result.CI]))
             w.writerow(head)
             #print(result.CIs[1])
             for cis in izip(result.param_names, *chain(*result.CIs[1])):

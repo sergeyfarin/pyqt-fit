@@ -6,6 +6,7 @@ from .compat import unicode_csv_reader as csv_reader
 
 from PyQt4 import QtGui, QtCore, uic
 from PyQt4.QtCore import pyqtSignature, Qt
+from PyQt4.QtGui import QMessageBox
 import matplotlib
 from numpy import nan, array, ma, arange
 from path import path
@@ -153,13 +154,15 @@ class QtFitDlg(QtGui.QDialog):
 
     @pyqtSignature("")
     def on_selectInputFile_clicked(self):
-        filename = QtGui.QFileDialog.getOpenFileName(self, "Open CSV file", filter="CSV file (*.csv);;All Files (*.*)")
+        filename = QtGui.QFileDialog.getOpenFileName(self, "Open CSV file",
+                                                     filter="CSV file (*.csv);;All Files (*.*)")
         if filename:
             self.input = filename
 
     @pyqtSignature("")
     def on_selectOutputFile_clicked(self):
-        filename = QtGui.QFileDialog.getSaveFileName(self, "Save CSV file", filter="CSV file (*.csv);;All Files (*.*)")
+        filename = QtGui.QFileDialog.getSaveFileName(self, "Save CSV file",
+                                                     filter="CSV file (*.csv);;All Files (*.*)")
         if filename:
             self.output = filename
 
@@ -213,7 +216,8 @@ class QtFitDlg(QtGui.QDialog):
                         r = csv_reader(f)
                         header = next(r)
                         if len(header) < 2:
-                            QtGui.QMessageBox.critical(self, "Error reading CSV file", "Error, the file doesn't have at least 2 columns")
+                            QMessageBox.critical(self, "Error reading CSV file",
+                                                 "Error, the file doesn't have at least 2 columns")
                             return
                         data = []
                         for line in r:
@@ -221,10 +225,11 @@ class QtFitDlg(QtGui.QDialog):
                                 break
                             data.append([float(field) if field else nan for field in line])
                         max_length = max(len(l) for l in data)
-                        data = array([line + [nan] * (max_length - len(line)) for line in data], dtype=float)
+                        data = array([line + [nan] * (max_length - len(line)) for line in data],
+                                     dtype=float)
                         data = ma.masked_invalid(data)
                     except Exception as ex:
-                        QtGui.QMessageBox.critical(self, "Error reading CSV file", str(ex))
+                        QMessageBox.critical(self, "Error reading CSV file", str(ex))
                         data = None
                         header = None
                 if data is not None:
@@ -311,7 +316,11 @@ class QtFitDlg(QtGui.QDialog):
     fieldY = property(_getFieldY, _setFieldY)
 
     def updateParameters(self):
-        if self._data is not None and self.fct is not None and self.res is not None and self.fieldX is not None and self.fieldY is not None:
+        if self._data is not None and \
+                self.fct is not None and \
+                self.res is not None and \
+                self.fieldX is not None \
+                and self.fieldY is not None:
             idxX = self.header.index(user_text(self.fieldX))
             idxY = self.header.index(user_text(self.fieldY))
             self.param_model = ParametersModel(self._data, self.fct, self.res, idxX, idxY)
@@ -404,7 +413,7 @@ class QtFitDlg(QtGui.QDialog):
 
     def plot(self):
         if self.param_model is None:
-            QtGui.QMessageBox.critical(self, "Error plotting", "Error, you don't have any data loaded")
+            QMessageBox.critical(self, "Error plotting", "Error, you don't have any data loaded")
         else:
             if self._CIchanged:
                 self.on_CIvalues_editingFinished()
@@ -438,30 +447,36 @@ class QtFitDlg(QtGui.QDialog):
             fct_desc = "$%s$" % (fct.description,)
             try:
                 cf_args = (p0, fct)
-                cf_kwrds = {"residuals": res.__call__, "maxfev": 10000, "fix_params": fixed, "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv": 1}
+                cf_kwrds = {"residuals": res.__call__, "maxfev": 10000, "fix_params": fixed,
+                            "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv": 1}
                 if self.CI is not None:
                     CI = self.CI[1]
                     bs = bootstrap.bootstrap(CurveFitting, xdata, ydata, CI,
-                                             shuffle_method=CImethod, shuffle_kwrds={"add_residual": res.invert, "fit": CurveFitting},
+                                             shuffle_method=CImethod,
+                                             shuffle_kwrds={"add_residual": res.invert,
+                                                            "fit": CurveFitting},
                                              extra_attrs=('popt',), eval_points=eval_points,
                                              fit_args=cf_args, fit_kwrds=cf_kwrds)
-                    result = plot_fit.fit_evaluation(bs.y_fit, xdata, ydata, eval_points=eval_points,
-                                                     xname=self.fieldX, yname=self.fieldY, fct_desc=fct_desc,
-                                                     param_names=parm_names, res_name=res.name, CI=CI, CIresults=bs)
+                    result = plot_fit.fit_evaluation(bs.y_fit, xdata, ydata,
+                                                     eval_points=eval_points, xname=self.fieldX,
+                                                     yname=self.fieldY, fct_desc=fct_desc,
+                                                     param_names=parm_names, res_name=res.name,
+                                                     CI=CI, CIresults=bs)
                 else:
                     fit = CurveFitting(xdata, ydata, *cf_args, **cf_kwrds)
                     result = plot_fit.fit_evaluation(fit, xdata, ydata, eval_points=eval_points,
-                                                     xname=self.fieldX, yname=self.fieldY, fct_desc=fct_desc,
-                                                     param_names=parm_names, res_name=res.name)
+                                                     xname=self.fieldX, yname=self.fieldY,
+                                                     fct_desc=fct_desc, param_names=parm_names,
+                                                     res_name=res.name)
             except Exception as ex:
                 traceback.print_exc()
-                QtGui.QMessageBox.critical(self, "Error during Parameters Estimation",
-                                           "{1} exception: {2}".format(type(ex).__name__, ex.message))
+                QMessageBox.critical(self, "Error during Parameters Estimation",
+                                     "{1} exception: {2}".format(type(ex).__name__, ex.message))
                 return
             plot_fit.plot1d(result, loc=loc)
             if self.writeResult and outfile:
                 #print("output to file '%s'" % (outfile,))
-                plot_fit.write1d(outfile, result, res.description, CImethodName)  # parm_names, self.CI[0] if self.CI is not None else None)
+                plot_fit.write1d(outfile, result, res.description, CImethodName)
             #else:
                 #print("self.writeResult = %s\noutfile='%s'" % (self.writeResult, outfile))
 

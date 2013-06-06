@@ -133,6 +133,7 @@ class KDE1D(object):
     Any other named argument will be equivalent to setting the property
     after the fact. For example::
 
+        >>> xs = [1,2,3]
         >>> k = KDE1D(xs, lower=0)
 
     will be equivalent to::
