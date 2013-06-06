@@ -197,12 +197,6 @@ center:
 
    Z = |X - Y| \qquad X \sim \mathcal{N}(0,1), Y \sim \mathcal{N}(0,1)
 
-We know that the answer is:
-
-.. math::
-
-  Z \sim \frac{1}{\sqrt{2\pi z}} e^{-z/2}
-
 First, let's look at the histogram::
 
   >>> from scipy import stats, integrate
@@ -213,12 +207,12 @@ First, let's look at the histogram::
   >>> x = f.rvs(1000)
   >>> y = f.rvs(1000)
   >>> z = np.abs(x-y)
-  >>> plt.hist(z, bins=20, normed=True)
+  >>> plt.hist(z, bins=20, facecolor=(0,.5,0), normed=True)
 
 Then, the KDE assume reflexive boundary conditions::
 
   >>> est = kde.KDE1D(z, lower=0, method='reflexion')
-  >>> plot(xs, est(xs), label=est.method)
+  >>> plot(xs, est(xs), color='b', label=est.method)
 
 To estimate the "real" distribution, we will increase the number of samples::
 
@@ -236,6 +230,11 @@ or non-existent (i.e. unbounded)::
   >>> plt.plot(xxs, yys, 'r--', lw=2, label='Estimated')
   >>> plt.xlim(0, 6)
   >>> plt.ylim(ymin=0)
+  >>> plt.legend(loc='best')
+
+.. figure:: KDE_tut_refl.png
+   :align: center
+   :scale: 70%
 
 Cyclic Boundaries
 `````````````````
