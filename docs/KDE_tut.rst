@@ -52,9 +52,76 @@ We can get estimate the density with the default options with::
 .. figure:: KDE_tut_normal.png
    :align: center
 
+You may wonder why use KDE rather than a histogram. Let's test the variability of both method. To
+that purpose, let first generate a set of a thousand datasets and the corresponding histograms and
+KDE, making sure the width of the KDE and the histogram are the same::
+
+  >>> import numpy as np
+  >>> from scipy.stats import norm
+  >>> from pyqt_fit import kde
+  >>> f = norm(loc=0, scale=1)
+  >>> xs = np.r_[-3:3:1024j]
+  >>> nbins = 20
+  >>> x = f.rvs(1000*1000).reshape(1000,1000)
+  >>> hs = np.empty((1000, nbins), dtype=float)
+  >>> kdes = np.empty((1000, 1024), dtype=float)
+  >>> hs[0], edges = np.histogram(x[0], bins=nbins, range=(-3,3), density=True)
+  >>> mod = kde.KDE1D(x[0])
+  >>> mod.bandwidth = mod.bandwidth  # Prevent future recalculation
+  >>> kdes[0] = mod(xs)
+  >>> for i in xrange(1, 1000):
+  >>>   hs[i] = np.histogram(x[i], bins=nbins, range=(-3,3), density=True)[0]
+  >>>   mod.xdata = x[i]
+  >>>   kdes[i] = mod(xs)
+
+Now, let's find the mean and the 90% confidence interval::
+
+  >>> h_mean = hs.mean(axis=0)
+  >>> h_ci = np.array(np.percentile(hs, (5, 95), axis=0))
+  >>> h_err = np.empty(h_ci.shape, dtype=float)
+  >>> h_err[0] = h_mean - h_ci[0]
+  >>> h_err[1] = h_ci[1] - h_mean
+  >>> kde_mean = kdes.mean(axis=0)
+  >>> kde_ci = np.array(np.percentile(kdes, (5, 95), axis=0))
+  >>> width = edges[1:]-edges[:-1]
+  >>> fig = plt.figure()
+  >>> ax1 = fig.add_subplot(1,2,1)
+  >>> ax1.bar(edges[:-1], h_mean, yerr=h_err, width = width, label='Histogram',
+  ...         facecolor='g', edgecolor='k', ecolor='b')
+  >>> ax1.plot(xs, f.pdf(xs), 'r--', lw=2, label='$\mathcal{N}(0,1)$')
+  >>> ax1.set_xlabel('X')
+  >>> ax1.set_xlim(-3,3)
+  >>> ax1.legend(loc='best')
+  >>> ax2 = fig.add_subplot(1,2,2)
+  >>> ax2.fill_between(xs, kde_ci[0], kde_ci[1], color=(0,1,0,.5), edgecolor=(0,.4,0,1))
+  >>> ax2.plot(xs, kde_mean, 'k', label='KDE (bw = {:.3g})'.format(mod.bandwidth))
+  >>> ax2.plot(xs, f.pdf(xs), 'r--', lw=2, label='$\mathcal{N}(0,1)$')
+  >>> ax2.set_xlabel('X')
+  >>> ax2.legend(loc='best')
+  >>> ymax = max(ax1.get_ylim()[1], ax2.get_ylim()[1])
+  >>> ax2.set_ylim(0, ymax)
+  >>> ax1.set_ylim(0, ymax)
+  >>> ax1.set_title('Histogram, max variation = {:.3g}'.format((h_ci[1] - h_ci[0]).max()))
+  >>> ax2.set_title('KDE, max variation = {:.3g}'.format((kde_ci[1] - kde_ci[0]).max()))
+  >>> fig.set_title('Comparison Histogram vs. KDE')
+
+.. figure:: KDE_tut_compare.png
+   :align: center
+   :scale: 50%
+   :alt: Comparison Histogram / KDE
+
+   Comparison Histogram / KDE -- KDE has less variability
+
+Note that the KDE doesn't tend toward the true density. Instead, given a kernel :math:`K`,
+the mean value will be the convolution of the true density with the kernel. But for that price, we
+get a much narrower variation on the values.
+
 Boundary Conditions
 -------------------
 
 Confidence Intervals
 --------------------
+
+Transformations
+---------------
 
