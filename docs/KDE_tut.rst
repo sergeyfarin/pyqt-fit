@@ -276,10 +276,10 @@ we should be working in log space::
 
   >>> plt.figure()
   >>> lx = np.log(x)
-  >>> h, edges = np.histogram(lx, bins=30)
+  >>> h, edges = np.histogram(lx, bins=30, range=(-np.log(30), np.log(10)))
   >>> width = np.exp(edges[1:]) - np.exp(edges[:-1])
   >>> h = h / width
-  >>> h /= sum(h*width)
+  >>> h /= len(x)
   >>> plt.bar(np.exp(edges[:-1]), h, width = width, facecolor='g', linewidth=0, ecolor='b')
   >>> plt.plot(xs, f.pdf(xs), 'r--', lw=2, label='log-normal')
   >>> plt.xlim(xmax=10)
