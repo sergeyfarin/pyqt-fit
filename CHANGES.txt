@@ -1,5 +1,6 @@
 v1.1.17, ??
  - Corrected kde.KDE1D initialization and weigth handling
+ - Corrected CSV output of fitting
 v1.1.16, 28/5/2013
  - Remove need for cython in any module (was partial)
  - PEP8 compliance
