@@ -271,7 +271,7 @@ class KDE1D(object):
     """
 
     def __init__(self, xdata, **kwords):
-        self._xdata = np.atleast_1d(xdata)
+        self._xdata = None
         self._upper = np.inf
         self._lower = -np.inf
         self._kernel = normal_kernel1d()
@@ -288,11 +288,15 @@ class KDE1D(object):
         for n in kwords:
             setattr(self, n, kwords[n])
 
-        if self.covariance is None:
+        has_bw = (self._bw is not None or self._bw_fct is not None or
+                  self._covariance is not None or self._cov_fct is not None)
+        if not has_bw:
             self.covariance = scotts_bandwidth
 
         if self._method is None:
             self.method = 'renormalization'
+
+        self.xdata = np.atleast_1d(xdata)
 
     def copy(self):
         """
@@ -310,6 +314,8 @@ class KDE1D(object):
         """
         Re-compute the bandwidth if it was specified as a function.
         """
+        if self._xdata is None:
+            return
         if self._bw_fct:
             _bw = float(self._bw_fct(self._xdata, model=self))
             _cov = _bw * _bw
@@ -325,7 +331,7 @@ class KDE1D(object):
     def xdata(self):
         return self._xdata
 
-    @xdata.setter  # noqa
+    @xdata.setter
     def xdata(self, xs):
         self._xdata = np.atleast_1d(xs)
         self.update_bandwidth()
@@ -366,7 +372,7 @@ class KDE1D(object):
         """
         return self._kernel
 
-    @kernel.setter  # noqa
+    @kernel.setter
     def kernel(self, val):
         self._kernel = val
 
@@ -378,11 +384,11 @@ class KDE1D(object):
         """
         return self._lower
 
-    @lower.setter  # noqa
+    @lower.setter
     def lower(self, val):
         self._lower = float(val)
 
-    @lower.deleter  # noqa
+    @lower.deleter
     def lower(self):
         self._lower = -np.inf
 
@@ -394,11 +400,11 @@ class KDE1D(object):
         """
         return self._upper
 
-    @upper.setter  # noqa
+    @upper.setter
     def upper(self, val):
         self._upper = float(val)
 
-    @upper.deleter  # noqa
+    @upper.deleter
     def upper(self):
         self._upper = np.inf
 
@@ -411,25 +417,29 @@ class KDE1D(object):
         """
         return self._weights
 
-    @weights.setter  # noqa
+    @weights.setter
     def weights(self, ws):
         try:
             ws = float(ws)
             self._weights = np.asarray(1.)
-            self._total_weights = float(self.xdata.shape[0])
         except TypeError:
             ws = np.array(ws, dtype=float)
-            ws.shape = self.xdata.shape
-            self._total_weights = sum(ws)
             self._weights = ws
+        self._total_weights = None
 
-    @weights.deleter  # noqa
+    @weights.deleter
     def weights(self):
         self._weights = np.asarray(1.)
-        self._total_weights = float(self.xdata.shape[0])
+        self._total_weights = None
 
     @property
     def total_weights(self):
+        if self._total_weights is None:
+            if self._weights.shape:
+                assert self._weigths.shape == self._xdata.shape, "There must be as many weigths as data points"
+                self._total_weights = sum(self._weigths)
+            else:
+                self._total_weights = len(self._xdata)
         return self._total_weights
 
     @property
@@ -442,16 +452,15 @@ class KDE1D(object):
         """
         return self._lambdas
 
-    @lambdas.setter  # noqa
+    @lambdas.setter
     def lambdas(self, ls):
         try:
             self._lambdas = np.asarray(float(ls))
         except TypeError:
             ls = np.array(ls, dtype=float)
-            ls.shape = self.xdata.shape
             self._lambdas = ls
 
-    @lambdas.deleter  # noqa
+    @lambdas.deleter
     def lambdas(self):
         self._lambdas = np.asarray(1.)
 
@@ -470,7 +479,7 @@ class KDE1D(object):
         """
         return self._bw
 
-    @bandwidth.setter  # noqa
+    @bandwidth.setter
     def bandwidth(self, bw):
         self._bw_fct = None
         self._cov_fct = None
@@ -497,7 +506,7 @@ class KDE1D(object):
         """
         return self._covariance
 
-    @covariance.setter  # noqa
+    @covariance.setter
     def covariance(self, cov):
         self._bw_fct = None
         self._cov_fct = None
@@ -665,7 +674,7 @@ class KDE1D(object):
             return self._method
         return "unbounded"
 
-    @method.setter  # noqa
+    @method.setter
     def method(self, m):
         _known_methods = {'renormalization': self._evaluate_renorm,
                           'reflexion': self._evaluate_reflexion,

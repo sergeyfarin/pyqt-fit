@@ -246,6 +246,33 @@ two bounds, as reflexive conditions can be only with one bound.
 Methods for Bandwidth Estimation
 --------------------------------
 
+There are a number of ways to estimate the bandwidth. The simplest way is to specify it numerically,
+either during construction or after::
+
+  >>> est = kde.KDE1D(x, bandwidth=.1)
+  >>> est.bandwidth = .2
+
+If is sometimes more convenient to specify the variance of the kernel (which is the square
+bandwidth). So these are equivalent to the two previous lines::
+
+  >>> est = kde.KDE1D(x, bandwidth=.01)
+  >>> est.covariance = .04
+
+But often you will want to use a pre-defined method::
+
+  >>> est = kde.KDE1D(x, covariance = kde.scotts_bandwidth)
+
+At last, if you want to define your own method, you simply need to define a function. For example,
+you can re-define and use the function for the Scotts rule of thumb (which compute the variance of
+the kernel)::
+
+  >>> def my_scotts(x, model=None):
+  ...   return (0.75 * len(x))**-.2 * x.var()
+  >>> est = kde.KDE1D(x, covariance=my_scotts)
+
+The model object is a reference to the KDE object and is mostly useful if you need to know about the
+boundaries of the domain.
+
 Transformations
 ---------------
 
