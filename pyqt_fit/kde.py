@@ -436,7 +436,8 @@ class KDE1D(object):
     def total_weights(self):
         if self._total_weights is None:
             if self._weights.shape:
-                assert self._weigths.shape == self._xdata.shape, "There must be as many weigths as data points"
+                assert self._weigths.shape == self._xdata.shape, \
+                    "There must be as many weigths as data points"
                 self._total_weights = sum(self._weigths)
             else:
                 self._total_weights = len(self._xdata)
@@ -740,7 +741,7 @@ class KDE1D(object):
         DataHist, bin_edges = np.histogram(data, bins=mesh - dN / 2,
                                            weights=weights)
         DataHist[0] += DataHist[-1]
-        DataHist = DataHist / self._total_weights
+        DataHist = DataHist / self.total_weights
         FFTData = fftpack.fft(DataHist[:-1])
         if hasattr(self.kernel, 'fft'):
             t_star = (2 * bw / R)
@@ -781,7 +782,7 @@ class KDE1D(object):
             weights = None
         DataHist, bins = np.histogram(data, bins=N, range=(lower, upper),
                                       weights=weights)
-        DataHist = DataHist / self._total_weights
+        DataHist = DataHist / self.total_weights
         DCTData = fftpack.dct(DataHist, norm=None)
 
         if hasattr(self.kernel, 'dct'):
