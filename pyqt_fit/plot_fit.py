@@ -11,9 +11,6 @@ from .compat import izip
 from itertools import chain
 from scipy.special import erfinv, gamma
 from scipy import stats
-#try:
-#    from cy_kernel_smoothing import SpatialAverage
-#except ImportError:
 from .kernel_smoothing import LocalLinearKernel1D
 from .compat import unicode_csv_writer as csv_writer
 from collections import namedtuple
