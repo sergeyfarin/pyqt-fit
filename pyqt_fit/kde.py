@@ -117,8 +117,11 @@ class botev_bandwidth(object):
         SqDCTData = (DCTData[1:] / 2) ** 2
         guess = 0.1
 
-        t_star = optimize.brentq(_botev_fixed_point, 0, guess,
-                                 args=(M, I, SqDCTData))
+        try:
+            t_star = optimize.brentq(_botev_fixed_point, 0, guess,
+                                     args=(M, I, SqDCTData))
+        except ValueError:
+            t_star = .28 * N ** (-.4)
 
         return np.sqrt(t_star) * span
 
