@@ -69,7 +69,7 @@ class SpatialAverage(object):
 
     def __init__(self, xdata, ydata, cov=scotts_bandwidth):
         self.xdata = np.atleast_2d(xdata)
-        self.ydata = ydata
+        self.ydata = np.atleast_1d(ydata)
 
         self._bw = None
         self._covariance = None
@@ -198,7 +198,7 @@ class LocalLinearKernel1D(object):
     def __init__(self, xdata, ydata, cov=scotts_bandwidth):
         self.xdata = np.atleast_1d(xdata)
         self.ydata = np.atleast_1d(ydata)
-        self.n = xdata.shape[0]
+        self.n = self.xdata.shape[0]
 
         self._bw = None
         self._covariance = None
@@ -302,7 +302,7 @@ class LocalPolynomialKernel1D(object):
     def __init__(self, xdata, ydata, q=3, **kwords):
         self.xdata = np.atleast_1d(xdata)
         self.ydata = np.atleast_1d(ydata)
-        self.n = xdata.shape[0]
+        self.n = self.xdata.shape[0]
         self.q = q
 
         self._kernel = None
@@ -576,7 +576,7 @@ class LocalPolynomialKernel(object):
     def __init__(self, xdata, ydata, q=3, cov=scotts_bandwidth, kernel=None):
         self.xdata = np.atleast_2d(xdata)
         self.ydata = np.atleast_1d(ydata)
-        self.d, self.n = xdata.shape
+        self.d, self.n = self.xdata.shape
         self.q = q
         if kernel is None:
             kernel = normal_kernel(self.d)
