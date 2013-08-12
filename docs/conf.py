@@ -237,3 +237,5 @@ man_pages = [
     ('index', 'pyqt-fit', u'PyQt-Fit Documentation',
      [u'Barbier de Reuille, Pierre'], 1)
 ]
+
+mathjax_path = "https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
