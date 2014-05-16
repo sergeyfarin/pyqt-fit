@@ -85,4 +85,4 @@ class TestJacobian(object):
 
     def test_call_high_prec(self):
         for p in (5, 8, 9):  # Above 9, we hit precision limit of floating point
-            yield self.call_prec, p, np.float128
+            yield self.call_prec, p, utils.large_float

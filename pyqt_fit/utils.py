@@ -10,7 +10,15 @@ from keyword import iskeyword as _iskeyword
 from operator import itemgetter as _itemgetter
 import sys
 from .compat import text_type
+import numpy as np
 
+# Find the largest float available for this numpy
+if hasattr(np, 'float128'):
+    large_float = np.float128
+elif hasattr(np, 'float96'):
+    large_float = np.float96
+else:
+    large_float = np.float64
 
 def namedtuple(typename, field_names, verbose=False, rename=False):
     """Returns a new subclass of tuple with named fields.

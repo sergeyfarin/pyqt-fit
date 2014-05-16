@@ -15,19 +15,20 @@ except ImportError:
     HAS_CYTHON = False
 
 if HAS_CYTHON:
+    USE_MINGW=False
     if os.name == 'nt':
         if 'CPATH' in os.environ:
             os.environ['CPATH'] = os.environ['CPATH'] + numpy.get_include()
         else:
             os.environ['CPATH'] = numpy.get_include()
 
-        # XXX: we're assuming that MinGW is installed in C:\MinGW (default)
-        if 'PATH' in os.environ:
-            os.environ['PATH'] = os.environ['PATH'] + r';C:\MinGW\bin'
-        else:
-            os.environ['PATH'] = r'C:\MinGW\bin'
+        if USE_MINGW:
+            if 'PATH' in os.environ:
+                os.environ['PATH'] = os.environ['PATH'] + r';C:\MinGW\bin'
+            else:
+                os.environ['PATH'] = r'C:\MinGW\bin'
+            mingw_setup_args = {'options': {'build_ext': {'compiler': 'mingw32'}}}
 
-        mingw_setup_args = {'options': {'build_ext': {'compiler': 'mingw32'}}}
         pyximport.install(setup_args=mingw_setup_args, reload_support=True)
 
     elif os.name == 'posix':
@@ -38,3 +39,4 @@ if HAS_CYTHON:
                                            extra_flags])
 
         pyximport.install(reload_support=True)
+

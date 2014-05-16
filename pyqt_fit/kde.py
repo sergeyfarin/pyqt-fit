@@ -7,10 +7,9 @@ Module implementing kernel-based estimation of density of probability.
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from .kernels import normal_kernel1d
-from .utils import namedtuple
+from .utils import namedtuple, large_float
 from scipy import fftpack, optimize
 from .compat import irange
-
 
 def variance_bandwidth(factor, xdata):
     r"""
@@ -56,9 +55,9 @@ def scotts_bandwidth(xdata, ydata=None, model=None):
 
 def _botev_fixed_point(t, M, I, a2):
     l = 7
-    I = np.float128(I)
-    M = np.float128(M)
-    a2 = np.float128(a2)
+    I = large_float(I)
+    M = large_float(M)
+    a2 = large_float(a2)
     f = 2 * np.pi ** (2 * l) * np.sum(I ** l * a2 *
                                       np.exp(-I * np.pi ** 2 * t))
     for s in irange(l, 1, -1):
@@ -569,6 +568,14 @@ class KDE1D(object):
         xdata = self.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
 
+        # Make sure points are between the bounds, with reflexion if needed
+        if any(points < self.lower) or any(points > self.upper):
+            span = self.upper - self.lower
+            points = points - (self.lower + span)
+            points %= 2*span
+            points -= self.lower + span
+            points = np.abs(points)
+
         bw = self.bandwidth * self.lambdas
 
         z = (points - xdata) / bw
@@ -599,6 +606,12 @@ class KDE1D(object):
 
         xdata = self.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
+
+        # Make sure points are between the bounds
+        if any(points < self.lower) or any(points > self.upper):
+            points = points - self.lower
+            points %= self.upper - self.lower
+            points += self.lower
 
         bw = self.bandwidth * self.lambdas
 
