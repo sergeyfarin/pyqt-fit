@@ -1,6 +1,9 @@
+from __future__ import division, absolute_import, print_function
 import numpy as np
 from .utils import finite
 from scipy import fftpack, optimize
+from .utils import large_float
+from .compat import irange
 
 def variance_bandwidth(factor, xdata):
     r"""
@@ -95,8 +98,11 @@ class botev_bandwidth(object):
         span = upper - lower
 
         # Histogram of the data to get a crude approximation of the density
+        weights = model.weights
+        if not weights.shape:
+            weights = None
         M = len(data)
-        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper), weights=model.weights)
+        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper), weights=weights)
         DataHist = DataHist / M
         DCTData = fftpack.dct(DataHist, norm=None)
 

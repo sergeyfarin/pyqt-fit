@@ -11,7 +11,7 @@ The exact definition of such a method is found in :py:attr:`pyqt_fit.kde.KDE1D.m
 .. autofunction:: generate_grid
 
 .. autoclass:: KDE1DMethod
-   :members: unbounded, __call__, grid, __str__
+   :members: unbounded, __call__, default_grid, grid, __str__
 
 
 Estimation methods

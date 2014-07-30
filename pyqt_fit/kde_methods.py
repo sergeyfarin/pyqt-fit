@@ -3,8 +3,14 @@
 
 This module contains a set of methods to compute univariate KDEs. See the objects in the :py:mod:`pyqt_fit.kde` module 
 for more details on these methods.
+
+References:
+``````````
+.. [1] Jones, M. C. 1993. Simple boundary correction for kernel density
+    estimation. Statistics and Computing 3: 135--146.
 """
 
+from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy import fftpack
 from .compat import irange
@@ -31,7 +37,7 @@ def generate_grid(kde, N=None, cut=None):
     if kde.upper == np.inf:
         upper = np.max(kde.xdata) + cut * kde.bandwidth
     else:
-        kde.upper
+        upper = kde.upper
     return np.r_[lower:upper:N * 1j]
 
 class KDE1DMethod(object):
@@ -64,7 +70,7 @@ class KDE1DMethod(object):
 
     __call__ = unbounded
 
-    def grid(self, kde, N=None, cut=None):
+    def default_grid(self, kde, N=None, cut=None):
         """
         Evaluate the method on a grid spanning the whole domain of the KDE and containing N points.
 
@@ -75,7 +81,10 @@ class KDE1DMethod(object):
         :returns: A tuple with the grid points and the estimated values on these points
         """
         g = generate_grid(kde, N, cut)
-        return g, self(g)
+        return g, self(kde, g)
+
+    def grid(self, kde, N=None, cut=None):
+        return self.default_grid(kde, N, cut)
 
     def __str__(self):
         """
@@ -95,9 +104,6 @@ class RenormalizationMethod(KDE1DMethod):
 
         \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0\left(\frac{L-x}{h},
         \frac{U-x}{h}\right)} K\left(\frac{x-X}{h}\right)
-
-    .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density
-        estimation. Statistics and Computing 3: 135--146.
     """
 
     name = 'renormalization'
@@ -187,8 +193,7 @@ class ReflectionMethod(KDE1DMethod):
 
         return output
 
-    @staticmethod
-    def grid(kde, N=None, cut=None):
+    def grid(self, kde, N=None, cut=None):
         """
         DCT-based estimation of KDE estimation, i.e. with reflection boundary
         conditions. This works only for fixed bandwidth (i.e. lambdas = 1) and
@@ -198,7 +203,7 @@ class ReflectionMethod(KDE1DMethod):
         space to remove the boundary problems.
         """
         if kde.lambdas.shape:
-            return KDE1DMethod.grid(kde, N, cut)
+            return self.default_grid(kde, N, cut)
 
         bw = kde.bandwidth * kde.lambdas
         data = kde.xdata
@@ -255,9 +260,6 @@ class LinearCombinationMethod(KDE1DMethod):
         - a_1(-u,-l)^2} K(z)
 
         z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
-
-    .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density
-        estimation. Statistics and Computing 3: 135--146.
     """
 
     name = 'linear combination'
@@ -349,14 +351,14 @@ class CyclicMethod(KDE1DMethod):
 
         return output
 
-    def grid(kde, N=None, cut=None):
+    def grid(self, kde, N=None, cut=None):
         """
         FFT-based estimation of KDE estimation, i.e. with cyclic boundary
         conditions. This works only for closed domains, fixed bandwidth
         (i.e. lambdas = 1) and gaussian kernel.
         """
         if kde.lambdas.shape:
-            return KDE1DMethod.grid(kde, N, cut)
+            return self.default_grid(kde, N, cut)
         if not kde.closed:
             raise ValueError("Error, cyclic boundary conditions require "
                              "a closed domain.")
@@ -388,4 +390,5 @@ class CyclicMethod(KDE1DMethod):
         density = fftpack.ifft(SmoothFFTData) / (mesh[1] - mesh[0])
         return mesh[:-2], density.real
 
-cycle = CyclicMethod()
+cyclic = CyclicMethod()
+

@@ -7,7 +7,7 @@ Module implementing kernel-based estimation of density of probability.
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from .kernels import normal_kernel1d
-from .utils import namedtuple, large_float
+from .utils import namedtuple
 from . import kde_methods
 from .kde_bandwidth import variance_bandwidth, silverman_covariance, scotts_covariance, botev_bandwidth
 

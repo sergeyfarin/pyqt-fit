@@ -1,6 +1,7 @@
 from __future__ import division, absolute_import, print_function
 
 from .. import kde
+from .. import kde_methods
 import numpy as np
 from numpy import newaxis
 from numpy.random import randn
@@ -18,7 +19,7 @@ class TestBandwidth(object):
         cls.ss = np.var(cls.vs, axis=1)
 
     def variance_methods(self, m):
-        bws = np.array([m(v) for v in self.vs])
+        bws = np.asfarray([m(v) for v in self.vs])
         assert bws.shape == (3, 1, 1)
         rati = bws[:, 0, 0] / self.ss
         assert sum((rati - rati[0])**2) < 1e-6
@@ -26,13 +27,14 @@ class TestBandwidth(object):
         assert sum((rati - self.ratios**2)**2) < 1e-6
 
     def test_variance_methods(self):
-        yield self.variance_methods, kde.silverman_bandwidth
-        yield self.variance_methods, kde.scotts_bandwidth
+        yield self.variance_methods, kde.silverman_covariance
+        yield self.variance_methods, kde.scotts_covariance
 
     def test_botev(self):
         class FakeModel(object):
             lower = -np.inf
             upper = np.inf
+            weights = np.asarray(1.)
         bws = np.array([kde.botev_bandwidth()(v, model=FakeModel()) for v in self.vs])
         assert bws.shape == (3,)
         rati = bws**2 / self.ss
@@ -48,7 +50,7 @@ class TestUnboundedKDE1D(object):
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = {}
-        cls.grid_accuracy = 1e-6
+        cls.grid_accuracy = 1e-5
         cls.accuracy = 1e-3
 
     def createKDE(self, data, **args):
@@ -61,7 +63,7 @@ class TestUnboundedKDE1D(object):
 
     def is_normed(self, i):
         k = self.createKDE(self.vs[i], **self.args)
-        xs, ys = k._grid_eval(2048)
+        xs, ys = k.grid(2048)
         tot = integrate.simps(ys, xs)
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
@@ -82,7 +84,7 @@ class TestUnboundedKDE1D(object):
     def is_ws_normed(self, i):
         ws = np.r_[1:2:self.sizes[i]*1j]
         k = self.createKDE(self.vs[i], weights=ws, **self.args)
-        xs, ys = k._grid_eval(2048)
+        xs, ys = k.grid(2048)
         tot = integrate.simps(ys, xs)
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
@@ -104,7 +106,7 @@ class TestUnboundedKDE1D(object):
     def is_ls_normed(self, i):
         ws = np.r_[1:2:self.sizes[i]*1j]
         k = self.createKDE(self.vs[i], lambdas=ws, **self.args)
-        xs, ys = k._grid_eval(2048)
+        xs, ys = k.grid(2048)
         tot = integrate.simps(ys, xs)
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
@@ -119,7 +121,7 @@ class TestReflexionKDE1D(TestUnboundedKDE1D):
         cls.dist = stats.norm(0, 1)
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = dict(lower=-5, upper=5, method='reflexion')
+        cls.args = dict(lower=-5, upper=5, method=kde_methods.reflection)
         cls.grid_accuracy = 1e-5
         cls.accuracy = 1e-3
 
@@ -130,7 +132,7 @@ class TestCyclicKDE1D(TestUnboundedKDE1D):
         cls.dist = stats.norm(0, 1)
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = dict(lower=-5, upper=5, method='cyclic')
+        cls.args = dict(lower=-5, upper=5, method=kde_methods.cyclic)
         cls.grid_accuracy = 1e-5
         cls.accuracy = 1e-3
 
@@ -141,7 +143,7 @@ class TestRenormKDE1D(TestUnboundedKDE1D):
         cls.dist = stats.norm(0, 1)
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = dict(lower=-5, upper=5, method='renormalization')
+        cls.args = dict(lower=-5, upper=5, method=kde_methods.renormalization)
         cls.grid_accuracy = 1e-4
         cls.accuracy = 1e-3
 
@@ -152,6 +154,6 @@ class TestLCKDE1D(TestUnboundedKDE1D):
         cls.dist = stats.norm(0, 1)
         cls.sizes = np.r_[1000:5000:5j]
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = dict(lower=-5, upper=5, method='linear_combination')
+        cls.args = dict(lower=-5, upper=5, method=kde_methods.linear_combination)
         cls.grid_accuracy = 1e-4
         cls.accuracy = 1e-3

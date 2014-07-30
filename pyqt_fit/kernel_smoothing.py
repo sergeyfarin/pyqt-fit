@@ -39,7 +39,7 @@ if HAS_CYTHON:
 else:
     usePython()
 
-from .kde import scotts_bandwidth
+from .kde import scotts_covariance
 from .kernels import normal_kernel, normal_kernel1d
 
 
@@ -67,7 +67,7 @@ class SpatialAverage(object):
         ``cov(xdata, ydata)`` returning the covariance matrix.
     """
 
-    def __init__(self, xdata, ydata, cov=scotts_bandwidth):
+    def __init__(self, xdata, ydata, cov=scotts_covariance):
         self.xdata = np.atleast_2d(xdata)
         self.ydata = np.atleast_1d(ydata)
 
@@ -195,7 +195,7 @@ class LocalLinearKernel1D(object):
         variance.
 
     """
-    def __init__(self, xdata, ydata, cov=scotts_bandwidth):
+    def __init__(self, xdata, ydata, cov=scotts_covariance):
         self.xdata = np.atleast_1d(xdata)
         self.ydata = np.atleast_1d(ydata)
         self.n = self.xdata.shape[0]
@@ -296,7 +296,7 @@ class LocalPolynomialKernel1D(object):
     :param cov: If an float, it should be a variance of the gaussian kernel.
         Otherwise, it should be a function ``cov(xdata, ydata)`` returning
         the variance.
-        **Default:** ``scotts_bandwidth``
+        **Default:** ``scotts_covariance``
 
     """
     def __init__(self, xdata, ydata, q=3, **kwords):
@@ -316,7 +316,7 @@ class LocalPolynomialKernel1D(object):
         if self.kernel is None:
             self.kernel = normal_kernel1d()
         if self.covariance is None:
-            self.covariance = scotts_bandwidth
+            self.covariance = scotts_covariance
         if self.designMatrix is None:
             self.designMatrix = PolynomialDesignMatrix1D
 
@@ -571,9 +571,9 @@ class LocalPolynomialKernel(object):
     :param cov: If an float, it should be a variance of the gaussian kernel.
         Otherwise, it should be a function ``cov(xdata, ydata)`` returning
         the variance.
-        **Default:** ``scotts_bandwidth``
+        **Default:** ``scotts_covariance``
     """
-    def __init__(self, xdata, ydata, q=3, cov=scotts_bandwidth, kernel=None):
+    def __init__(self, xdata, ydata, q=3, cov=scotts_covariance, kernel=None):
         self.xdata = np.atleast_2d(xdata)
         self.ydata = np.atleast_1d(ydata)
         self.d, self.n = self.xdata.shape
