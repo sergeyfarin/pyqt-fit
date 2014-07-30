@@ -197,6 +197,7 @@ def upload_find_auth(file_path, project_name, summary, labels=None,
     # credentials as of 2007-07-17.
     if status in [httplib.FORBIDDEN, httplib.UNAUTHORIZED]:
       # Rest for another try.
+      print "Failed to connect because: %s" % (status,)
       user_name = password = None
       tries = tries - 1
     else:

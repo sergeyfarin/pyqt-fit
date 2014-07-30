@@ -90,7 +90,7 @@ pygments_style = 'sphinx'
 #modindex_common_prefix = []
 
 rst_prolog = r"""
-.. only:: html
+.. only:: html or pdf
 
     .. math::
 

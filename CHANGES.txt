@@ -1,5 +1,8 @@
-v1.1.18, ??
+v1.2.2, 30/7/2014
+ - Corrected distribution + version + CHANGES
+v1.2.0, 30/7/2014
  - Corrected in kernel_smoothing the use of atleast_?d to allow non-ndarray arguments
+ - Changed interface to select KDE methods to use objects
 v1.1.17, 29/7/2013
  - Corrected kde.KDE1D initialization and weigth handling
  - Corrected CSV output of fitting

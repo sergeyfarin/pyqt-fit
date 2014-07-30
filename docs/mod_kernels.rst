@@ -32,12 +32,13 @@ High order kernels are kernel that give up being valid probabilities. We will sa
 .. math::
 
 
-    \begin{eqnarray}
-    & \int_\R K_{[n]}(x) dx & = 1 \\
-    \forall 1 \leq k < n  & \int_\R x^k K_{[n]} dx & = 0 \\
-    & \int_\R x^n K_{n]} dx & \neq 0
-    \end{eqnarray}
+    \begin{array}{rcl}
+    \int_\R K_{[n]}(x) dx & = & 1 \\
+    \forall 1 \leq k < n  \int_\R x^k K_{[n]} dx & = & 0 \\
+    \int_\R x^n K_{[n]} dx & \neq & 0
+    \end{array}
 
+PyQt-Fit implements two high order kernels.
 
 .. autoclass:: Epanechnikov_order4
 
