@@ -354,6 +354,18 @@ class KDE1D(object):
         """
         return self.evaluate(points, output=output)
 
+    def cdf(self, points, output=None):
+        """
+        Compute the cdf from the lower bound to the points given as argument.
+        """
+        return self.method.cdf(self, points, output)
+
+    def cdf_grid(self, N=None, cut=None):
+        """
+        Compute the cdf from the lower bound to the points given as argument.
+        """
+        return self.method.cdf_grid(self, points, output)
+
     @property
     def method(self):
         """

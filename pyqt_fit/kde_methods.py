@@ -12,7 +12,7 @@ References:
 
 from __future__ import division, absolute_import, print_function
 import numpy as np
-from scipy import fftpack
+from scipy import fftpack, integrate
 from .compat import irange
 
 def generate_grid(kde, N=None, cut=None):
@@ -68,6 +68,56 @@ class KDE1DMethod(object):
 
         return output
 
+    @staticmethod
+    def unbounded_cdf(kde, points, output=None):
+        """
+        Compute the cdf in case the domain is fully unbounded
+        """
+        xdata = kde.xdata
+        points = np.atleast_1d(points)[:, np.newaxis]
+        bw = kde.bandwidth * kde.lambdas
+
+        z = (points - xdata) / bw
+
+        kernel = kde.kernel
+
+        terms = kernel.cdf(z)
+        terms *= kde.weights
+
+        output = terms.sum(axis=1, out=output)
+        output /= kde.total_weights
+
+        return output
+
+    @staticmethod
+    def numeric_cdf(kde, points, output=None):
+        pts = np.atleast_1d(np.array(points, dtype=float))
+        pts_shape = pts.shape
+        pts = pts.ravel()
+
+        pts[pts < kde.lower] = kde.lower
+        pts[pts > kde.upper] = kde.upper
+
+        ix = pts.argsort()
+
+        sp = pts[ix]
+
+        start = 0.0
+        if sp[0] > kde.lower:
+            start = integrate.quad(kde, kde.lower, sp[0])
+
+        parts = np.empty(sp.shape, dtype=float)
+        parts[0] = start
+        for i in range(1, len(parts)):
+            parts[i] = integrate.quad(kde, sp[i-1], sp[i])[0]
+
+        ints = parts.cumsum()
+        if output is None:
+            output = np.empty(pts_shape, dtype=float)
+
+        output.put(ix, ints)
+        return output
+
     __call__ = unbounded
 
     def default_grid(self, kde, N=None, cut=None):
@@ -83,8 +133,31 @@ class KDE1DMethod(object):
         g = generate_grid(kde, N, cut)
         return g, self(kde, g)
 
+
+    def default_cdf_grid(self, kde, N=None, cut=None):
+        """
+        Evaluate the method on a grid spanning the whole domain of the KDE and containing N points.
+
+        :param KDE1D kde: KDE object
+        :param int N: Number of points of the grid
+        :param float cut: Cutting points for the unbounded domain (see :py:func:`generate_grid`)
+
+        :returns: A tuple with the grid points and the estimated values on these points
+        """
+        g = generate_grid(kde, N, cut)
+        return g, self.cdf(kde, g)
+
     def grid(self, kde, N=None, cut=None):
+        """
+        Call :py:meth:`default_grid`
+        """
         return self.default_grid(kde, N, cut)
+
+    def cdf_grid(self, kde, N=None, cut=None):
+        """
+        Call :py:meth:`default_cdf_grid`
+        """
+        return self.default_cdf_grid(kde, N, cut)
 
     def __str__(self):
         """
@@ -132,6 +205,12 @@ class RenormalizationMethod(KDE1DMethod):
         output /= kde.total_weights
 
         return output
+
+    @staticmethod
+    def cdf(kde, points, output=None):
+        if not kde.bounded:
+            return KDE1DMethod.unbounded_cdf(kde, points, output)
+        return KDE1DMethod.numeric_cdf(kde, points, output)
 
 renormalization = RenormalizationMethod()
 
@@ -192,6 +271,12 @@ class ReflectionMethod(KDE1DMethod):
         output /= kde.total_weights
 
         return output
+
+    @staticmethod
+    def cdf(kde, points, output=None):
+        if not kde.bounded:
+            return KDE1DMethod.unbounded_cdf(kde, points, output)
+        return KDE1DMethod.numeric_cdf(kde, points, output)
 
     def grid(self, kde, N=None, cut=None):
         """
@@ -295,6 +380,12 @@ class LinearCombinationMethod(KDE1DMethod):
 
         return output
 
+    @staticmethod
+    def cdf(kde, points, output=None):
+        if not kde.bounded:
+            return KDE1DMethod.unbounded_cdf(kde, points, output)
+        return KDE1DMethod.numeric_cdf(kde, points, output)
+
 linear_combination = LinearCombinationMethod()
 
 class CyclicMethod(KDE1DMethod):
@@ -389,6 +480,13 @@ class CyclicMethod(KDE1DMethod):
         SmoothFFTData = FFTData * smth
         density = fftpack.ifft(SmoothFFTData) / (mesh[1] - mesh[0])
         return mesh[:-2], density.real
+
+    @staticmethod
+    def cdf(kde, points, output=None):
+        if not kde.closed:
+            raise ValueError("Error, cyclic boundary conditions require "
+                             "a closed domain.")
+        return KDE1DMethod.numeric_cdf(kde, points, output)
 
 cyclic = CyclicMethod()
 
