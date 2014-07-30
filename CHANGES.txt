@@ -1,6 +1,7 @@
 v1.2.3, 30/7/2014
  - Corrected KDE code to pass tests
  - All tests pass for Python2 and Python3
+ - Corrected loader for python 3.4
 v1.2.2, 30/7/2014
  - Corrected distribution + version + CHANGES
 v1.2.0, 30/7/2014
