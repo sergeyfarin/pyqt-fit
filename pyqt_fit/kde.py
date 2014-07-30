@@ -8,121 +8,8 @@ from __future__ import division, absolute_import, print_function
 import numpy as np
 from .kernels import normal_kernel1d
 from .utils import namedtuple, large_float
-from scipy import fftpack, optimize
-from .compat import irange
-
-def variance_bandwidth(factor, xdata):
-    r"""
-    Returns the covariance matrix:
-
-    .. math::
-
-        \mathcal{C} = \tau^2 cov(X)
-
-    where :math:`\tau` is a correcting factor that depends on the method.
-    """
-    data_covariance = np.atleast_2d(np.cov(xdata, rowvar=1, bias=False))
-    sq_bandwidth = data_covariance * factor * factor
-    return sq_bandwidth
-
-
-def silverman_bandwidth(xdata, ydata=None, model=None):
-    r"""
-    The Silverman bandwidth is defined as a variance bandwidth with factor:
-
-    .. math::
-
-        \tau = \left( n \frac{d+2}{4} \right)^\frac{-1}{d+4}
-    """
-    xdata = np.atleast_2d(xdata)
-    d, n = xdata.shape
-    return variance_bandwidth(np.power(n * (d + 2.) / 4.,
-                              -1. / (d + 4.)), xdata)
-
-
-def scotts_bandwidth(xdata, ydata=None, model=None):
-    r"""
-    The Scotts bandwidth is defined as a variance bandwidth with factor:
-
-    .. math::
-
-        \tau = n^\frac{-1}{d+4}
-    """
-    xdata = np.atleast_2d(xdata)
-    d, n = xdata.shape
-    return variance_bandwidth(np.power(n, -1. / (d + 4.)), xdata)
-
-
-def _botev_fixed_point(t, M, I, a2):
-    l = 7
-    I = large_float(I)
-    M = large_float(M)
-    a2 = large_float(a2)
-    f = 2 * np.pi ** (2 * l) * np.sum(I ** l * a2 *
-                                      np.exp(-I * np.pi ** 2 * t))
-    for s in irange(l, 1, -1):
-        K0 = np.prod(np.arange(1, 2 * s, 2)) / np.sqrt(2 * np.pi)
-        const = (1 + (1 / 2) ** (s + 1 / 2)) / 3
-        time = (2 * const * K0 / M / f) ** (2 / (3 + 2 * s))
-        f = 2 * np.pi ** (2 * s) * \
-            np.sum(I ** s * a2 * np.exp(-I * np.pi ** 2 * time))
-    return t - (2 * M * np.sqrt(np.pi) * f) ** (-2 / 5)
-
-
-def finite(val):
-    return val is not None and np.isfinite(val)
-
-
-class botev_bandwidth(object):
-    """
-    Implementation of the KDE bandwidth selection method outline in:
-
-    Z. I. Botev, J. F. Grotowski, and D. P. Kroese. Kernel density
-    estimation via diffusion. The Annals of Statistics, 38(5):2916-2957, 2010.
-
-    Based on the implementation of Daniel B. Smith, PhD.
-
-    The object is a callable returning the bandwidth for a 1D kernel.
-    """
-    def __init__(self, N=None, **kword):
-        if 'lower' in kword or 'upper' in kword:
-            print("Warning, using 'lower' and 'uper' for botev bandwidth is "
-                  "deprecated. Argument is ignored")
-        self.N = N
-
-    def __call__(self, data, model, ydata=None):
-        """
-        Returns the optimal bandwidth based on the data
-        """
-        N = 2 ** 10 if self.N is None else int(2 ** np.ceil(np.log2(self.N)))
-        lower = getattr(model, 'lower', None)
-        upper = getattr(model, 'upper', None)
-        if not finite(lower) or not finite(upper):
-            minimum = np.min(data)
-            maximum = np.max(data)
-            span = maximum - minimum
-            lower = minimum - span / 10 if not finite(lower) else lower
-            upper = maximum + span / 10 if not finite(upper) else upper
-        # Range of the data
-        span = upper - lower
-
-        # Histogram of the data to get a crude approximation of the density
-        M = len(data)
-        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper))
-        DataHist = DataHist / M
-        DCTData = fftpack.dct(DataHist, norm=None)
-
-        I = np.arange(1, N, dtype=int) ** 2
-        SqDCTData = (DCTData[1:] / 2) ** 2
-        guess = 0.1
-
-        try:
-            t_star = optimize.brentq(_botev_fixed_point, 0, guess,
-                                     args=(M, I, SqDCTData))
-        except ValueError:
-            t_star = .28 * N ** (-.4)
-
-        return np.sqrt(t_star) * span
+from . import kde_methods
+from .kde_bandwidth import variance_bandwidth, silverman_covariance, scotts_covariance, botev_bandwidth
 
 
 class KDE1D(object):
@@ -195,81 +82,7 @@ class KDE1D(object):
         a_2(l,u) = \int_l^u z^2K(z) dz
 
 
-    There are currently five methods available:
-        1. unbounded
-        2. renormalization
-        3. reflexion
-        4. linear combination
-        5. cyclic
-
-    1. Unbounded
-
-        This is the usual method, as described above. The method doesn't need
-        to be selected, but is automatically used as soon as the domain is
-        unbounded. When computing a grid, this method uses the CDT with 3 times
-        the bandwidth as padding to avoid border effects.
-
-    2. Renormalization
-
-        This method consists in using the normal kernel method, but renormalize
-        to only take into account the part of the kernel within the domain of
-        the density [1]_.
-
-        The kernel is then replaced with:
-
-        .. math::
-
-            \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0\left(\frac{L-x}{h},
-            \frac{U-x}{h}\right)} K\left(\frac{x-X}{h}\right)
-
-    3. Reflexion
-
-        This method consist in simulating the reflection of the data left and
-        right of the boundaries. If one of the boundary is infinite, then the
-        data is not reflected in that direction. To this purpose, the kernel is
-        replaced with:
-
-        .. math::
-
-            \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right)
-            + K\left(\frac{x+X-2L}{h}\right)
-            + K\left(\frac{x+X-2U}{h}\right)
-
-        When computing grids, if the bandwidth is constant, the result is
-        computing using CDT.
-
-    4. Linear Combination
-
-        This method uses the linear combination correction published in [1]_.
-
-        The estimation is done with a modified kernel given by:
-
-        .. math::
-
-            K_r(x;X,h,L,U) = \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u)
-            - a_1(-u,-l)^2} K(z)
-
-            z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
-
-    5. Cyclic
-
-        This method assumes cyclic boundary conditions and works only for
-        closed boundaries.
-
-        The estimation is done with a modified kernel given by:
-
-        .. math::
-
-            \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right)
-            + K\left(\frac{x-X-(U-L)}{h}\right)
-            + K\left(\frac{x-X+(U-L)}{h}\right)
-
-        When computing grids, if the bandwidth is constant, the result is
-        computing using FFT.
-
-    .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density
-        estimation. Statistics and Computing 3: 135--146.
-
+    The default methods are implemented in the `kde_methods` module.
     """
 
     def __init__(self, xdata, **kwords):
@@ -287,36 +100,44 @@ class KDE1D(object):
         self.weights = 1.
         self.lambdas = 1.
 
+        self._initialized = False
+
         for n in kwords:
             setattr(self, n, kwords[n])
+
+        self.xdata = np.atleast_1d(xdata)
 
         has_bw = (self._bw is not None or self._bw_fct is not None or
                   self._covariance is not None or self._cov_fct is not None)
         if not has_bw:
-            self.covariance = scotts_bandwidth
+            self.covariance = scotts_covariance
 
         if self._method is None:
-            self.method = 'renormalization'
+            self.method = kde_methods.renormalization
 
-        self.xdata = np.atleast_1d(xdata)
+        self._initialized = True
+        self.update_bandwidth()
+
+    @property
+    def initialized(self):
+        return self._initialized
 
     def copy(self):
         """
         Shallow copy of the KDE object
         """
         res = KDE1D.__new__(KDE1D)
-        mems = ['_xdata', '_upper', '_lower', '_kernel', '_bw_fct', '_bw',
-                '_cov_fct', '_covariance', '_method', '_weights',
-                '_total_weights', '_lambdas', '_evaluate', '_grid_eval']
-        for m in mems:
-            setattr(res, m, getattr(self, m))
+        # Copy private members: start with a single '_'
+        for m in self.__dict__:
+            if len(m) > 1 and m[0] == '_' and m[1] != '_':
+                setattr(res, m, getattr(self, m))
         return res
 
     def update_bandwidth(self):
         """
         Re-compute the bandwidth if it was specified as a function.
         """
-        if self._xdata is None:
+        if self._xdata is None or not self.initialized:
             return
         if self._bw_fct:
             _bw = float(self._bw_fct(self._xdata, model=self))
@@ -438,9 +259,9 @@ class KDE1D(object):
     def total_weights(self):
         if self._total_weights is None:
             if self._weights.shape:
-                assert self._weigths.shape == self._xdata.shape, \
+                assert self._weights.shape == self._xdata.shape, \
                     "There must be as many weigths as data points"
-                self._total_weights = sum(self._weigths)
+                self._total_weights = sum(self._weights)
             else:
                 self._total_weights = len(self._xdata)
         return self._total_weights
@@ -521,152 +342,11 @@ class KDE1D(object):
             self._covariance = cov
             self._bw = np.sqrt(cov)
 
-    def _evaluate_unbounded(self, points, output=None):
-        """
-        Method to use if there is, effectively, no bounds
-        """
-        xdata = self.xdata
-        points = np.atleast_1d(points)[:, np.newaxis]
-
-        bw = self.bandwidth * self.lambdas
-
-        z = (points - xdata) / bw
-
-        kernel = self.kernel
-
-        terms = kernel(z)
-
-        terms *= self.weights / bw
-
-        output = terms.sum(axis=1, out=output)
-        output /= self.total_weights
-
-        return output
-
-    def _evaluate_renorm(self, points, output=None):
-        xdata = self.xdata
-        points = np.atleast_1d(points)[:, np.newaxis]
-
-        bw = self.bandwidth * self.lambdas
-
-        l = (self.lower - points) / bw
-        u = (self.upper - points) / bw
-        z = (points - xdata) / bw
-
-        kernel = self.kernel
-
-        a1 = (kernel.cdf(u) - kernel.cdf(l))
-
-        terms = kernel(z) * ((self.weights / bw) / a1)
-
-        output = terms.sum(axis=1, out=output)
-        output /= self.total_weights
-
-        return output
-
-    def _evaluate_reflexion(self, points, output=None):
-        xdata = self.xdata
-        points = np.atleast_1d(points)[:, np.newaxis]
-
-        # Make sure points are between the bounds, with reflexion if needed
-        if any(points < self.lower) or any(points > self.upper):
-            span = self.upper - self.lower
-            points = points - (self.lower + span)
-            points %= 2*span
-            points -= self.lower + span
-            points = np.abs(points)
-
-        bw = self.bandwidth * self.lambdas
-
-        z = (points - xdata) / bw
-        z1 = (points + xdata) / bw
-        L = self.lower
-        U = self.upper
-
-        kernel = self.kernel
-
-        terms = kernel(z)
-
-        if L > -np.inf:
-            terms += kernel(z1 - (2 * L / bw))
-
-        if U < np.inf:
-            terms += kernel(z1 - (2 * U / bw))
-
-        terms *= self.weights / bw
-        output = terms.sum(axis=1, out=output)
-        output /= self.total_weights
-
-        return output
-
-    def _evaluate_cyclic(self, points, output=None):
-        if not self.closed:
-            raise ValueError("Cyclic boundary conditions can only be used with"
-                             "closed domains.")
-
-        xdata = self.xdata
-        points = np.atleast_1d(points)[:, np.newaxis]
-
-        # Make sure points are between the bounds
-        if any(points < self.lower) or any(points > self.upper):
-            points = points - self.lower
-            points %= self.upper - self.lower
-            points += self.lower
-
-        bw = self.bandwidth * self.lambdas
-
-        z = (points - xdata) / bw
-        L = self.lower
-        U = self.upper
-
-        span = U - L
-
-        kernel = self.kernel
-
-        terms = kernel(z)
-        terms += kernel(z - (span / bw))
-        terms += kernel(z + (span / bw))
-
-        terms *= self.weights / bw
-        output = terms.sum(axis=1, out=output)
-        output /= self.total_weights
-
-        return output
-
-    def _evaluate_linear(self, points, output=None):
-        xdata = self.xdata
-        points = np.atleast_1d(points)[:, np.newaxis]
-
-        bw = self.bandwidth * self.lambdas
-
-        l = (self.lower - points) / bw
-        u = (self.upper - points) / bw
-        z = (points - xdata) / bw
-
-        kernel = self.kernel
-
-        a0 = kernel.cdf(u) - kernel.cdf(l)
-        a1 = kernel.pm1(-l) - kernel.pm1(-u)
-        a2 = kernel.pm2(u) - kernel.pm2(l)
-
-        denom = a2 * a0 - a1 * a1
-        upper = a2 - a1 * z
-
-        upper /= denom
-        upper *= (self.weights / bw) * kernel(z)
-
-        output = upper.sum(axis=1, out=output)
-        output /= self.total_weights
-
-        return output
-
     def evaluate(self, points, output=None):
         """
         Evaluate the kernel on the set of points ``points``
         """
-        if self.bounded:
-            return self._evaluate(points, output=output)
-        return self._evaluate_unbounded(points, output=output)
+        return self._method(self, points, output)
 
     def __call__(self, points, output=None):
         """
@@ -677,35 +357,28 @@ class KDE1D(object):
     @property
     def method(self):
         """
-        Select the method to use. Must be one of:
+        Select the method to use. Available methods in the :py:mod:`pyqt_fit.kde_methods` sub-module.
 
-            - ``renormalization``
-            - ``reflexion``
-            - ``linear_combination``
-            - ``cyclic``
+        The method is an object that should provide the following:
 
-        If the domain is unbounded (i.e. :math:`[-\infty;\infty]`), then
-        the value is ``unbounded``.
+        ``method(kde, points, output)``
+            Evaluate the KDE defined by the ``kde`` object on the ``points``. If ``output`` is provided, it should have 
+            the right shape and the result should be written in it.
+
+        ``method.grid(kde, N, cut)``
+            Evaluate the KDE defined by the ``kde`` object on a grid. See :py:fct:`pyqt_fit.kde_methods.generate_grid` 
+            for a detailed explanation on how the grid is computed.
+
+        ``method.name``
+            Return a user-readable name for the method
+
+        ``str(method)``
+            Should return the method's name
         """
-        if self.bounded:
-            return self._method
-        return "unbounded"
+        return self._method
 
     @method.setter
     def method(self, m):
-        _known_methods = {'renormalization': self._evaluate_renorm,
-                          'reflexion': self._evaluate_reflexion,
-                          'linear_combination': self._evaluate_linear,
-                          'cyclic': self._evaluate_cyclic}
-        _known_grid = {'renormalization': self.grid_eval,
-                       'reflexion': self._grid_reflexion,
-                       'linear_combination': self.grid_eval,
-                       'cyclic': self._grid_cyclic}
-        if m not in _known_methods:
-            raise ValueError("Error, method must be one of 'renormalization', "
-                             "'reflexion', 'cyclic' or 'linear_combination'")
-        self._evaluate = _known_methods[m]
-        self._grid_eval = _known_grid[m]
         self._method = m
 
     @property
@@ -723,114 +396,14 @@ class KDE1D(object):
         """
         return self.lower > -np.inf or self.upper < np.inf
 
-    def grid_eval(self, N=None):
-        N = 2 ** 10 if N is None else N
-        lower = np.min(self.xdata) - 2 * self.bandwidth \
-            if self.lower == -np.inf else self.lower
-        upper = np.max(self.xdata) + 2 * self.bandwidth \
-            if self.upper == np.inf else self.upper
-        g = np.r_[lower:upper:N * 1j]
-        return g, self(g)
-
-    def _grid_cyclic(self, N):
-        """
-        FFT-based estimation of KDE estimation, i.e. with cyclic boundary
-        conditions. This works only for closed domains, fixed bandwidth
-        (i.e. lambdas = 1) and gaussian kernel.
-        """
-        if self.lambdas.shape:
-            return self.grid_eval(N)
-        if not self.closed:
-            raise ValueError("Error, cyclic boundary conditions require "
-                             "a closed domain.")
-        bw = self.bandwidth * self.lambdas
-        data = self.xdata
-        N = 2 ** 14 if N is None else N
-        lower = self.lower
-        upper = self.upper
-        R = upper - lower
-        dN = 1 / N
-        mesh = np.r_[lower:upper + dN:(N + 2) * 1j]
-        weights = self.weights
-        if not weights.shape:
-            weights = None
-        DataHist, bin_edges = np.histogram(data, bins=mesh - dN / 2,
-                                           weights=weights)
-        DataHist[0] += DataHist[-1]
-        DataHist = DataHist / self.total_weights
-        FFTData = fftpack.fft(DataHist[:-1])
-        if hasattr(self.kernel, 'fft'):
-            t_star = (2 * bw / R)
-            gp = np.roll((np.arange(N) - N / 2) * np.pi * t_star, N // 2)
-            smth = self.kernel.fft(gp)
-        else:
-            gp = np.roll((np.arange(N) - N / 2) * R / N, N // 2)
-            smth = fftpack.fft(self.kernel(gp / bw) * (gp[1] - gp[0]) / bw)
-        SmoothFFTData = FFTData * smth
-        density = fftpack.ifft(SmoothFFTData) / (mesh[1] - mesh[0])
-        return mesh[:-2], density.real
-
-    def _grid_reflexion(self, N=None):
-        """
-        DCT-based estimation of KDE estimation, i.e. with reflexion boundary
-        conditions. This works only for fixed bandwidth (i.e. lambdas = 1) and
-        gaussian kernel.
-
-        For open domains, the grid is taken with 3 times the bandwidth as extra
-        space to remove the boundary problems.
-        """
-        if self.lambdas.shape:
-            return self.grid_eval(N)
-
-        bw = self.bandwidth * self.lambdas
-        data = self.xdata
-        N = 2 ** 14 if N is None else N
-        lower = np.min(data) - 3 * self.bandwidth \
-            if self.lower == -np.inf else self.lower
-        upper = np.max(data) + 3 * self.bandwidth \
-            if self.upper == np.inf else self.upper
-
-        R = upper - lower
-
-        # Histogram the data to get a crude first approximation of the density
-        weights = self.weights
-        if not weights.shape:
-            weights = None
-        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper),
-                                      weights=weights)
-        DataHist = DataHist / self.total_weights
-        DCTData = fftpack.dct(DataHist, norm=None)
-
-        if hasattr(self.kernel, 'dct'):
-            t_star = bw / R
-            gp = np.arange(N) * np.pi * t_star
-            smth = self.kernel.dct(gp)
-        else:
-            gp = (np.arange(N) + 0.5) * R / N
-            smth = fftpack.dct(self.kernel(gp / bw) * (gp[1] - gp[0]) / bw)
-
-        # Smooth the DCTransformed data using t_star
-        SmDCTData = DCTData * smth
-        # Inverse DCT to get density
-        density = fftpack.idct(SmDCTData, norm=None) / (2 * R)
-        mesh = np.array([(bins[i] + bins[i + 1]) / 2 for i in irange(N)])
-
-        return mesh, density
-
-    def grid(self, N=None):
+    def grid(self, N=None, cut=None):
         """
         Evaluate the density on a grid of N points spanning the whole dataset.
-
-        Currently, for cyclic, reflexion and unbouded methods, this used FFT
-        and CDT, which are a lots faster on a regular grid. FFT and CDT cannot
-        be used if the bandwidth vary depending on the sample though.
 
         :returns: a tuple with the mesh on which the density is evaluated and
         the density itself
         """
-        if not self.bounded:
-            return self._grid_reflexion(N)
-        return self._grid_eval(N)
+        return self._method.grid(self, N, cut)
 
 Transform = namedtuple('Tranform', ['__call__', 'inv', 'Dinv'])
 

@@ -72,7 +72,7 @@ KDE, making sure the width of the KDE and the histogram are the same::
   >>> mod = kde.KDE1D(x[0])
   >>> mod.bandwidth = mod.bandwidth  # Prevent future recalculation
   >>> kdes[0] = mod(xs)
-  >>> for i in xrange(1, 1000):
+  >>> for i in range(1, 1000):
   >>>   hs[i] = np.histogram(x[i], bins=nbins, range=(-3,3), density=True)[0]
   >>>   mod.xdata = x[i]
   >>>   kdes[i] = mod(xs)
@@ -163,7 +163,7 @@ There are a number of ways to take into account the bounded nature of the distri
 one consist in truncating the kernel if it goes below 0. This is called "renoamlizing" the kernel::
 
   >>> est_ren = kde.KDE1D(x, lower=0)
-  >>> plt.plot(xs, est_ren(xs), 'm', label=est_ren.method)
+  >>> plt.plot(xs, est_ren(xs), 'm', label=est_ren.method.name)
   >>> plt.legend(loc='best')
 
 .. figure:: KDE_tut_chi2_renorm.png
@@ -177,8 +177,9 @@ in the rest of the dataset. Another method is a linear approximation of the dens
 boundaries. The method, being an approximation, will not sum up to exactly 1. However, it often
 approximate the density much better::
 
-  >>> est_lin = kde.KDE1D(x, lower=0, method='linear_combination')
-  >>> plt.plot(xs, est_lin(xs), 'y', label=est_lin.method)
+  >>> from pyqt_fit import kde_methods
+  >>> est_lin = kde.KDE1D(x, lower=0, method=kde_methods.linear_combination)
+  >>> plt.plot(xs, est_lin(xs), 'y', label=est_lin.method.name)
   >>> plt.legend(loc='best')
 
 .. figure:: KDE_tut_chi2_lin.png
@@ -202,7 +203,7 @@ First, let's look at the histogram::
 
   >>> from scipy import stats, integrate
   >>> from matplotlib import pylab as plt
-  >>> from pyqt_fit import kde
+  >>> from pyqt_fit import kde, kde_methods
   >>> import numpy as np
   >>> f = stats.norm(loc=0, scale=1)
   >>> x = f.rvs(1000)
@@ -212,8 +213,9 @@ First, let's look at the histogram::
 
 Then, the KDE assume reflexive boundary conditions::
 
-  >>> est = kde.KDE1D(z, lower=0, method='reflexion')
-  >>> plot(xs, est(xs), color='b', label=est.method)
+  >>> xs = np.r_[0:8:1024j]
+  >>> est = kde.KDE1D(z, lower=0, method=kde_methods.reflection)
+  >>> plot(xs, est(xs), color='b', label=est.method.name)
 
 To estimate the "real" distribution, we will increase the number of samples::
 
@@ -226,7 +228,7 @@ If you try to estimate the KDE, it will now be very slow. To speed up the proces
 work only if you don't have variable bandwidth and boundary conditions are either reflexive, cyclic,
 or non-existent (i.e. unbounded)::
 
-  >>> est_large = kde.KDE1D(zz, lower=0, method='reflexion')
+  >>> est_large = kde.KDE1D(zz, lower=0, method=kde_methods.reflection)
   >>> xxs, yys = est_large.grid()
   >>> plt.plot(xxs, yys, 'r--', lw=2, label='Estimated')
   >>> plt.xlim(0, 6)
@@ -260,7 +262,7 @@ bandwidth). So these are equivalent to the two previous lines::
 
 But often you will want to use a pre-defined method::
 
-  >>> est = kde.KDE1D(x, covariance = kde.scotts_bandwidth)
+  >>> est = kde.KDE1D(x, covariance = kde.scotts_covariance)
 
 At last, if you want to define your own method, you simply need to define a function. For example,
 you can re-define and use the function for the Scotts rule of thumb (which compute the variance of
@@ -282,14 +284,14 @@ distribution of a variable whose logarithm is normally distributed::
 
   >>> from scipy import stats
   >>> from matplotlib import pylab as plt
-  >>> from pyqt_fit import kde
+  >>> from pyqt_fit import kde, kde_methods
   >>> import numpy as np
   >>> f = stats.lognorm(1)
   >>> x = f.rvs(1000)
   >>> xs = r_[0:10:4096j]
   >>> plt.hist(x, bins=20, range=(0,10), color='g', normed=True)
   >>> plt.plot(xs, f.pdf(xs), 'r--', lw=2, label='log-normal')
-  >>> est = kde.KDE1D(x, method='linear_combination', lower=0)
+  >>> est = kde.KDE1D(x, method=kde_methods.linear_combination, lower=0)
   >>> plt.plot(xs, est(xs), color='b', label='KDE')
   >>> plt.legend(loc='best')
 

@@ -20,6 +20,9 @@ elif hasattr(np, 'float96'):
 else:
     large_float = np.float64
 
+def finite(val):
+    return val is not None and np.isfinite(val)
+
 def namedtuple(typename, field_names, verbose=False, rename=False):
     """Returns a new subclass of tuple with named fields.
 

@@ -20,9 +20,9 @@ Bandwidth Estimation Methods
 
 .. autofunction:: variance_bandwidth
 
-.. autofunction:: silverman_bandwidth
+.. autofunction:: silverman_covariance
 
-.. autofunction:: scotts_bandwidth
+.. autofunction:: scotts_covariance
 
 .. autofunction:: botev_bandwidth
 

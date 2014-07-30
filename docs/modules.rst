@@ -8,6 +8,7 @@ Modules of PyQt-Fit
   mod_bootstrap
   mod_kernel_smoothing
   mod_kde
+  mod_kde_methods
   mod_kernels
   mod_utils
 
