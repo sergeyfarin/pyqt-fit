@@ -5,7 +5,7 @@ This module contains a set of methods to compute univariate KDEs. See the object
 for more details on these methods.
 
 References:
-``````````
+```````````
 .. [1] Jones, M. C. 1993. Simple boundary correction for kernel density
     estimation. Statistics and Computing 3: 135--146.
 """

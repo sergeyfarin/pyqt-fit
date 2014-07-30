@@ -7,12 +7,58 @@ import re
 
 bad_chars = re.compile(u'\W')
 
-sys_modules = "*.so"
-if sys.platform == 'win32' or sys.platform == 'cygwin':
-    sys_modules = "*.dll"
-elif sys.platform == 'darwin':
-    sys_modules = "*.dylib"
 
+python_version = sys.version_info
+
+if python_version.major == 2 and python_version.minor == 7:
+
+    if sys.platform == 'win32' or sys.platform == 'cygwin':
+        module_exts = ['.dll']
+    elif sys.platform == 'darwin':
+        module_exts = ['.dylib']
+    else:
+        module_exts = ['.so']
+    module_exts += ['.pyx', '.pyc', '.py']
+
+    def load_module(pack_name, module_name, search_path):
+        """ Version for Python 2.7 """
+        mod_desc = imp.find_module(module_name, [search_path])
+        return imp.load_module(pack_name, *mod_desc)
+
+elif python_version.major == 3 and python_version.minor >= 3:
+    from importlib.machinery import SourceFileLoader, all_suffixes
+
+    module_exts = all_suffixes()
+    module_exts.append('.pyx')
+    module_exts = module_exts[::-1]
+
+    if python_version.minor == 3:
+        from importlib import find_loader
+
+        def create_module(pack_name, filepath):
+            " Version for Python 3.3 "
+            loader = SourceFileLoader(pack_name, str(filepath))
+            return loader.load_module()
+
+    else:
+        from types import ModuleType
+
+        def create_module(pack_name, filepath):
+            " Version for Python 3.4 or later "
+            loader = SourceFileLoader(pack_name, str(filepath))
+            mod = ModuleType(pack_name)
+            loader.exec_module(mod)
+            return mod
+
+    def load_module(pack_name, module_name, search_path):
+        pth = path(search_path) / module_name
+        for ext in module_exts:
+            filename = pth + ext
+            if filename.exists():
+                return create_module(pack_name, filename)
+
+else:
+    raise ImportError("This module can only be imported with python 2.7 and 3.x where x >= 3")
 
 def load(find_functions, search_path=None):
     """
@@ -33,19 +79,17 @@ def load(find_functions, search_path=None):
         search_path = path(search_path).abspath()
     fcts = {}
 # Search for python, cython and modules
-    for f in (search_path.files("*.py") +
-              search_path.files("*.pyx") +
-              search_path.files(sys_modules)):
-        if f not in sys_files:
-            module_name = f.namebase
-            pack_name = '%s.%s_%s' % (caller_module.__name__,
-                                      bad_chars.sub('_', module_path),
-                                      module_name)
-            try:
-                mod_desc = imp.find_module(module_name, [search_path])
-                mod = imp.load_module(pack_name, *mod_desc)
-                fcts.update(find_functions(mod))
-            except ImportError as ex:
-                print("Warning, cannot import module '{0}' from {1}: {2}"
-                      .format(module_name, caller_module.__name__, ex), file=sys.stderr)
+    for ext in module_exts:
+        for f in search_path.files("*" + ext):
+            if f.basename()[:2] != '__':
+                module_name = f.namebase
+                pack_name = '%s.%s_%s' % (caller_module.__name__,
+                                          bad_chars.sub('_', module_path),
+                                          module_name)
+                try:
+                    mod = load_module(pack_name, module_name, search_path)
+                    fcts.update(find_functions(mod))
+                except ImportError as ex:
+                    print("Warning, cannot import module '{0}' from {1}: {2}"
+                          .format(module_name, caller_module.__name__, ex), file=sys.stderr)
     return fcts
