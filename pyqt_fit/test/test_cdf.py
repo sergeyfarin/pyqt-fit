@@ -8,18 +8,12 @@ from numpy.random import randn
 from scipy import stats, integrate, interpolate
 from ..compat import irange
 
+from . import kde_utils
+
 class TestUnboundedCDF(object):
     @classmethod
     def setUpClass(cls):
-        cls.dist = stats.lognorm(1)
-        cls.sizes = np.r_[1000:5000:5j]
-        cls.args = {}
-        cls.vs = [ cls.dist.rvs(s) for s in cls.sizes ]
-        cls.vs = [ v[v < 20] for v in cls.vs ]
-        cls.xs = np.r_[0:20:1024j]
-        cls.weights = [ cls.dist.pdf(v) for v in cls.vs ]
-        cls.lambdas = [ 1 - ws for ws in cls.weights ]
-        cls.accuracy = 1e-4
+        kde_utils.setUpClass_lognorm(cls)
 
     def createKDE(self, data, **args):
         all_args = dict(self.args)

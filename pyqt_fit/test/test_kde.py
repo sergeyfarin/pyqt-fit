@@ -5,12 +5,11 @@ from .. import kde_methods
 import numpy as np
 from numpy import newaxis
 from numpy.random import randn
-from scipy import stats, integrate
+from scipy import integrate
 from ..compat import irange
-
+from . import kde_utils
 
 class TestBandwidth(object):
-
     @classmethod
     def setUpClass(cls):
         cls.ratios = np.array([1., 2., 5.])
@@ -46,12 +45,7 @@ class TestBandwidth(object):
 class TestUnboundedKDE1D(object):
     @classmethod
     def setUpClass(cls):
-        cls.dist = stats.norm(0, 1)
-        cls.sizes = np.r_[1000:5000:5j]
-        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = {}
-        cls.grid_accuracy = 1e-5
-        cls.accuracy = 1e-3
+        kde_utils.setupClass_norm(cls)
 
     def createKDE(self, data, **args):
         return kde.KDE1D(data, **args)
@@ -81,90 +75,64 @@ class TestUnboundedKDE1D(object):
         for i in irange(len(self.sizes)):
             yield self.is_grid_normed, i
 
-    def is_ws_normed(self, i):
-        ws = np.r_[1:2:self.sizes[i]*1j]
-        k = self.createKDE(self.vs[i], weights=ws, **self.args)
+    def is_weights_normed(self, i):
+        weights = self.weights[i]
+        k = self.createKDE(self.vs[i], weights=weights, **self.args)
         xs, ys = k.grid(2048)
         tot = integrate.simps(ys, xs)
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
-    def is_ws_grid_normed(self, i):
-        ws = np.r_[1:2:self.sizes[i]*1j]
-        k = self.createKDE(self.vs[i], weights=ws, **self.args)
+    def is_weights_grid_normed(self, i):
+        weights = self.weights[i]
+        k = self.createKDE(self.vs[i], weights=weights, **self.args)
         xs, ys = k.grid(2048)
         tot = integrate.simps(ys, xs)
         assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
-    def test_ws_normed(self):
+    def test_weights_normed(self):
         """
-        Test with weigths
+        Test with weights
         """
         for i in irange(len(self.sizes)):
-            yield self.is_ws_normed, i
+            yield self.is_weights_normed, i
 
-    def test_ws_grid_normed(self):
+    def test_weights_grid_normed(self):
         for i in irange(len(self.sizes)):
-            yield self.is_ws_grid_normed, i
+            yield self.is_weights_grid_normed, i
 
-    def is_ls_normed(self, i):
-        ws = np.r_[1:2:self.sizes[i]*1j]
-        k = self.createKDE(self.vs[i], lambdas=ws, **self.args)
+    def is_lambdas_normed(self, i):
+        lambdas = self.lambdas[i]
+        k = self.createKDE(self.vs[i], lambdas=lambdas, **self.args)
         xs, ys = k.grid(2048)
         tot = integrate.simps(ys, xs)
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
-    def test_ls_normed(self):
+    def test_lambdas_normed(self):
         """
         Test with lambdas
         """
         for i in irange(len(self.sizes)):
-            yield self.is_ls_normed, i
+            yield self.is_lambdas_normed, i
 
 
-class TestReflectionKDE1D(TestUnboundedKDE1D):
+class ToTestBoundedKDE1D(TestUnboundedKDE1D):
+    @classmethod
+    def mainSetup(cls):
+        kde_utils.setupClass_norm(cls)
+        cls.args = dict(lower=-5, upper=5, method=cls.method())
+
+
+for met in kde_utils.methods:
+    cls_name = 'Test{}KDE1D'.format(met.cls.name.replace(' ', '_'))
+    template = r"""
+class {0}(ToTestBoundedKDE1D):
     @classmethod
     def setUpClass(cls):
-        cls.dist = stats.norm(0, 1)
-        cls.sizes = np.r_[1000:5000:5j]
-        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = dict(lower=-5, upper=5, method=kde_methods.reflection)
-        cls.grid_accuracy = 1e-5
-        cls.accuracy = 1e-3
+        cls.mainSetup()
+        cls.accuracy = {1}
+        cls.grid_accuracy = {2}
+""".format(cls_name, met.accuracy, met.grid_accuracy)
+    exec(template, globals())
+    cls = globals()[cls_name]
+    setattr(cls, 'method', met.cls)
 
-
-class TestCyclicKDE1D(TestUnboundedKDE1D):
-    @classmethod
-    def setUpClass(cls):
-        cls.dist = stats.norm(0, 1)
-        cls.sizes = np.r_[1000:5000:5j]
-        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = dict(lower=-5, upper=5, method=kde_methods.cyclic)
-        cls.grid_accuracy = 1e-5
-        cls.accuracy = 1e-3
-
-class TestRenormKDE1D(TestUnboundedKDE1D):
-    @classmethod
-    def setUpClass(cls):
-        cls.dist = stats.norm(0, 1)
-        cls.sizes = np.r_[1000:5000:5j]
-        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = dict(lower=-5, upper=5, method=kde_methods.renormalization)
-        cls.grid_accuracy = 1e-4
-        cls.accuracy = 1e-5
-
-
-class TestLCKDE1D(TestUnboundedKDE1D):
-    @classmethod
-    def setUpClass(cls):
-        cls.dist = stats.norm(0, 1)
-        cls.sizes = np.r_[1000:5000:5j]
-        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.args = dict(lower=-5, upper=5, method=kde_methods.linear_combination)
-        cls.grid_accuracy = 1e-4
-        cls.accuracy = 1e-4
-
-    def test_normed(self):
-        pass # Skip this one as we don't expect the result to be normed
-
-    def test_ls_normed(self):
-        pass # Skip this one as we don't expect the result to be normed
