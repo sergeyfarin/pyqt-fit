@@ -10,6 +10,43 @@ from .kernels import normal_kernel1d
 from .utils import namedtuple
 from . import kde_methods
 from .kde_bandwidth import variance_bandwidth, silverman_covariance, scotts_covariance, botev_bandwidth
+from scipy import stats, optimize
+
+
+def _kde_icdf(kde, points, output=None):
+    """
+    Compute the inverse cumulative distribution (quantile) function
+    """
+    xs, ys = kde.cdf_grid()
+    coarse_result = np.interp(points, ys, xs, kde.lower, kde.upper)
+    def find_inverse(p, approx):
+        if approx >= xs[-1] or approx <= xs[0]:
+            return approx
+        def f(x):
+            return kde.cdf(x) - p
+        val = f(approx)
+        idx = np.searchsorted(xs, approx)
+        if val > 0:
+            high = approx
+            low = xs[idx-1]
+        else:
+            low = approx
+            high = xs[idx]
+        return optimize.brentq(f, low, high)
+    fct = np.vectorize(find_inverse, [points.dtype])
+    return fct(points, coarse_result)
+
+
+def _kde_icdf_grid(kde, N=None, cut=None):
+    """
+    Compute the inverse cumulative distribution (quantile) function on a grid.
+    """
+    if N is None:
+        N = 2**10
+    xs, ys = kde.cdf_grid(4*N, cut)
+    vals = np.linspace(0, 1, N)
+    icdf = np.interp(vals, ys, xs, kde.lower, kde.upper)
+    return vals, icdf
 
 
 class KDE1D(object):
@@ -39,25 +76,10 @@ class KDE1D(object):
 
         W = \sum_{i=1}^n w_i
 
-    where :math:`h` is the bandwidth of the kernel (:py:attr:`bandwidth`),
-    and :math:`K` is the kernel used for the density estimation
-    (:py:attr:`kernel`), :math:`w_i` are the weights of the data points
-    (:py:attr:`weights`) and :math:`\lambda_i` are the adaptation factor
-    of the kernel width (:py:attr:`lambdas`). :math:`K` should be a function
-    such that:
-
-    .. math::
-
-        \begin{array}{rcl}
-        \int_\mathbb{R} K(z) &=& 1 \\
-        \int_\mathbb{R} zK(z)dz &=& 0 \\
-        \int_\mathbb{R} z^2K(z) dz &<& \infty \quad (\approx 1)
-        \end{array}
-
-    Which translates into, the function should be of sum 1 (i.e.
-    a valid density of probability), of average 0 (i.e. centered) and of finite
-    variance. It is even recommanded that the variance is close to 1 to give
-    a uniform meaning to the bandwidth.
+    where :math:`h` is the bandwidth of the kernel (:py:attr:`bandwidth`), and :math:`K` is the kernel used for the 
+    density estimation (:py:attr:`kernel`) and should follow the requirements set by 
+    :py:class:`pyqt_fit.kernels.Kernel`, :math:`w_i` are the weights of the data points (:py:attr:`weights`) and 
+    :math:`\lambda_i` are the adaptation factor of the kernel width (:py:attr:`lambdas`).
 
     If the domain of the density estimation is bounded to the interval
     :math:`[L,U]` (i.e. from :py:attr:`lower` to :py:attr:`upper`), the density
@@ -70,17 +92,6 @@ class KDE1D(object):
 
     Where :math:`\hat{K}` is a modified kernel that depends on the exact method
     used.
-
-    To express the various methods, we will refer to the following functions:
-
-    .. math::
-
-        a_0(l,u) = \int_l^u K(z) dz
-
-        a_1(l,u) = \int_l^u zK(z) dz
-
-        a_2(l,u) = \int_l^u z^2K(z) dz
-
 
     The default methods are implemented in the `kde_methods` module.
     """
@@ -162,36 +173,9 @@ class KDE1D(object):
     @property
     def kernel(self):
         r"""
-        Kernel object. Should provide the following methods:
+        Kernel object. See :py:class:`pyqt_fit.kernels.Kernel` for the requirements on the kernel.
 
-        ``kernel.pdf(xs)``
-            Density of the kernel, denoted :math:`K(x)`
-
-        ``kernel.cdf(z)``
-            Cumulative density of probability, that is
-            :math:`F^K(z) = \int_{-\infty}^z K(x) dx`
-
-        ``kernel.pm1(z)``
-            First partial moment, defined by
-            :math:`\mathcal{M}^K_1(z) = \int_{-\infty}^z xK(x)dx`
-
-        ``kernel.pm2(z)``
-            Second partial moment, defined by
-            :math:`\mathcal{M}^K_2(z) = \int_{-\infty}^z x^2K(x)dx`
-
-        ``kernel.fft(z)``
-            FFT of the kernel on the points of ``z``. The points will always be
-            provided as a grid with :math:`2^n` points, representing the whole
-            frequency range to be explored. For convenience, the second half of
-            the points will be provided as negative values.
-
-        ``kernel.dct(z)``
-            DCT of the kernel on the points of ``z``. The points will always be
-            provided as a grid with :math:`2^n` points, representing the whole
-            frequency range to be explored.
-
-        By default, the kernel is an instance of
-        :py:class:`kernels.normal_kernel1d`
+        By default, the kernel is an instance of :py:class:`kernels.normal_kernel1d`
         """
         return self._kernel
 
@@ -260,7 +244,7 @@ class KDE1D(object):
         if self._total_weights is None:
             if self._weights.shape:
                 assert self._weights.shape == self._xdata.shape, \
-                    "There must be as many weigths as data points"
+                    "There must be as many weights as data points"
                 self._total_weights = sum(self._weights)
             else:
                 self._total_weights = len(self._xdata)
@@ -355,8 +339,14 @@ class KDE1D(object):
         return self.evaluate(points, output=output)
 
     def cdf(self, points, output=None):
-        """
-        Compute the cdf from the lower bound to the points given as argument.
+        r"""
+        Compute the cumulative distribution function defined as:
+
+        .. math::
+
+            cdf(x) = P(X \leq x) = \int_l^x p(t) dt
+
+        where :math:`l` is the lower bound of the distribution domain and :math:`p` the density of probability.
         """
         return self.method.cdf(self, points, output)
 
@@ -364,7 +354,70 @@ class KDE1D(object):
         """
         Compute the cdf from the lower bound to the points given as argument.
         """
-        return self.method.cdf_grid(self, points, output)
+        return self.method.cdf_grid(self, N, cut)
+
+    def icdf(self, points, output=None):
+        r"""
+        Compute the inverse cumulative distribution (quantile) function.
+        """
+        return _kde_icdf(self, points, output)
+
+    def icdf_grid(self, N=None, cut=None):
+        """
+        Compute the inverse cumulative distribution (quantile) function on a grid.
+        """
+        return _kde_icdf_grid(self, N, cut)
+
+    def sf(self, points, output=None):
+        r"""
+        Compute the survival function.
+
+        The survival function is defined as:
+
+        .. math::
+
+            sf(x) = P(X \geq x) = \int_x^u p(t) dt = 1 - cdf(x)
+
+        where :math:`u` is the upper bound of the distribution domain and :math:`p` the density of probability.
+
+        """
+        output = self.cdf(points, output)
+        output -= 1
+        output *= -1
+        return output
+
+    def hazard(self, points, output=None):
+        r"""
+        Compute the hazard function evaluated on the points.
+
+        The hazard function is defined as:
+
+        .. math::
+
+            h(x) = \frac{p(x)}{sf(x)}
+        """
+        output = self(points, output=output)
+        sf = self.sf(points)
+        output /= sf
+        return output
+
+    def cumhazard(self, points, output=None):
+        r"""
+        Compute the cumulative hazard function evaluated on the points.
+
+        The cumulative hazard function is defined as:
+
+        .. math::
+
+            ch(x) = \int_l^x h(t) dt = -\ln sf(x)
+
+        where :math:`l` is the lower bound of the domain, :math:`h` the hazard function and :math:`sf` the survival 
+        function.
+        """
+        output = self.sf(points, output)
+        np.log(output, out=output)
+        output *= -1
+        return output
 
     @property
     def method(self):
@@ -420,8 +473,7 @@ class KDE1D(object):
 Transform = namedtuple('Tranform', ['__call__', 'inv', 'Dinv'])
 
 LogTransform = Transform(np.log, np.exp, np.exp)
-ExpTransform = Transform(np.exp, np.log, lambda x: 1 / x)
-
+ExpTransform = Transform(np.exp, np.log, lambda x: 1. / x)
 
 def transform_distribution(xs, ys, Dfct, output=None):
     """
@@ -504,10 +556,144 @@ class TransformKDE(object):
         trans = create_transform(trans, inv, Dinv)
         d['trans'] = trans
         d['kde'] = kde.copy()
+        self._xdata = kde.xdata
         self.kde.xdata = trans(kde.xdata)
         self.kde.lower = trans(kde.lower)
         self.kde.upper = trans(kde.upper)
         self.kde.update_bandwidth()
+
+    @property
+    def xdata(self):
+        """
+        Input data
+        """
+        return self._xdata
+
+    @xdata.setter
+    def xdata(self, xs):
+        self._xdata = np.atleast_1d(xs)
+        self.kde.xdata = self.trans(self._xdata)
+
+    @property
+    def kernel(self):
+        """
+        Kernel used for the KDE estimation. See :py:class:`KDE1D` for details on the requirements of a kernel.
+        """
+        return self.kde.kernel
+
+    @kernel.setter
+    def kernel(self, k):
+        self.kde.kernel = k
+
+    @property
+    def lower(self):
+        """
+        Lower bound of the input variable domain
+        """
+        return self.trans.inv(self.kde.lower)
+
+    @lower.setter
+    def lower(self, val):
+        self.kde.lower = self.trans(val)
+
+    @lower.deleter
+    def lower(self):
+        del self.kde.lower
+
+    @property
+    def upper(self):
+        """
+        Upper bound of the input variable domain
+        """
+        return self.trans.inv(self.kde.upper)
+
+    @upper.setter
+    def upper(self, val):
+        self.kde.upper = self.trans(val)
+
+    @upper.deleter
+    def upper(self):
+        del self.kde.upper
+
+    @property
+    def weights(self):
+        """
+        Weigths of the input data points
+        """
+        return self.kde.weights
+
+    @weights.setter
+    def weights(self, vals):
+        self.kde.weights = vals
+
+    @weights.deleter
+    def weights(self):
+        del self.kde.weights
+
+    @property
+    def lambdas(self):
+        """
+        Scaling of the bandwidth, per data point. It can be either a single
+        value or an array with one value per data point.
+
+        When deleted, the lamndas are reset to 1.
+        """
+        return self.kde.lambdas
+
+    @lambdas.setter
+    def lambdas(self, vals):
+        self.kde.lambdas = vals
+
+    @lambdas.deleter
+    def lambdas(self):
+        del self.kde.lambdas
+
+    @property
+    def bandwidth(self):
+        """
+        Set the bandwidth in the transformed domain
+        """
+        return self.kde.bandwidth
+
+    @bandwidth.setter
+    def bandwidth(self, val):
+        self.kde.bandwidth = val
+
+    @property
+    def covariance(self):
+        """
+        Set the covariance in the transformed domain
+        """
+        return self.kde.covariance
+
+    @covariance.setter
+    def covariance(self, val):
+        self.kde.covariance = val
+
+    @property
+    def method(self):
+        """
+        Computation method for the KDE
+        """
+        return self.kde.method
+
+    @method.setter
+    def method(self, m):
+        self.kde.method = m
+
+    @property
+    def closed(self):
+        """
+        Check if the domain of the input variable is closed (i.e. bounded on both sides)
+        """
+        return self.lower > -np.inf and self.upper < np.inf
+
+    @property
+    def bounded(self):
+        """
+        Check if the domain of the input is bounded
+        """
+        return self.lower > -np.inf or self.upper < np.inf
 
     def copy(self):
         """
@@ -545,8 +731,37 @@ class TransformKDE(object):
         trans = self.trans
         return trans.inv(xs), transform_distribution(xs, ys, trans.Dinv)
 
-    def __getattr__(self, name):
-        return getattr(self.kde, name)
+    def cdf(self, points, output=None):
+        """
+        Evaluate the CDF on a set of points
+        """
+        pts = self.trans(points)
+        return self.kde.cdf(pts, output)
 
-    def __setattr__(self, name, value):
-        return setattr(self.kde, name, value)
+    def cdf_grid(self, N=None, cut=None):
+        """
+        Implementation of :py:meth:`KDE1D.cdf_grid`
+        """
+        xs, ys = self.kde.cdf_grid(N, cut)
+        return self.trans.inv(xs), ys
+
+    def sf(self, points, output=None):
+        """
+        Implementation of :py:meth:`KDE1D.sf`
+        """
+        trans = self.trans
+        pts = trans(points)
+        return self.kde.sf(pts, output)
+
+    def icdf(self, points, output=None):
+        """
+        Implementation of :py:meth:`KDE1D.icdf`
+        """
+        return _kde_icdf(self, points, output)
+
+    def icdf_grid(self, N=None, cut=None):
+        """
+        Implementation of :py:meth:`KDE1D.icdf_grid`
+        """
+        return _kde_icdf_grid(self, N, cut)
+

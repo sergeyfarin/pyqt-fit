@@ -96,6 +96,9 @@ class TestUnboundedKDE1D(object):
         assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_ws_normed(self):
+        """
+        Test with weigths
+        """
         for i in irange(len(self.sizes)):
             yield self.is_ws_normed, i
 
@@ -111,6 +114,9 @@ class TestUnboundedKDE1D(object):
         assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_ls_normed(self):
+        """
+        Test with lambdas
+        """
         for i in irange(len(self.sizes)):
             yield self.is_ls_normed, i
 
@@ -155,7 +161,7 @@ class TestLCKDE1D(TestUnboundedKDE1D):
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method=kde_methods.linear_combination)
         cls.grid_accuracy = 1e-4
-        cls.accuracy = 1e-5
+        cls.accuracy = 1e-4
 
     def test_normed(self):
         pass # Skip this one as we don't expect the result to be normed

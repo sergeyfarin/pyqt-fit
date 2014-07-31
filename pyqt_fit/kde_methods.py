@@ -1,8 +1,32 @@
-"""
+r"""
 :Author: Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>
 
 This module contains a set of methods to compute univariate KDEs. See the objects in the :py:mod:`pyqt_fit.kde` module 
 for more details on these methods.
+
+The definitions of the methods rely on the following definitions:
+
+.. math::
+
+   \begin{array}{rclc|crcl}
+     a_0(l,u) &=& \int_l^u K(z) dz &\quad&\quad& z &=& \frac{x-X}{h} \\
+     a_1(l,u) &=& \int_l^u zK(z) dz &\quad&\quad& l &=& \frac{L-X}{h} \\
+     a_2(l,u) &=& \int_l^u z^2K(z) dz &\quad&\quad& u &=& \frac{U-X}{h}
+   \end{array}
+
+where :math:`x` is the point where the distribution is evaluated, :math:`X` is the vector of data points the 
+distribution is evaluated from and :math:`(L,U)` are the bounds of the distribution's domain (may be infinite).
+
+These definitions correspond to:
+
+- :math:`a_0(l,u)` -- The cumulative distribution function
+- :math:`a_1(l,u)` -- The first moment of the distribution. In particular, :math:`a_1(-\infty, \infty)` is the mean of 
+  the kernel (i.e. and should be 0).
+- :math:`a_2(l,u)` -- The second moment of the distribution. In particular, :math:`a_2(-\infty, \infty)` is the variance 
+  of the kernel (i.e. which should be close to 1, unless using higher order kernel).
+- :math:`z` -- The position of the points in the reference system of the kernel.
+- :math:`l` -- The position of the lower bound of the distribution domain, in the reference system of the kernel
+- :math:`u` -- The position of the upper bound of the distribution domain, in the reference system of the kernel
 
 References:
 ```````````
@@ -38,7 +62,7 @@ def generate_grid(kde, N=None, cut=None):
         upper = np.max(kde.xdata) + cut * kde.bandwidth
     else:
         upper = kde.upper
-    return np.r_[lower:upper:N * 1j]
+    return np.linspace(lower, upper, N)
 
 class KDE1DMethod(object):
     """
@@ -200,8 +224,9 @@ class RenormalizationMethod(KDE1DMethod):
 
     .. math::
 
-        \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0\left(\frac{L-x}{h},
-        \frac{U-x}{h}\right)} K\left(\frac{x-X}{h}\right)
+        \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0(l,u)} K(z)
+
+    See the :py:mod:`pyqt_fit.kde_methods` for a description of the various symbols.
     """
 
     name = 'renormalization'
@@ -270,9 +295,11 @@ class ReflectionMethod(KDE1DMethod):
 
     .. math::
 
-        \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right)
+        \hat{K}(x; X, h, L, U) \triangleq K(z)
         + K\left(\frac{x+X-2L}{h}\right)
         + K\left(\frac{x+X-2U}{h}\right)
+
+    See the :py:mod:`pyqt_fit.kde_methods` for a description of the various symbols.
 
     When computing grids, if the bandwidth is constant, the result is
     computing using CDT.
@@ -398,13 +425,9 @@ class ReflectionMethod(KDE1DMethod):
         DataHist = DataHist / kde.total_weights
         DCTData = fftpack.dct(DataHist, norm=None)
 
-        if hasattr(kde.kernel, 'dct'):
-            t_star = bw / R
-            gp = np.arange(N) * np.pi * t_star
-            smth = kde.kernel.dct(gp)
-        else:
-            gp = (np.arange(N) + 0.5) * R / N
-            smth = fftpack.dct(kde.kernel(gp / bw) * (gp[1] - gp[0]) / bw)
+        t_star = bw / R
+        gp = np.arange(N) * np.pi * t_star
+        smth = kde.kernel.dct(gp)
 
         # Smooth the DCTransformed data using t_star
         SmDCTData = DCTData * smth
@@ -424,10 +447,10 @@ class LinearCombinationMethod(KDE1DMethod):
 
     .. math::
 
-        K_r(x;X,h,L,U) = \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u)
+        \hat{K}(x;X,h,L,U) \triangleq \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u)
         - a_1(-u,-l)^2} K(z)
 
-        z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
+    See the :py:mod:`pyqt_fit.kde_methods` for a description of the various symbols.
     """
 
     name = 'linear combination'
@@ -469,6 +492,14 @@ class LinearCombinationMethod(KDE1DMethod):
             return KDE1DMethod.unbounded_cdf(kde, points, output)
         return KDE1DMethod.numeric_cdf(kde, points, output)
 
+    @staticmethod
+    def cdf_grid(kde, N=None, cut=None):
+        if N is None:
+            N = 2**10
+        if not kde.bounded or N < 2**10:
+            return KDE1DMethod.default_cdf_grid(kde, N, cut)
+        return KDE1DMethod.numeric_cdf_grid(kde, N, cut)
+
 linear_combination = LinearCombinationMethod()
 
 class CyclicMethod(KDE1DMethod):
@@ -480,9 +511,11 @@ class CyclicMethod(KDE1DMethod):
 
     .. math::
 
-        \hat{K}(x; X, h, L, U) = K\left(\frac{x-X}{h}\right)
-        + K\left(\frac{x-X-(U-L)}{h}\right)
-        + K\left(\frac{x-X+(U-L)}{h}\right)
+        \hat{K}(x; X, h, L, U) \triangleq K(z)
+        + K\left(z - \frac{U-L}{h}\right)
+        + K\left(z + \frac{U-L}{h}\right)
+
+    See the :py:mod:`pyqt_fit.kde_methods` for a description of the various symbols.
 
     When computing grids, if the bandwidth is constant, the result is
     computing using FFT.
@@ -593,13 +626,11 @@ class CyclicMethod(KDE1DMethod):
         DataHist[0] += DataHist[-1]
         DataHist = DataHist / kde.total_weights
         FFTData = fftpack.fft(DataHist[:-1])
-        if hasattr(kde.kernel, 'fft'):
-            t_star = (2 * bw / R)
-            gp = np.roll((np.arange(N) - N / 2) * np.pi * t_star, N // 2)
-            smth = kde.kernel.fft(gp)
-        else:
-            gp = np.roll((np.arange(N) - N / 2) * R / N, N // 2)
-            smth = fftpack.fft(kde.kernel(gp / bw) * (gp[1] - gp[0]) / bw)
+
+        t_star = (2 * bw / R)
+        gp = np.roll((np.arange(N) - N / 2) * np.pi * t_star, N // 2)
+        smth = kde.kernel.fft(gp)
+
         SmoothFFTData = FFTData * smth
         density = fftpack.ifft(SmoothFFTData) / (mesh[1] - mesh[0])
         return mesh[:-2], density.real

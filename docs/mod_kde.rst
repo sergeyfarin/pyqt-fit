@@ -7,7 +7,10 @@ Kernel Density Estimation Methods
 ---------------------------------
 
 .. autoclass:: KDE1D
-    :members: bandwidth, closed, copy, covariance, evaluate, grid, kernel, lambdas, lower, method, total_weights, update_bandwidth, upper, weights, xdata, __call__
+    :members: bandwidth, closed, copy, covariance, evaluate, grid, kernel,
+              cdf, cdf_grid, sf, hazard, cumhazard, icdf, icdf_grid,
+              lambdas, lower, method, total_weights, update_bandwidth, upper,
+              weights, xdata, __call__
 
 Estimation in a Different Domain
 ````````````````````````````````

@@ -3,6 +3,15 @@ Module :py:mod:`pyqt_fit.kernels`
 
 .. automodule:: pyqt_fit.kernels
 
+
+Helper class
+------------
+
+This class is provided with default implementations of everything in term of the PDF.
+
+.. autoclass:: Kernel
+    :members: pdf, cdf, dct, fft, pm1, pm2
+
 Gaussian Kernels
 ----------------
 

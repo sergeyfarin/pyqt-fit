@@ -1,6 +1,16 @@
+r"""
+:Author: Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>
+
+Module providing a set of kernels for use with either the :py:mod:`pyqt_fit.kde` or the :py:mod:`kernel_smoothing` 
+module.
+
+Kernels should be created following this template:
+
+"""
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special import erf
+from scipy import fftpack
 
 from .cyth import HAS_CYTHON
 
@@ -39,8 +49,88 @@ S2PI = np.sqrt(2 * np.pi)
 
 S2 = np.sqrt(2)
 
+class Kernel1D(object):
+    r"""
+    A 1D kernel :math:`K(z)` is a function with the following properties:
 
-class normal_kernel1d(object):
+    .. math::
+
+        \begin{array}{rcl}
+        \int_\mathbb{R} K(z) &=& 1 \\
+        \int_\mathbb{R} zK(z)dz &=& 0 \\
+        \int_\mathbb{R} z^2K(z) dz &<& \infty \quad (\approx 1)
+        \end{array}
+
+    Which translates into the function should have:
+
+    - a sum of 1 (i.e. a valid density of probability);
+    - an average of 0 (i.e. centered);
+    - a finite variance. It is even recommanded that the variance is close to 1 to give a uniform meaning to the 
+      bandwidth.
+    """
+
+    def pdf(self, z, out=None):
+        r"""
+        Returns the density of the kernel on the points `z`. This is the funtion :math:`K(z)` itself.
+
+        :param ndarray z: Array of points to evaluate the function on. The method should accept any shape of array.
+        :param ndarray out: If provided, it will be of the same shape as `z` and the result should be stored in it.
+            Ideally, it should be used for as many intermediate computation as possible.
+        """
+        raise NotImplementedError()
+
+    def cdf(self, z, out=None):
+        r"""
+        Returns the cumulative density function on the points `z`, i.e.:
+
+        .. math::
+
+            K_0(z) = \int_{-\infty}^z K(t) dt
+        """
+        raise NotImplementedError()
+
+    __call__ = pdf
+
+    def pm1(self, z, out=None):
+        r"""
+        Returns the first moment of the density function, i.e.:
+
+        .. math::
+
+            K_1(z) = \int_{-\infty}^z z K(t) dt
+        """
+        raise NotImplementedError()
+
+    def pm2(self, z, out=None):
+        r"""
+        Returns the second moment of the density function, i.e.:
+
+        .. math::
+
+            K_2(z) = \int_{-\infty}^z z^2 K(t) dt
+        """
+        raise NotImplementedError()
+
+    def fft(self, z, out=None):
+        """
+        FFT of the kernel on the points of ``z``. The points will always be provided as a grid with :math:`2^n` points, 
+        representing the whole frequency range to be explored. For convenience, the second half of the points will be 
+        provided as negative values.
+        """
+        t_star = 2*np.pi/(z[1]-z[0])**2 / len(z)
+        dz = t_star * (z[1] - z[0])
+        return fftpack.fft(self(z * t_star) * dz).real
+
+    def dct(self, z, out=None):
+        r"""
+        DCT of the kernel on the points of ``z``. The points will always be provided as a grid with :math:`2^n` points, 
+        representing the whole frequency range to be explored.
+        """
+        a1 = z[1] - z[0]
+        gp = (z / a1 + 0.5) * np.pi / (len(z) * a1)
+        return fftpack.dct(self(gp) * (gp[1] - gp[0])).real
+
+class normal_kernel1d(Kernel1D):
     """
     1D normal density kernel with extra integrals for 1D bounded kernel estimation.
     """
@@ -202,7 +292,7 @@ class normal_kernel(object):
     __call__ = pdf
 
 
-class tricube(object):
+class tricube(Kernel1D):
     r"""
     Return the kernel corresponding to a tri-cube distribution, whose expression is.
     The tri-cube function is given by:
@@ -277,7 +367,7 @@ class tricube(object):
         return kernels_imp.tricube_pm2(z, out)
 
 
-class Epanechnikov(object):
+class Epanechnikov(Kernel1D):
     r"""
     1D Epanechnikov density kernel with extra integrals for 1D bounded kernel estimation.
     """
@@ -347,7 +437,7 @@ class Epanechnikov(object):
         return kernels_imp.epanechnikov_pm2(xs, out)
 
 
-class Epanechnikov_order4(object):
+class Epanechnikov_order4(Kernel1D):
     r"""
     Order 4 Epanechnikov kernel. That is:
 
@@ -371,7 +461,7 @@ class Epanechnikov_order4(object):
         return kernels_imp.epanechnikov_o4_pm2(xs, out)
 
 
-class normal_order4(object):
+class normal_order4(Kernel1D):
     r"""
     Order 4 Normal kernel. That is:
 
@@ -397,3 +487,68 @@ class normal_order4(object):
 
 kernels1D = [normal_kernel1d, tricube, Epanechnikov, Epanechnikov_order4, normal_order4]
 kernelsnD = [normal_kernel]
+
+"""
+.. py:class:: Kernel
+
+
+    .. py:method:: pdf(self, z, out=None)
+
+        Returns the density of the kernel on the points `z`. This is the funtion :math:`K(z)` itself.
+
+        :param ndarray z: Array of points to evaluate the function on. The method should accept any shape of array.
+        :param ndarray out: If provided, it will be of the same shape as `z` and the result should be stored in it.
+            Ideally, it should be used for as many intermediate computation as possible.
+
+        .. note::
+
+            This is the only function that really needs to be implemented. Although the others will be required for an 
+            acceptable execution time.
+
+    .. py:method:: __call__(self, z, out=None)
+
+        Alias for the :py:meth:`pdf` method.
+
+    .. py:method:: cdf(self, z, out=None)
+
+        Returns the cumulative density function on the points `z`, i.e.:
+
+        .. math::
+
+            K_0(z) = \int_{-\infty}^z K(t) dt
+
+    .. py:method:: pm1(self, z, out=None)
+
+        Returns the first moment of the density function, i.e.:
+
+        .. math::
+
+            K_1(z) = \int_{-\infty}^z z K(t) dt
+
+    .. py:method:: pm2(self, z, out=None)
+
+        Returns the second moment of the density function, i.e.:
+
+        .. math::
+
+            K_2(z) = \int_{-\infty}^z z^2 K(t) dt
+
+    .. py:method:: fft(self, z, out=None)
+
+        FFT of the kernel on the points of ``z``. The points will always be provided as a grid with :math:`2^n` points, 
+        representing the whole frequency range to be explored. For convenience, the second half of the points will be 
+        provided as negative values.
+
+        .. note::
+
+            This method is optional. If note provided, the FFT will be computed using ``fftpack``.
+
+    .. py:method:: dct(self, z, out=None)
+
+        DCT of the kernel on the points of ``z``. The points will always be provided as a grid with :math:`2^n` points, 
+        representing the whole frequency range to be explored.
+
+        .. note::
+
+            This method is optional. If note provided, the DCT will be computed using ``fftpack``.
+"""

@@ -14,9 +14,11 @@ class TestUnboundedCDF(object):
         cls.dist = stats.lognorm(1)
         cls.sizes = np.r_[1000:5000:5j]
         cls.args = {}
-        cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
-        cls.vs = [ v[v < 20] for v in cls.vs]
+        cls.vs = [ cls.dist.rvs(s) for s in cls.sizes ]
+        cls.vs = [ v[v < 20] for v in cls.vs ]
         cls.xs = np.r_[0:20:1024j]
+        cls.weights = [ cls.dist.pdf(v) for v in cls.vs ]
+        cls.lambdas = [ 1 - ws for ws in cls.weights ]
         cls.accuracy = 1e-4
 
     def createKDE(self, data, **args):
@@ -24,8 +26,8 @@ class TestUnboundedCDF(object):
         all_args.update(args)
         return kde.KDE1D(data, **all_args)
 
-    def is_normed(self, i):
-        k = self.createKDE(self.vs[i])
+    def is_normed(self, i, **args):
+        k = self.createKDE(self.vs[i], **args)
         tot = float(k.cdf(k.upper))
         assert abs(tot - 1) < self.accuracy, "Error, k.cdf({0}) = {1} should be close to 1".format(k.upper, tot)
 
@@ -67,6 +69,19 @@ class TestUnboundedCDF(object):
         for i in irange(len(self.sizes)):
             yield self.same_numeric, i
 
+    def is_weights_normed(self, i):
+        return self.is_normed(i, weights = self.weights[i])
+
+    def test_weights_normed(self):
+        for i in irange(len(self.sizes)):
+            yield self.is_weights_normed, i
+
+    def is_lambdas_normed(self, i):
+        return self.is_normed(i, lambdas = self.lambdas[i])
+
+    def test_lambdas_normed(self):
+        for i in irange(len(self.sizes)):
+            yield self.is_lambdas_normed, i
 
 class TestReflectionCDF(TestUnboundedCDF):
     @classmethod
@@ -97,8 +112,4 @@ class TestLCCDF(TestUnboundedCDF):
     def setUpClass(cls):
         TestUnboundedCDF.setUpClass()
         cls.args = dict(lower=0, upper=20, method=kde_methods.linear_combination)
-        cls.accuracy = 1e-2 # This method makes large approximation on boundaries
-
-    def test_normed(self):
-        pass # Skip this one as we don't expect the result to be normed
-
+        cls.accuracy = 1e-1 # This method makes large approximation on boundaries
