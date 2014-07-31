@@ -115,7 +115,7 @@ class TestUnboundedKDE1D(object):
             yield self.is_ls_normed, i
 
 
-class TestReflexionKDE1D(TestUnboundedKDE1D):
+class TestReflectionKDE1D(TestUnboundedKDE1D):
     @classmethod
     def setUpClass(cls):
         cls.dist = stats.norm(0, 1)
@@ -136,7 +136,6 @@ class TestCyclicKDE1D(TestUnboundedKDE1D):
         cls.grid_accuracy = 1e-5
         cls.accuracy = 1e-3
 
-
 class TestRenormKDE1D(TestUnboundedKDE1D):
     @classmethod
     def setUpClass(cls):
@@ -145,7 +144,7 @@ class TestRenormKDE1D(TestUnboundedKDE1D):
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method=kde_methods.renormalization)
         cls.grid_accuracy = 1e-4
-        cls.accuracy = 1e-3
+        cls.accuracy = 1e-5
 
 
 class TestLCKDE1D(TestUnboundedKDE1D):
@@ -156,4 +155,10 @@ class TestLCKDE1D(TestUnboundedKDE1D):
         cls.vs = [cls.dist.rvs(s) for s in cls.sizes]
         cls.args = dict(lower=-5, upper=5, method=kde_methods.linear_combination)
         cls.grid_accuracy = 1e-4
-        cls.accuracy = 1e-3
+        cls.accuracy = 1e-5
+
+    def test_normed(self):
+        pass # Skip this one as we don't expect the result to be normed
+
+    def test_ls_normed(self):
+        pass # Skip this one as we don't expect the result to be normed

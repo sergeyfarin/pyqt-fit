@@ -71,7 +71,9 @@ class KDE1DMethod(object):
     @staticmethod
     def unbounded_cdf(kde, points, output=None):
         """
-        Compute the cdf in case the domain is fully unbounded
+        Compute the cdf in case the domain is fully unbounded.
+
+        This function rely on the `kernel.cdf` method.
         """
         xdata = kde.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
@@ -91,6 +93,9 @@ class KDE1DMethod(object):
 
     @staticmethod
     def numeric_cdf(kde, points, output=None):
+        """
+        Provide a numeric approximation of the cdf based on integrating the pdf using :py:func:`scipy.integrate.quad`.
+        """
         pts = np.atleast_1d(np.array(points, dtype=float))
         pts_shape = pts.shape
         pts = pts.ravel()
@@ -104,7 +109,7 @@ class KDE1DMethod(object):
 
         start = 0.0
         if sp[0] > kde.lower:
-            start = integrate.quad(kde, kde.lower, sp[0])
+            start = integrate.quad(kde, kde.lower, sp[0])[0]
 
         parts = np.empty(sp.shape, dtype=float)
         parts[0] = start
@@ -117,6 +122,26 @@ class KDE1DMethod(object):
 
         output.put(ix, ints)
         return output
+
+    @staticmethod
+    def numeric_cdf_grid(kde, N=None, cut=None):
+        """
+        Compute the cdf on a grid using a trivial, but fast, numeric integration.
+
+        Will return N+1 points over the whole domain.
+        """
+        if N is None:
+            N = 2**10
+        pts, pdf = kde.grid(N, cut)
+        cdf_pts = (pts[1:] + pts[:-1]) / 2
+        dx = pts[1] - pts[0]
+        low_cdf = pts[0] - dx/2 if kde.lower == -np.inf else kde.lower
+        high_cdf = pts[-1] + dx/2 if kde.upper == np.inf else kde.upper
+        cdf_pts = np.r_[low_cdf, cdf_pts, high_cdf]
+        cdf = np.empty(cdf_pts.shape, dtype=float)
+        cdf[1:] = (pdf * (cdf_pts[1:] - cdf_pts[:-1])).cumsum()
+        cdf[0] = 0.0
+        return cdf_pts, cdf
 
     __call__ = unbounded
 
@@ -191,8 +216,8 @@ class RenormalizationMethod(KDE1DMethod):
 
         bw = kde.bandwidth * kde.lambdas
 
-        l = (kde.lower - points) / bw
-        u = (kde.upper - points) / bw
+        l = (kde.lower - xdata) / bw
+        u = (kde.upper - xdata) / bw
         z = (points - xdata) / bw
 
         kernel = kde.kernel
@@ -210,7 +235,29 @@ class RenormalizationMethod(KDE1DMethod):
     def cdf(kde, points, output=None):
         if not kde.bounded:
             return KDE1DMethod.unbounded_cdf(kde, points, output)
-        return KDE1DMethod.numeric_cdf(kde, points, output)
+
+        xdata = kde.xdata
+        points = np.atleast_1d(points)[:, np.newaxis]
+
+        bw = kde.bandwidth * kde.lambdas
+
+        l = (kde.lower - xdata) / bw
+        u = (kde.upper - xdata) / bw
+        z = (points - xdata) / bw
+
+        kernel = kde.kernel
+
+        cl = kernel.cdf(l)
+        cu = kernel.cdf(u)
+        a1 = (cu - cl)
+
+        terms = (kernel.cdf(z) - cl) * (kde.weights / a1)
+
+        output = terms.sum(axis=1, out=output)
+        output /= kde.total_weights
+
+        return output
+
 
 renormalization = RenormalizationMethod()
 
@@ -276,7 +323,43 @@ class ReflectionMethod(KDE1DMethod):
     def cdf(kde, points, output=None):
         if not kde.bounded:
             return KDE1DMethod.unbounded_cdf(kde, points, output)
-        return KDE1DMethod.numeric_cdf(kde, points, output)
+
+        xdata = kde.xdata
+        points = np.atleast_1d(points)[:, np.newaxis]
+
+        # Make sure points are between the bounds, with reflection if needed
+        if any(points < kde.lower) or any(points > kde.upper):
+            span = kde.upper - kde.lower
+            points = points - (kde.lower + span)
+            points %= 2*span
+            points -= kde.lower + span
+            points = np.abs(points)
+
+        bw = kde.bandwidth * kde.lambdas
+
+        z = (points - xdata) / bw
+        z1 = (points + xdata) / bw
+        L = kde.lower
+        U = kde.upper
+
+        kernel = kde.kernel
+
+        terms = kernel.cdf(z)
+
+        if L > -np.inf:
+            terms -= kernel.cdf((L - xdata) / bw) # Remove the truncated part on the left
+            terms += kernel.cdf(z1 - (2 * L / bw)) # Add the reflected part
+            terms -= kernel.cdf((xdata - L) / bw) # Remove the truncated part from the reflection
+
+        if U < np.inf:
+            terms += kernel.cdf(z1 - (2 * U / bw)) # Add the reflected part
+
+        terms *= kde.weights
+        output = terms.sum(axis=1, out=output)
+        output /= kde.total_weights
+
+        return output
+
 
     def grid(self, kde, N=None, cut=None):
         """
@@ -428,15 +511,55 @@ class CyclicMethod(KDE1DMethod):
         L = kde.lower
         U = kde.upper
 
-        span = U - L
+        span = (U - L) / bw
 
         kernel = kde.kernel
 
         terms = kernel(z)
-        terms += kernel(z - (span / bw))
-        terms += kernel(z + (span / bw))
+        terms += kernel(z + span) # Add points to the left
+        terms += kernel(z - span) # Add points to the right
 
         terms *= kde.weights / bw
+        output = terms.sum(axis=1, out=output)
+        output /= kde.total_weights
+
+        return output
+
+
+    @staticmethod
+    def cdf(kde, points, output=None):
+        if not kde.closed:
+            raise ValueError("Cyclic boundary conditions can only be used with "
+                             "closed domains.")
+
+        xdata = kde.xdata
+        points = np.atleast_1d(points)[:, np.newaxis]
+
+        # Make sure points are between the bounds
+        if any(points < kde.lower) or any(points > kde.upper):
+            points = points - kde.lower
+            points %= kde.upper - kde.lower
+            points += kde.lower
+
+        bw = kde.bandwidth * kde.lambdas
+
+        z = (points - xdata) / bw
+        L = kde.lower
+        U = kde.upper
+
+        span = (U - L) / bw
+
+        kernel = kde.kernel
+
+        terms = kernel.cdf(z)
+        terms -= kernel.cdf((L - xdata) / bw) # Remove the parts left of the lower bound
+
+        terms += kernel.cdf(z + span) # Repeat on the left
+        terms -= kernel.cdf((L - xdata) / bw + span) # Remove parts left of lower bounds
+
+        terms += kernel.cdf(z - span) # Repeat on the right
+
+        terms *= kde.weights
         output = terms.sum(axis=1, out=output)
         output /= kde.total_weights
 
@@ -480,13 +603,6 @@ class CyclicMethod(KDE1DMethod):
         SmoothFFTData = FFTData * smth
         density = fftpack.ifft(SmoothFFTData) / (mesh[1] - mesh[0])
         return mesh[:-2], density.real
-
-    @staticmethod
-    def cdf(kde, points, output=None):
-        if not kde.closed:
-            raise ValueError("Error, cyclic boundary conditions require "
-                             "a closed domain.")
-        return KDE1DMethod.numeric_cdf(kde, points, output)
 
 cyclic = CyclicMethod()
 
