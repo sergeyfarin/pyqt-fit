@@ -2,6 +2,7 @@ from __future__ import division, absolute_import, print_function
 
 from .. import kde
 from .. import kde_methods
+from .. import kernels
 import numpy as np
 from numpy import newaxis
 from numpy.random import randn
@@ -42,97 +43,127 @@ class TestBandwidth(object):
         assert sum((rati - self.ratios)**2) < 1e-6
 
 
-class TestUnboundedKDE1D(object):
+class TestKDE1D(kde_utils.KDETester):
     @classmethod
     def setUpClass(cls):
         kde_utils.setupClass_norm(cls)
 
-    def createKDE(self, data, **args):
-        return kde.KDE1D(data, **args)
+    def createKDE(self, data, method, **args):
+        all_args = dict(self.args)
+        all_args.update(args)
+        k = kde.KDE1D(data, **all_args)
+        if method.cls is None:
+            del k.method
+        else:
+            k.method = method.cls()
+        if method.bounded:
+            k.lower = self.lower
+            k.upper = self.upper
+        else:
+            del k.lower
+            del k.upper
+        assert k.fitted is False
+        return k
 
     #def test_converge(self):
         #xs = np.r_[-3:3:512j]
         #ys = self.dist.pdf(xs)
         #ks = [ self.createKDE(v, **self.args) for v in self.vs ]
 
-    def is_normed(self, i):
-        k = self.createKDE(self.vs[i], **self.args)
-        xs, ys = k.grid(2048)
+    def method_works(self, i, method):
+        k = self.createKDE(self.vs[i], method, **self.args)
+        k.fit()
+        xs = kde_methods.generate_grid(k, 2048)
+        ys = k(xs)
         tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
 
-    def is_grid_normed(self, i):
-        k = self.createKDE(self.vs[i], **self.args)
-        xs, ys = k.grid(2048)
+    def grid_method_works(self, i, method):
+        k = self.createKDE(self.vs[i], method, **self.args)
+        xs, ys = k.grid(2**10)
         tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < method.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
-    def test_normed(self):
-        for i in irange(len(self.sizes)):
-            yield self.is_normed, i
-
-    def test_grid_normed(self):
-        for i in irange(len(self.sizes)):
-            yield self.is_grid_normed, i
-
-    def is_weights_normed(self, i):
+    def weights_method_works(self, i, method):
         weights = self.weights[i]
-        k = self.createKDE(self.vs[i], weights=weights, **self.args)
-        xs, ys = k.grid(2048)
+        k = self.createKDE(self.vs[i], method, weights=weights, **self.args)
+        k.fit()
+        xs = kde_methods.generate_grid(k, 2048)
+        ys = k(xs)
         tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
+        del k.weights
+        k.fit()
+        assert k.total_weights == len(self.vs[i])
 
-    def is_weights_grid_normed(self, i):
+    def weights_grid_method_works(self, i, method):
         weights = self.weights[i]
-        k = self.createKDE(self.vs[i], weights=weights, **self.args)
+        k = self.createKDE(self.vs[i], method, weights=weights, **self.args)
         xs, ys = k.grid(2048)
         tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < self.grid_accuracy, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < method.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
-    def test_weights_normed(self):
-        """
-        Test with weights
-        """
-        for i in irange(len(self.sizes)):
-            yield self.is_weights_normed, i
-
-    def test_weights_grid_normed(self):
-        for i in irange(len(self.sizes)):
-            yield self.is_weights_grid_normed, i
-
-    def is_lambdas_normed(self, i):
+    def lambdas_method_works(self, i, method):
         lambdas = self.lambdas[i]
-        k = self.createKDE(self.vs[i], lambdas=lambdas, **self.args)
+        k = self.createKDE(self.vs[i], method, lambdas=lambdas, **self.args)
+        k.fit()
+        xs = kde_methods.generate_grid(k, 2048)
+        ys = k(xs)
+        tot = integrate.simps(ys, xs)
+        assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
+        del k.lambdas
+        k.fit()
+        assert k.lambdas == 1
+
+    def lambdas_grid_method_works(self, i, method):
+        lambdas = self.lambdas[i]
+        k = self.createKDE(self.vs[i], method, lambdas=lambdas, **self.args)
         xs, ys = k.grid(2048)
         tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < self.accuracy, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
 
-    def test_lambdas_normed(self):
-        """
-        Test with lambdas
-        """
-        for i in irange(len(self.sizes)):
-            yield self.is_lambdas_normed, i
+    def test_copy(self):
+        k = self.createKDE(self.vs[0], kde_utils.methods[0])
+        k.covariance = kde.silverman_covariance
+        xs = np.r_[-3:3:512j]
+        ys = k(xs)
+        k1 = k.copy()
+        ys1 = k1(xs)
+        np.testing.assert_allclose(ys1, ys, 1e-8, 1e-8)
 
+    def test_bandwidths(self):
+        k = self.createKDE(self.vs[0], kde_utils.methods[0])
+        k.covariance = kde.silverman_covariance
+        assert k.fitted is not None
+        k.fit()
+        k.covariance = 0.01
+        assert k.fitted is not None
+        k.fit()
+        np.testing.assert_almost_equal(k.bandwidth, 0.1)
+        k.bandwidth = 0.1
+        assert k.fitted is not None
+        k.fit()
+        np.testing.assert_almost_equal(k.covariance, 0.01)
+        k.bandwidth = kde.botev_bandwidth()
+        assert k.fitted is not None
+        k.fit()
 
-class ToTestBoundedKDE1D(TestUnboundedKDE1D):
-    @classmethod
-    def mainSetup(cls):
-        kde_utils.setupClass_norm(cls)
-        cls.args = dict(lower=-5, upper=5, method=cls.method())
+    def kernel_works(self, ker):
+        method = kde_utils.methods[0]
+        k = self.createKDE(self.vs[1], method)
+        k.kernel = ker.cls()
+        k.fit()
+        xs = kde_methods.generate_grid(k, 2048)
+        ys = k(xs)
+        tot = integrate.simps(ys, xs)
+        acc = method.grid_accuracy * ker.precision_factor
+        assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
-
-for met in kde_utils.methods:
-    cls_name = 'Test{}KDE1D'.format(met.cls.name.replace(' ', '_'))
-    template = r"""
-class {0}(ToTestBoundedKDE1D):
-    @classmethod
-    def setUpClass(cls):
-        cls.mainSetup()
-        cls.accuracy = {1}
-        cls.grid_accuracy = {2}
-""".format(cls_name, met.accuracy, met.grid_accuracy)
-    exec(template, globals())
-    cls = globals()[cls_name]
-    setattr(cls, 'method', met.cls)
+    def grid_kernel_works(self, ker):
+        method = kde_utils.methods[0]
+        k = self.createKDE(self.vs[1], method)
+        xs, ys = k.grid()
+        tot = integrate.simps(ys, xs)
+        acc = method.grid_accuracy * ker.precision_factor
+        assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 

@@ -224,18 +224,26 @@ def normal_o4_pdf(object z, object out = None):
     return vectorize(z, out, _normal_o4_pdf)
 
 cdef float64_t _normal_o4_cdf(float64_t z):
+    if not isfinite(z):
+        if z < 0:
+            return 0
+        return 1
     return _norm1d_cdf(z)+z*_norm1d_pdf(z)/2
 
 def normal_o4_cdf(object z, object out = None):
     return vectorize(z, out, _normal_o4_cdf)
 
 cdef float64_t _normal_o4_pm1(float64_t z):
+    if not isfinite(z):
+        return 0.0
     return _norm1d_pdf(z) - _normal_o4_pdf(z)
 
 def normal_o4_pm1(object z, object out = None):
     return vectorize(z, out, _normal_o4_pm1)
 
 cdef float64_t _normal_o4_pm2(float64_t z):
+    if not isfinite(z):
+        return 0.0
     return z*z*z/2*_norm1d_pdf(z)
 
 def normal_o4_pm2(object z, object out = None):

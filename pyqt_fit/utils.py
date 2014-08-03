@@ -23,6 +23,16 @@ else:
 def finite(val):
     return val is not None and np.isfinite(val)
 
+def make_ufunc(nin, nout=1):
+    """
+    Create a ufunc using `np.frompyfunc`. Note that the returns array will 
+    always be of object dtype. You should use the `out` if you know the wanted 
+    type of the outputs.
+    """
+    def f(fct):
+        return np.frompyfunc(fct, nin, nout)
+    return f
+
 def namedtuple(typename, field_names, verbose=False, rename=False):
     """Returns a new subclass of tuple with named fields.
 

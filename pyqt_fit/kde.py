@@ -12,43 +12,6 @@ from . import kde_methods
 from .kde_bandwidth import variance_bandwidth, silverman_covariance, scotts_covariance, botev_bandwidth
 from scipy import stats, optimize
 
-
-def _kde_icdf(kde, points, output=None):
-    """
-    Compute the inverse cumulative distribution (quantile) function
-    """
-    xs, ys = kde.cdf_grid()
-    coarse_result = np.interp(points, ys, xs, kde.lower, kde.upper)
-    def find_inverse(p, approx):
-        if approx >= xs[-1] or approx <= xs[0]:
-            return approx
-        def f(x):
-            return kde.cdf(x) - p
-        val = f(approx)
-        idx = np.searchsorted(xs, approx)
-        if val > 0:
-            high = approx
-            low = xs[idx-1]
-        else:
-            low = approx
-            high = xs[idx]
-        return optimize.brentq(f, low, high)
-    fct = np.vectorize(find_inverse, [points.dtype])
-    return fct(points, coarse_result)
-
-
-def _kde_icdf_grid(kde, N=None, cut=None):
-    """
-    Compute the inverse cumulative distribution (quantile) function on a grid.
-    """
-    if N is None:
-        N = 2**10
-    xs, ys = kde.cdf_grid(4*N, cut)
-    vals = np.linspace(0, 1, N)
-    icdf = np.interp(vals, ys, xs, kde.lower, kde.upper)
-    return vals, icdf
-
-
 class KDE1D(object):
     r"""
     Perform a kernel based density estimation in 1D, possibly on a bounded
@@ -111,7 +74,7 @@ class KDE1D(object):
         self.weights = 1.
         self.lambdas = 1.
 
-        self._initialized = False
+        self._fitted = False
 
         for n in kwords:
             setattr(self, n, kwords[n])
@@ -126,12 +89,25 @@ class KDE1D(object):
         if self._method is None:
             self.method = kde_methods.renormalization
 
-        self._initialized = True
-        self.update_bandwidth()
-
     @property
-    def initialized(self):
-        return self._initialized
+    def fitted(self):
+        """
+        Test if the fitting has been done
+        """
+        return self._fitted
+
+    def fit_if_needed(self):
+        """
+        Fit only if needed (testing self.fitted)
+        """
+        if not self._fitted:
+            self.fit()
+
+    def need_fit(self):
+        """
+        Calling this function will require a fitting before the next use
+        """
+        self._fitter = False
 
     def copy(self):
         """
@@ -144,12 +120,10 @@ class KDE1D(object):
                 setattr(res, m, getattr(self, m))
         return res
 
-    def update_bandwidth(self):
+    def fit(self):
         """
         Re-compute the bandwidth if it was specified as a function.
         """
-        if self._xdata is None or not self.initialized:
-            return
         if self._bw_fct:
             _bw = float(self._bw_fct(self._xdata, model=self))
             _cov = _bw * _bw
@@ -160,6 +134,12 @@ class KDE1D(object):
             return
         self._covariance = _cov
         self._bw = _bw
+        if self._weights.shape:
+            assert self._weights.shape == self._xdata.shape, \
+                "There must be as many weights as data points"
+            self._total_weights = sum(self._weights)
+        else:
+            self._total_weights = len(self._xdata)
 
     @property
     def xdata(self):
@@ -167,8 +147,8 @@ class KDE1D(object):
 
     @xdata.setter
     def xdata(self, xs):
+        self.need_fit()
         self._xdata = np.atleast_1d(xs)
-        self.update_bandwidth()
 
     @property
     def kernel(self):
@@ -181,6 +161,7 @@ class KDE1D(object):
 
     @kernel.setter
     def kernel(self, val):
+        self.need_fit()
         self._kernel = val
 
     @property
@@ -193,10 +174,12 @@ class KDE1D(object):
 
     @lower.setter
     def lower(self, val):
+        self.need_fit()
         self._lower = float(val)
 
     @lower.deleter
     def lower(self):
+        self.need_fit()
         self._lower = -np.inf
 
     @property
@@ -209,10 +192,12 @@ class KDE1D(object):
 
     @upper.setter
     def upper(self, val):
+        self.need_fit()
         self._upper = float(val)
 
     @upper.deleter
     def upper(self):
+        self.need_fit()
         self._upper = np.inf
 
     @property
@@ -226,6 +211,7 @@ class KDE1D(object):
 
     @weights.setter
     def weights(self, ws):
+        self.need_fit()
         try:
             ws = float(ws)
             self._weights = np.asarray(1.)
@@ -236,18 +222,12 @@ class KDE1D(object):
 
     @weights.deleter
     def weights(self):
+        self.need_fit()
         self._weights = np.asarray(1.)
         self._total_weights = None
 
     @property
     def total_weights(self):
-        if self._total_weights is None:
-            if self._weights.shape:
-                assert self._weights.shape == self._xdata.shape, \
-                    "There must be as many weights as data points"
-                self._total_weights = sum(self._weights)
-            else:
-                self._total_weights = len(self._xdata)
         return self._total_weights
 
     @property
@@ -262,6 +242,7 @@ class KDE1D(object):
 
     @lambdas.setter
     def lambdas(self, ls):
+        self.need_fit()
         try:
             self._lambdas = np.asarray(float(ls))
         except TypeError:
@@ -270,6 +251,7 @@ class KDE1D(object):
 
     @lambdas.deleter
     def lambdas(self):
+        self.need_fit()
         self._lambdas = np.asarray(1.)
 
     @property
@@ -289,11 +271,11 @@ class KDE1D(object):
 
     @bandwidth.setter
     def bandwidth(self, bw):
+        self.need_fit()
         self._bw_fct = None
         self._cov_fct = None
         if callable(bw):
             self._bw_fct = bw
-            self.update_bandwidth()
         else:
             bw = float(bw)
             self._bw = bw
@@ -316,29 +298,30 @@ class KDE1D(object):
 
     @covariance.setter
     def covariance(self, cov):
+        self.need_fit()
         self._bw_fct = None
         self._cov_fct = None
         if callable(cov):
             self._cov_fct = cov
-            self.update_bandwidth()
         else:
             cov = float(cov)
             self._covariance = cov
             self._bw = np.sqrt(cov)
 
-    def evaluate(self, points, output=None):
+    def evaluate(self, points, out=None):
         """
         Evaluate the kernel on the set of points ``points``
         """
-        return self._method(self, points, output)
+        self.fit_if_needed()
+        return self._method(self, points, out)
 
-    def __call__(self, points, output=None):
+    def __call__(self, points, out=None):
         """
         This method is an alias for :py:meth:`BoundedKDE1D.evaluate`
         """
-        return self.evaluate(points, output=output)
+        return self.evaluate(points, out=out)
 
-    def cdf(self, points, output=None):
+    def cdf(self, points, out=None):
         r"""
         Compute the cumulative distribution function defined as:
 
@@ -348,27 +331,31 @@ class KDE1D(object):
 
         where :math:`l` is the lower bound of the distribution domain and :math:`p` the density of probability.
         """
-        return self.method.cdf(self, points, output)
+        self.fit_if_needed()
+        return self.method.cdf(self, points, out)
 
     def cdf_grid(self, N=None, cut=None):
         """
         Compute the cdf from the lower bound to the points given as argument.
         """
+        self.fit_if_needed()
         return self.method.cdf_grid(self, N, cut)
 
-    def icdf(self, points, output=None):
+    def icdf(self, points, out=None):
         r"""
         Compute the inverse cumulative distribution (quantile) function.
         """
-        return _kde_icdf(self, points, output)
+        self.fit_if_needed()
+        return self.method.icdf(self, points, out)
 
     def icdf_grid(self, N=None, cut=None):
         """
         Compute the inverse cumulative distribution (quantile) function on a grid.
         """
-        return _kde_icdf_grid(self, N, cut)
+        self.fit_if_needed()
+        return self.method.icdf_grid(self, N, cut)
 
-    def sf(self, points, output=None):
+    def sf(self, points, out=None):
         r"""
         Compute the survival function.
 
@@ -381,12 +368,12 @@ class KDE1D(object):
         where :math:`u` is the upper bound of the distribution domain and :math:`p` the density of probability.
 
         """
-        output = self.cdf(points, output)
-        output -= 1
-        output *= -1
-        return output
+        out = self.cdf(points, out)
+        out -= 1
+        out *= -1
+        return out
 
-    def hazard(self, points, output=None):
+    def hazard(self, points, out=None):
         r"""
         Compute the hazard function evaluated on the points.
 
@@ -396,12 +383,12 @@ class KDE1D(object):
 
             h(x) = \frac{p(x)}{sf(x)}
         """
-        output = self(points, output=output)
+        out = self.evaluate(points, out=out)
         sf = self.sf(points)
-        output /= sf
-        return output
+        out /= sf
+        return out
 
-    def cumhazard(self, points, output=None):
+    def cumhazard(self, points, out=None):
         r"""
         Compute the cumulative hazard function evaluated on the points.
 
@@ -414,10 +401,10 @@ class KDE1D(object):
         where :math:`l` is the lower bound of the domain, :math:`h` the hazard function and :math:`sf` the survival 
         function.
         """
-        output = self.sf(points, output)
-        np.log(output, out=output)
-        output *= -1
-        return output
+        out = self.sf(points, out)
+        np.log(out, out=out)
+        out *= -1
+        return out
 
     @property
     def method(self):
@@ -426,8 +413,8 @@ class KDE1D(object):
 
         The method is an object that should provide the following:
 
-        ``method(kde, points, output)``
-            Evaluate the KDE defined by the ``kde`` object on the ``points``. If ``output`` is provided, it should have 
+        ``method(kde, points, out)``
+            Evaluate the KDE defined by the ``kde`` object on the ``points``. If ``out`` is provided, it should have 
             the right shape and the result should be written in it.
 
         ``method.grid(kde, N, cut)``
@@ -444,7 +431,13 @@ class KDE1D(object):
 
     @method.setter
     def method(self, m):
+        self.need_fit()
         self._method = m
+
+    @method.deleter
+    def method(self):
+        self.need_fit()
+        self._method = kde_methods.renormalization
 
     @property
     def closed(self):
@@ -468,6 +461,7 @@ class KDE1D(object):
         :returns: a tuple with the mesh on which the density is evaluated and
         the density itself
         """
+        self.fit_if_needed()
         return self._method.grid(self, N, cut)
 
 Transform = namedtuple('Tranform', ['__call__', 'inv', 'Dinv'])
@@ -475,7 +469,7 @@ Transform = namedtuple('Tranform', ['__call__', 'inv', 'Dinv'])
 LogTransform = Transform(np.log, np.exp, np.exp)
 ExpTransform = Transform(np.exp, np.log, lambda x: 1. / x)
 
-def transform_distribution(xs, ys, Dfct, output=None):
+def transform_distribution(xs, ys, Dfct, out=None):
     """
     Transform a distribution into another one by a change a variable.
 
@@ -487,10 +481,10 @@ def transform_distribution(xs, ys, Dfct, output=None):
         f_Y(y) = \left| \frac{1}{g'(g^{-1}(y))} \right| \cdot f_X(g^{-1}(y))
 
     """
-    return np.multiply(np.abs(1 / Dfct(xs)), ys, output)
+    return np.multiply(np.abs(1 / Dfct(xs)), ys, out)
 
 
-def create_transform(obj, inv=None, Dinv=None):
+def _create_transform(obj, inv=None, Dinv=None):
     if isinstance(obj, Transform):
         return obj
     fct = obj.__call__
@@ -553,14 +547,13 @@ class TransformKDE(object):
     """
     def __init__(self, kde, trans, inv=None, Dinv=None):
         d = self.__dict__
-        trans = create_transform(trans, inv, Dinv)
+        trans = _create_transform(trans, inv, Dinv)
         d['trans'] = trans
         d['kde'] = kde.copy()
         self._xdata = kde.xdata
         self.kde.xdata = trans(kde.xdata)
         self.kde.lower = trans(kde.lower)
         self.kde.upper = trans(kde.upper)
-        self.kde.update_bandwidth()
 
     @property
     def xdata(self):
@@ -705,20 +698,20 @@ class TransformKDE(object):
         d['kde'] = self.kde
         return res
 
-    def evaluate(self, points, output=None):
+    def evaluate(self, points, out=None):
         """
         Evaluate the KDE on a set of points
         """
         trans = self.trans
         pts = trans(points)
-        output = self.kde(pts, output)
-        return transform_distribution(pts, output, trans.Dinv, output)
+        out = self.kde(pts, out)
+        return transform_distribution(pts, out, trans.Dinv, out)
 
-    def __call__(self, points, output=None):
+    def __call__(self, points, out=None):
         """
         Evaluate the KDE on a set of points
         """
-        return self.evaluate(points, output)
+        return self.evaluate(points, out)
 
     def grid(self, N=None):
         """
@@ -731,12 +724,12 @@ class TransformKDE(object):
         trans = self.trans
         return trans.inv(xs), transform_distribution(xs, ys, trans.Dinv)
 
-    def cdf(self, points, output=None):
+    def cdf(self, points, out=None):
         """
         Evaluate the CDF on a set of points
         """
         pts = self.trans(points)
-        return self.kde.cdf(pts, output)
+        return self.kde.cdf(pts, out)
 
     def cdf_grid(self, N=None, cut=None):
         """
@@ -745,23 +738,25 @@ class TransformKDE(object):
         xs, ys = self.kde.cdf_grid(N, cut)
         return self.trans.inv(xs), ys
 
-    def sf(self, points, output=None):
+    def sf(self, points, out=None):
         """
         Implementation of :py:meth:`KDE1D.sf`
         """
         trans = self.trans
         pts = trans(points)
-        return self.kde.sf(pts, output)
+        return self.kde.sf(pts, out)
 
-    def icdf(self, points, output=None):
+    def icdf(self, points, out=None):
         """
         Implementation of :py:meth:`KDE1D.icdf`
         """
-        return _kde_icdf(self, points, output)
+        self.fit_if_needed()
+        return self.trans.inv(self.kde.icdf(points, out))
 
     def icdf_grid(self, N=None, cut=None):
         """
         Implementation of :py:meth:`KDE1D.icdf_grid`
         """
-        return _kde_icdf_grid(self, N, cut)
+        self.fit_if_needed()
+        return self.trans.inv(self.kde.icdf_grid(N, cut))
 

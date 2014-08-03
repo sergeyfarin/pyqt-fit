@@ -10,7 +10,9 @@ Kernels should be created following this template:
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special import erf
-from scipy import fftpack
+from scipy import fftpack, integrate
+from .utils import make_ufunc
+from . import _kernels_py
 
 from .cyth import HAS_CYTHON
 
@@ -68,6 +70,8 @@ class Kernel1D(object):
     - a finite variance. It is even recommanded that the variance is close to 1 to give a uniform meaning to the 
       bandwidth.
     """
+    lower = -np.inf
+    upper = np.inf
 
     def pdf(self, z, out=None):
         r"""
@@ -79,6 +83,12 @@ class Kernel1D(object):
         """
         raise NotImplementedError()
 
+    def __call__(self, z, out=None):
+        """
+        Alias for :py:meth:`Kernel1D.pdf`
+        """
+        return self.pdf(z, out=out)
+
     def cdf(self, z, out=None):
         r"""
         Returns the cumulative density function on the points `z`, i.e.:
@@ -87,9 +97,17 @@ class Kernel1D(object):
 
             K_0(z) = \int_{-\infty}^z K(t) dt
         """
-        raise NotImplementedError()
-
-    __call__ = pdf
+        z = np.asfarray(z)
+        try:
+            comp_pdf = self.__comp_pdf
+        except AttributeError:
+            @make_ufunc(1)
+            def comp_pdf(x):
+                return integrate.quad(self.pdf, self.lower, x)[0]
+            self.__comp_cdf = comp_pdf
+        if out is None:
+            out = np.empty(z.shape, dtype=float)
+        return comp_pdf(z, out=out)
 
     def pm1(self, z, out=None):
         r"""
@@ -99,7 +117,18 @@ class Kernel1D(object):
 
             K_1(z) = \int_{-\infty}^z z K(t) dt
         """
-        raise NotImplementedError()
+        z = np.asfarray(z)
+        try:
+            comp_pm1 = self.__comp_pm1
+        except AttributeError:
+            @make_ufunc(1)
+            def comp_pm1(x):
+                return integrate.quad(lambda x : x*self.pdf(x), -np.inf, x)[0]
+            self.__comp_pm1 = comp_pm1
+        if out is None:
+            out = np.empty(z.shape, dtype=float)
+        return comp_pm1(z, out=out)
+
 
     def pm2(self, z, out=None):
         r"""
@@ -109,7 +138,17 @@ class Kernel1D(object):
 
             K_2(z) = \int_{-\infty}^z z^2 K(t) dt
         """
-        raise NotImplementedError()
+        z = np.asfarray(z)
+        try:
+            comp_pm2 = self.__comp_pm2
+        except AttributeError:
+            @make_ufunc(1)
+            def comp_pm2(x):
+                return integrate.quad(lambda x : x*x*self.pdf(x), -np.inf, x)[0]
+            self.__comp_pm2 = comp_pm2
+        if out is None:
+            out = np.empty(z.shape, dtype=float)
+        return comp_pm2(z, out=out)
 
     def fft(self, z, out=None):
         """
@@ -117,6 +156,7 @@ class Kernel1D(object):
         representing the whole frequency range to be explored. For convenience, the second half of the points will be 
         provided as negative values.
         """
+        z = np.asfarray(z)
         t_star = 2*np.pi/(z[1]-z[0])**2 / len(z)
         dz = t_star * (z[1] - z[0])
         return fftpack.fft(self(z * t_star) * dz).real
@@ -126,6 +166,7 @@ class Kernel1D(object):
         DCT of the kernel on the points of ``z``. The points will always be provided as a grid with :math:`2^n` points, 
         representing the whole frequency range to be explored.
         """
+        z = np.asfarray(z)
         a1 = z[1] - z[0]
         gp = (z / a1 + 0.5) * np.pi / (len(z) * a1)
         return fftpack.dct(self(gp) * (gp[1] - gp[0])).real
@@ -167,6 +208,7 @@ class normal_kernel1d(Kernel1D):
         """
         Returns the FFT of the normal distribution
         """
+        z = np.asfarray(z)
         out = np.multiply(z, z, out)
         out *= -0.5
         np.exp(out, out)
@@ -176,6 +218,7 @@ class normal_kernel1d(Kernel1D):
         """
         Returns the DCT of the normal distribution
         """
+        z = np.asfarray(z)
         out = np.multiply(z, z, out)
         out *= -0.5
         np.exp(out, out)
@@ -321,6 +364,9 @@ class tricube(Kernel1D):
 
     __call__ = pdf
 
+    lower = -_kernels_py.tricube_width
+    upper = _kernels_py.tricube_width
+
     def cdf(self, z, out=None):
         r"""
         CDF of the distribution:
@@ -391,6 +437,9 @@ class Epanechnikov(Kernel1D):
         """
         return kernels_imp.epanechnikov_pdf(xs, out)
     __call__ = pdf
+
+    lower = -_kernels_py.epanechnikov_width
+    upper = _kernels_py.epanechnikov_width
 
     def cdf(self, xs, out=None):
         r"""

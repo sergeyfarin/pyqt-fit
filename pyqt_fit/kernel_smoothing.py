@@ -236,7 +236,7 @@ class LocalLinearKernel1D(object):
         self._covariance = _cov
         self._bw = np.sqrt(_cov)
 
-    def evaluate(self, points, output=None):
+    def evaluate(self, points, out=None):
         """
         Evaluate the spatial averaging on a set of points
 
@@ -244,10 +244,10 @@ class LocalLinearKernel1D(object):
         :param ndarray result: If provided, the result will be put in this
             array
         """
-        li2, output = local_linear.local_linear_1d(self._bw, self.xdata,
-                                                   self.ydata, points, output)
+        li2, out = local_linear.local_linear_1d(self._bw, self.xdata,
+                                                   self.ydata, points, out)
         self.li2 = li2
-        return output
+        return out
 
     def __call__(self, *args, **kwords):
         """
@@ -396,7 +396,7 @@ class LocalPolynomialKernel1D(object):
     def kernel(self, val):
         self._kernel = val
 
-    def evaluate(self, points, output=None):
+    def evaluate(self, points, out=None):
         """
         Evaluate the spatial averaging on a set of points
 
@@ -410,8 +410,8 @@ class LocalPolynomialKernel1D(object):
         bw = self.bandwidth
         kernel = self.kernel
         designMatrix = self.designMatrix(q)
-        if output is None:
-            output = np.empty(points.shape, dtype=float)
+        if out is None:
+            out = np.empty(points.shape, dtype=float)
         for i, p in enumerate(points):
             dX = (xdata - p)
             Wx = kernel(dX / bw)
@@ -419,8 +419,8 @@ class LocalPolynomialKernel1D(object):
             WxXx = Wx * Xx
             XWX = np.dot(Xx.T, WxXx)
             Lx = solve(XWX, WxXx.T)[0]
-            output[i] = np.dot(Lx, ydata)
-        return output
+            out[i] = np.dot(Lx, ydata)
+        return out
 
     def __call__(self, *args, **kwords):
         """
@@ -447,7 +447,7 @@ class PolynomialDesignMatrix(object):
 
         :param int dim: Dimension of the problem
         :param int deg: Degree of the fitting polynomial
-        :param bool factors: If true, the output includes the Taylor factors
+        :param bool factors: If true, the out includes the Taylor factors
 
         :returns: The number of columns in the design matrix and, if required,
             a ndarray with the taylor coefficients for each column of
@@ -488,7 +488,7 @@ class PolynomialDesignMatrix(object):
 
         :param ndarray factors: Scaling factor for the columns of the design
             matrix. The shape should be (M,) or (M,1), where M is the number
-            of columns of the output. This value can be obtained using
+            of columns of the out. This value can be obtained using
             the :py:func:`designMatrixSize` function.
 
         :returns: The design matrix as a (M,N) matrix.
@@ -618,12 +618,12 @@ class LocalPolynomialKernel(object):
         self._covariance = _cov
         self._bw = np.real(sqrtm(_cov))
 
-    def evaluate(self, points, output=None):
+    def evaluate(self, points, out=None):
         """
         Evaluate the spatial averaging on a set of points
 
         :param ndarray points: Points to evaluate the averaging on
-        :param ndarray output: Pre-allocated array for the result
+        :param ndarray out: Pre-allocated array for the result
         """
         xdata = self.xdata
         ydata = self.ydata[:, np.newaxis]  # make it a column vector
@@ -638,8 +638,8 @@ class LocalPolynomialKernel(object):
         XWX = np.empty((dm_size, dm_size), dtype=xdata.dtype)
         inv_bw = scipy.linalg.inv(self.bandwidth)
         kernel = self.kernel
-        if output is None:
-            output = np.empty((points.shape[1],), dtype=float)
+        if out is None:
+            out = np.empty((points.shape[1],), dtype=float)
         for i in irange(points.shape[1]):
             dX = (xdata - points[:, i:i + 1])
             Wx = kernel(np.dot(inv_bw, dX))
@@ -647,8 +647,8 @@ class LocalPolynomialKernel(object):
             np.multiply(Wx, Xx, WxXx)
             np.dot(Xx, WxXx.T, XWX)
             Lx = solve(XWX, WxXx)[0]
-            output[i] = np.dot(Lx, ydata)
-        return output
+            out[i] = np.dot(Lx, ydata)
+        return out
 
     def __call__(self, *args, **kwords):
         """

@@ -36,8 +36,9 @@ References:
 
 from __future__ import division, absolute_import, print_function
 import numpy as np
-from scipy import fftpack, integrate
+from scipy import fftpack, integrate, optimize
 from .compat import irange
+from .utils import make_ufunc
 
 def generate_grid(kde, N=None, cut=None):
     r"""
@@ -70,7 +71,7 @@ class KDE1DMethod(object):
     """
 
     @staticmethod
-    def unbounded(kde, points, output):
+    def unbounded(kde, points, out):
         """
         Method to use if there is, effectively, no bounds
         """
@@ -87,13 +88,13 @@ class KDE1DMethod(object):
 
         terms *= kde.weights / bw
 
-        output = terms.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = terms.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
     @staticmethod
-    def unbounded_cdf(kde, points, output=None):
+    def unbounded_cdf(kde, points, out=None):
         """
         Compute the cdf in case the domain is fully unbounded.
 
@@ -110,13 +111,13 @@ class KDE1DMethod(object):
         terms = kernel.cdf(z)
         terms *= kde.weights
 
-        output = terms.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = terms.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
     @staticmethod
-    def numeric_cdf(kde, points, output=None):
+    def numeric_cdf(kde, points, out=None):
         """
         Provide a numeric approximation of the cdf based on integrating the pdf using :py:func:`scipy.integrate.quad`.
         """
@@ -141,11 +142,11 @@ class KDE1DMethod(object):
             parts[i] = integrate.quad(kde, sp[i-1], sp[i])[0]
 
         ints = parts.cumsum()
-        if output is None:
-            output = np.empty(pts_shape, dtype=float)
+        if out is None:
+            out = np.empty(pts_shape, dtype=float)
 
-        output.put(ix, ints)
-        return output
+        out.put(ix, ints)
+        return out
 
     @staticmethod
     def numeric_cdf_grid(kde, N=None, cut=None):
@@ -157,15 +158,8 @@ class KDE1DMethod(object):
         if N is None:
             N = 2**10
         pts, pdf = kde.grid(N, cut)
-        cdf_pts = (pts[1:] + pts[:-1]) / 2
-        dx = pts[1] - pts[0]
-        low_cdf = pts[0] - dx/2 if kde.lower == -np.inf else kde.lower
-        high_cdf = pts[-1] + dx/2 if kde.upper == np.inf else kde.upper
-        cdf_pts = np.r_[low_cdf, cdf_pts, high_cdf]
-        cdf = np.empty(cdf_pts.shape, dtype=float)
-        cdf[1:] = (pdf * (cdf_pts[1:] - cdf_pts[:-1])).cumsum()
-        cdf[0] = 0.0
-        return cdf_pts, cdf
+        cdf = integrate.cumtrapz(pdf, pts, initial=0)
+        return pts, cdf
 
     __call__ = unbounded
 
@@ -214,6 +208,38 @@ class KDE1DMethod(object):
         """
         return self.name
 
+    @staticmethod
+    def icdf(kde, points, out=None):
+        """
+        Compute the inverse cumulative distribution (quantile) function
+        """
+        xs, ys = kde.cdf_grid()
+        coarse_result = np.interp(points, ys, xs, kde.lower, kde.upper)
+        @make_ufunc(2)
+        def find_inverse(p, approx):
+            if approx >= xs[-1] or approx <= xs[0]:
+                return approx
+            def f(x):
+                return kde.cdf(x) - p
+            return optimize.newton(f, approx, fprime=kde.evaluate)
+        if out is None:
+            out = np.empty(points.shape)
+        return find_inverse(points, coarse_result, out=out)
+
+    @staticmethod
+    def icdf_grid(kde, N=None, cut=None):
+        """
+        Compute the inverse cumulative distribution (quantile) function on a grid.
+
+        This is not as good an approximation as the plain icdf method.
+        """
+        if N is None:
+            N = 2**10
+        xs, ys = kde.cdf_grid(N, cut)
+        vals = np.linspace(0, 1, N)
+        icdf = np.interp(vals, ys, xs, kde.lower, kde.upper)
+        return vals, icdf
+
 class RenormalizationMethod(KDE1DMethod):
     r"""
     This method consists in using the normal kernel method, but renormalize
@@ -232,9 +258,9 @@ class RenormalizationMethod(KDE1DMethod):
     name = 'renormalization'
 
     @staticmethod
-    def __call__(kde, points, output=None):
+    def __call__(kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.unbounded(kde, points, output)
+            return KDE1DMethod.unbounded(kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
@@ -251,15 +277,15 @@ class RenormalizationMethod(KDE1DMethod):
 
         terms = kernel(z) * ((kde.weights / bw) / a1)
 
-        output = terms.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = terms.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
     @staticmethod
-    def cdf(kde, points, output=None):
+    def cdf(kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.unbounded_cdf(kde, points, output)
+            return KDE1DMethod.unbounded_cdf(kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
@@ -278,10 +304,10 @@ class RenormalizationMethod(KDE1DMethod):
 
         terms = (kernel.cdf(z) - cl) * (kde.weights / a1)
 
-        output = terms.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = terms.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
 
 renormalization = RenormalizationMethod()
@@ -308,9 +334,9 @@ class ReflectionMethod(KDE1DMethod):
     name = 'reflection'
 
     @staticmethod
-    def __call__(kde, points, output=None):
+    def __call__(kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.unbounded(kde, points, output)
+            return KDE1DMethod.unbounded(kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
@@ -341,15 +367,15 @@ class ReflectionMethod(KDE1DMethod):
             terms += kernel(z1 - (2 * U / bw))
 
         terms *= kde.weights / bw
-        output = terms.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = terms.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
     @staticmethod
-    def cdf(kde, points, output=None):
+    def cdf(kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.unbounded_cdf(kde, points, output)
+            return KDE1DMethod.unbounded_cdf(kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
@@ -382,10 +408,10 @@ class ReflectionMethod(KDE1DMethod):
             terms += kernel.cdf(z1 - (2 * U / bw)) # Add the reflected part
 
         terms *= kde.weights
-        output = terms.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = terms.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
 
     def grid(self, kde, N=None, cut=None):
@@ -456,9 +482,9 @@ class LinearCombinationMethod(KDE1DMethod):
     name = 'linear combination'
 
     @staticmethod
-    def __call__(kde, points, output=None):
+    def __call__(kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.unbounded(kde, points, output)
+            return KDE1DMethod.unbounded(kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[:, np.newaxis]
@@ -481,24 +507,23 @@ class LinearCombinationMethod(KDE1DMethod):
         upper /= denom
         upper *= (kde.weights / bw) * kernel(z)
 
-        output = upper.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = upper.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
     @staticmethod
-    def cdf(kde, points, output=None):
+    def cdf(kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.unbounded_cdf(kde, points, output)
-        return KDE1DMethod.numeric_cdf(kde, points, output)
+            return KDE1DMethod.unbounded_cdf(kde, points, out)
+        return KDE1DMethod.numeric_cdf(kde, points, out)
 
-    @staticmethod
-    def cdf_grid(kde, N=None, cut=None):
+    def cdf_grid(self, kde, N=None, cut=None):
         if N is None:
             N = 2**10
         if not kde.bounded or N < 2**10:
-            return KDE1DMethod.default_cdf_grid(kde, N, cut)
-        return KDE1DMethod.numeric_cdf_grid(kde, N, cut)
+            return self.default_cdf_grid(kde, N, cut)
+        return self.numeric_cdf_grid(kde, N, cut)
 
 linear_combination = LinearCombinationMethod()
 
@@ -524,7 +549,7 @@ class CyclicMethod(KDE1DMethod):
     name = 'cyclic'
 
     @staticmethod
-    def __call__(kde, points, output=None):
+    def __call__(kde, points, out=None):
         if not kde.closed:
             raise ValueError("Cyclic boundary conditions can only be used with "
                              "closed domains.")
@@ -553,14 +578,14 @@ class CyclicMethod(KDE1DMethod):
         terms += kernel(z - span) # Add points to the right
 
         terms *= kde.weights / bw
-        output = terms.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = terms.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
 
     @staticmethod
-    def cdf(kde, points, output=None):
+    def cdf(kde, points, out=None):
         if not kde.closed:
             raise ValueError("Cyclic boundary conditions can only be used with "
                              "closed domains.")
@@ -593,10 +618,10 @@ class CyclicMethod(KDE1DMethod):
         terms += kernel.cdf(z - span) # Repeat on the right
 
         terms *= kde.weights
-        output = terms.sum(axis=1, out=output)
-        output /= kde.total_weights
+        out = terms.sum(axis=1, out=out)
+        out /= kde.total_weights
 
-        return output
+        return out
 
     def grid(self, kde, N=None, cut=None):
         """
