@@ -1,6 +1,9 @@
 v1.2.5, ??
  - Using 'out' rather than 'output' for in-place operations to conform to numpy convention
  - Added a kernels.Kernel base-class implementing cdf, pm1, pm2, fft and dct in term of the pdf
+ - Corrected all the kernels, both Python and Cython
+ - Added and restructure kernel tests
+ - Restructured KDE tests.
 v1.2.4, 30/7/2014
  - Corrected KDE code to pass tests
  - All tests pass for Python2 and Python3
