@@ -47,75 +47,26 @@ class TestKDE1D(kde_utils.KDETester):
     @classmethod
     def setUpClass(cls):
         kde_utils.setupClass_norm(cls)
-        cls.methods = kde_utils.methods
-
-    def createKDE(self, data, method, **args):
-        all_args = dict(self.args)
-        all_args.update(args)
-        k = kde.KDE1D(data, **all_args)
-        if method.instance is None:
-            del k.method
-        else:
-            k.method = method.instance
-        if method.bound_low:
-            k.lower = self.lower
-        else:
-            del k.lower
-        if method.bound_high:
-            k.upper = self.upper
-        else:
-            del k.upper
-        assert k.fitted is False
-        return k
 
     #def test_converge(self):
         #xs = np.r_[-3:3:512j]
         #ys = self.dist.pdf(xs)
         #ks = [ self.createKDE(v, **self.args) for v in self.vs ]
 
-    def method_works(self, i, method):
-        k = self.createKDE(self.vs[i], method, **self.args)
+    def method_works(self, k, method, name):
         k.fit()
-        tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
-        assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
-
-    def grid_method_works(self, i, method):
-        k = self.createKDE(self.vs[i], method, **self.args)
-        xs, ys = k.grid(4000)
-        tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < method.grid_accuracy, "Error, {} should be close to 1".format(tot)
-
-    def weights_method_works(self, i, method):
-        weights = self.weights[i]
-        k = self.createKDE(self.vs[i], method, weights=weights, **self.args)
         tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
         assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
         del k.weights
-        k.fit()
-        assert k.total_weights == len(self.vs[i])
-
-    def weights_grid_method_works(self, i, method):
-        weights = self.weights[i]
-        k = self.createKDE(self.vs[i], method, weights=weights, **self.args)
-        xs, ys = k.grid(2048)
-        tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < method.grid_accuracy, "Error, {} should be close to 1".format(tot)
-
-    def lambdas_method_works(self, i, method):
-        lambdas = self.lambdas[i]
-        k = self.createKDE(self.vs[i], method, lambdas=lambdas, **self.args)
-        tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
-        assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
         del k.lambdas
         k.fit()
-        assert k.lambdas == 1
+        assert k.total_weights == len(k.xdata)
+        assert k.lambdas == 1.
 
-    def lambdas_grid_method_works(self, i, method):
-        lambdas = self.lambdas[i]
-        k = self.createKDE(self.vs[i], method, lambdas=lambdas, **self.args)
-        xs, ys = k.grid(2048)
+    def grid_method_works(self, k, method, name):
+        xs, ys = k.grid(4000)
         tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
+        assert abs(tot - 1) < method.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_copy(self):
         k = self.createKDE(self.vs[0], self.methods[0])
@@ -143,7 +94,7 @@ class TestKDE1D(kde_utils.KDETester):
         assert k.fitted is not None
         k.fit()
 
-    def kernel_works(self, ker):
+    def kernel_works(self, ker, name):
         method = self.methods[0]
         k = self.createKDE(self.vs[1], method)
         k.kernel = ker.cls()
@@ -151,7 +102,7 @@ class TestKDE1D(kde_utils.KDETester):
         acc = method.grid_accuracy * ker.precision_factor
         assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
-    def grid_kernel_works(self, ker):
+    def grid_kernel_works(self, ker, name):
         method = self.methods[0]
         k = self.createKDE(self.vs[1], method)
         xs, ys = k.grid()
@@ -159,9 +110,71 @@ class TestKDE1D(kde_utils.KDETester):
         acc = method.grid_accuracy * ker.precision_factor
         assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
-class LogTestKDE1D(kde_utils.KDETester):
+class LogTestKDE1D(TestKDE1D):
     @classmethod
     def setUpClass(cls):
         kde_utils.setupClass_lognorm(cls)
-        cls.methods = kde_utils.methods_log
+
+class TestSF(kde_utils.KDETester):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_norm(cls)
+        cls.methods = kde_utils.methods
+        del cls.sizes[1:]
+
+    def method_works(self, k, method, name):
+        k.fit()
+        xs = kde_methods.generate_grid(k)
+        sf = k.sf(xs)
+        cdf = k.cdf(xs)
+        np.testing.assert_allclose(sf, 1-cdf, method.accuracy, method.accuracy)
+
+    def grid_method_works(self, k, method, name):
+        xs, sf = k.sf_grid()
+        _, cdf = k.cdf_grid()
+        np.testing.assert_allclose(sf, 1-cdf, method.accuracy, method.accuracy)
+
+    def kernel_works(self, ker, name):
+        pass
+
+    def grid_kernel_works(self, ker, name):
+        pass
+
+class TestLogSF(TestSF):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_lognorm(cls)
+        del cls.sizes[1:]
+
+class TestISF(kde_utils.KDETester):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_norm(cls)
+        cls.methods = kde_utils.methods
+        del cls.sizes[1:]
+
+    def method_works(self, k, method, name):
+        k.fit()
+        sf = np.linspace(0, 1, 64)
+        sf_xs = k.isf(sf)
+        cdf_xs = k.icdf(1-sf)
+        np.testing.assert_allclose(sf_xs, cdf_xs, method.accuracy, method.accuracy)
+
+    def grid_method_works(self, k, method, name):
+        comp_sf, xs = k.isf_grid()
+        ref_sf = k.sf(xs)
+        np.testing.assert_allclose(comp_sf, ref_sf, 0.03, 0.03)
+
+    def kernel_works(self, ker, name):
+        pass
+
+    def grid_kernel_works(self, ker, name):
+        pass
+
+class TestLogISF(TestISF):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_lognorm(cls)
+        del cls.sizes[1:]
+
 

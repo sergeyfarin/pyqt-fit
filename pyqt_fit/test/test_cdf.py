@@ -16,27 +16,7 @@ class TestCDF(kde_utils.KDETester):
     def setUpClass(cls):
         kde_utils.setupClass_lognorm(cls)
 
-    def createKDE(self, data, method, **args):
-        all_args = dict(self.args)
-        all_args.update(args)
-        k = kde.KDE1D(data, **all_args)
-        if method.instance is None:
-            del k.method
-        else:
-            k.method = method.instance
-        if method.bound_low:
-            k.lower = self.lower
-        else:
-            del k.lower
-        if method.bound_high:
-            k.upper = self.upper
-        else:
-            del k.upper
-        assert k.fitted is False
-        return k
-
-    def method_works(self, i, method, **args):
-        k = self.createKDE(self.vs[i], method, **args)
+    def method_works(self, k, method, name):
         begin, last = k.cdf([k.lower, k.upper])
         assert abs(last - 1) < method.accuracy, "Error, k.cdf({0}) = {1} should be close to 1".format(k.upper, last)
         assert abs(begin) < method.accuracy, "Error, k.cdf({0}) = {1} should be close to 0".format(k.lower, begin)
@@ -55,6 +35,7 @@ class TestCDF(kde_utils.KDETester):
 
     def numeric_cdf(self, i, method):
         k = self.createKDE(self.vs[i], method)
+        k.fit()
         ys = k.method.numeric_cdf(k, self.xs)
         xxs, yys = k.method.numeric_cdf_grid(k, N=2**12)
         ys2 = np.interp(self.xs, xxs, yys)
@@ -69,40 +50,14 @@ class TestCDF(kde_utils.KDETester):
     def test_numeric_cdf(self):
         self.numeric_cdf(0, kde_utils.methods[0])
 
-    def weights_method_works(self, i, method):
-        return self.method_works(i, method, weights = self.weights[i])
-
-    def lambdas_method_works(self, i, method):
-        return self.method_works(i, method, lambdas = self.lambdas[i])
-
-    def grid_method_works(self, i, method):
-        k = self.createKDE(self.vs[i], method)
+    def grid_method_works(self, k, method, name):
         xs, ys = k.cdf_grid(64)
         acc = method.accuracy
         assert np.all(ys >= -acc), "Some negative values"
         assert np.all(ys <= 1+acc), "CDF must be below one"
         assert np.all(ys[1:] - ys[:-1] >= -acc), "The CDF must be strictly growing."
 
-    def weights_grid_method_works(self, i, method):
-        weights = self.weights[i]
-        k = self.createKDE(self.vs[i], method)
-        k.weights = self.weights[i]
-        xs, ys = k.cdf_grid(64)
-        acc = method.accuracy
-        assert np.all(ys >= -acc), "Some negative values"
-        assert np.all(ys <= 1+acc), "CDF must be below one"
-        assert np.all(ys[1:] - ys[:-1] >= -acc), "The CDF must be strictly growing."
-
-    def lambdas_grid_method_works(self, i, method):
-        k = self.createKDE(self.vs[i], method)
-        k.lambdas = self.lambdas[i]
-        xs, ys = k.cdf_grid(64)
-        acc = method.accuracy
-        assert np.all(ys >= -acc), "Some negative values"
-        assert np.all(ys <= 1+acc), "CDF must be below one"
-        assert np.all(ys[1:] - ys[:-1] >= -acc), "The CDF must be strictly growing."
-
-    def kernel_works(self, ker):
+    def kernel_works(self, ker, name):
         method = kde_utils.methods[0]
         k = self.createKDE(self.vs[1], method)
         k.kernel = ker.cls()
@@ -111,7 +66,7 @@ class TestCDF(kde_utils.KDETester):
         assert abs(last - 1) < acc, "Error, k.cdf({0}) = {1} should be close to 1".format(k.upper, last)
         assert abs(begin) < acc, "Error, k.cdf({0}) = {1} should be close to 0".format(k.lower, begin)
 
-    def grid_kernel_works(self, ker):
+    def grid_kernel_works(self, ker, name):
         method = kde_utils.methods[0]
         k = self.createKDE(self.vs[1], method)
         k.kernel = ker.cls()

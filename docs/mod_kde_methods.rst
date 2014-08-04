@@ -64,6 +64,10 @@ Estimation methods
 ``````````````````
 Here are the methods implemented in pyqt_fit. To access these methods, the simplest is to use the instances provided.
 
+.. py:data:: unbounded
+
+    Instance of the :py:class:`KDE1DMethod` class.
+
 .. py:data:: renormalization
 
     Instance of the :py:class:`RenormalizationMethod` class.

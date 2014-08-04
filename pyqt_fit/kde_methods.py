@@ -87,8 +87,7 @@ class KDE1DMethod(object):
 
     name = 'unbounded'
 
-    @staticmethod
-    def pdf(kde, points, out):
+    def pdf(self, kde, points, out=None):
         """
         Compute the PDF of the estimated distribution.
 
@@ -129,14 +128,13 @@ class KDE1DMethod(object):
         """
         pass
 
-    def __call__(self, kde, points, out):
+    def __call__(self, kde, points, out=None):
         """
         Call the :py:meth:`pdf` method.
         """
         return self.pdf(kde, points, out)
 
-    @staticmethod
-    def cdf(kde, points, out):
+    def cdf(self, kde, points, out=None):
         r"""
         Compute the CDF of the estimated distribution, defined as:
 
@@ -190,7 +188,7 @@ class KDE1DMethod(object):
         :Default: First approximate the result using linear interpolation on
             the CDF and refine the result numerically using the Newton method.
         """
-        xs, ys = kde.cdf_grid()
+        xs, ys = self.cdf_grid(kde)
         coarse_result = np.interp(points, ys, xs, kde.lower, kde.upper)
         lower = kde.lower
         upper = kde.upper
@@ -204,6 +202,10 @@ class KDE1DMethod(object):
 
         @make_ufunc()
         def find_inverse(p, approx):
+            if p > 1-1e-10:
+                return upper
+            if p < 1e-10:
+                return lower
             if approx >= xs[-1] or approx <= xs[0]:
                 return approx
             def f(x):
@@ -212,13 +214,13 @@ class KDE1DMethod(object):
                 elif x >= upper:
                     return 1-p
                 return cdf(kde, np.atleast_1d(x), None) - p
-            return optimize.newton(f, approx, fprime=pdf)
+            return optimize.newton(f, approx, fprime=pdf, tol=1e-6)
+
         if out is None:
             out = np.empty(points.shape)
         return find_inverse(points, coarse_result, out=out)
 
-    @staticmethod
-    def sf(kde, points, out):
+    def sf(self, kde, points, out=None):
         r"""
         Compute the survival function, defined as:
 
@@ -235,13 +237,12 @@ class KDE1DMethod(object):
         :return: the evaluated survival function
         :Default: Compute explicitly :math:`1 - cdf(x)`
         """
-        out = kde.cdf(points, out)
+        out = self.cdf(kde, points, out)
         out -= 1
         out *= -1
         return out
 
-    @staticmethod
-    def isf(kde, points, out):
+    def isf(self, kde, points, out=None):
         r"""
         Compute the inverse survival function, defined as:
 
@@ -257,10 +258,9 @@ class KDE1DMethod(object):
         :return: the evaluated iCDF
         :Default: Compute :math:`icdf(1-p)`
         """
-        return kde.icdf(1-points, out)
+        return self.icdf(kde, 1-points, out)
 
-    @staticmethod
-    def hazard(kde, points, out):
+    def hazard(self, kde, points, out=None):
         r"""
         Compute the hazard function evaluated on the points.
 
@@ -282,13 +282,12 @@ class KDE1DMethod(object):
         :return: the evaluated hazard function
         :Default: Compute explicitly :math:`pdf(x) / sf(x)`
         """
-        out = kde.pdf(points, out=out)
-        sf = kde.sf(points)
+        out = self.pdf(kde, points, out=out)
+        sf = self.sf(kde, points)
         out /= sf
         return out
 
-    @staticmethod
-    def cumhazard(kde, points, out):
+    def cumhazard(self, kde, points, out=None):
         r"""
         Compute the cumulative hazard function evaluated on the points.
 
@@ -310,13 +309,12 @@ class KDE1DMethod(object):
         :return: the evaluated cumulative hazard function
         :Default: Compute explicitly :math:`-\ln sf(x)`
         """
-        out = kde.sf(points, out)
+        out = self.sf(kde, points, out)
         np.log(out, out=out)
         out *= -1
         return out
 
-    @staticmethod
-    def grid(kde, N=None, cut=None):
+    def grid(self, kde, N=None, cut=None):
         """
         Evaluate the PDF of the distribution on a regular grid with at least 
         ``N`` elements.
@@ -333,10 +331,9 @@ class KDE1DMethod(object):
             :py:func:`generate_grid`
         """
         g = generate_grid(kde, N, cut)
-        return g, kde.pdf(g)
+        return g, self.pdf(kde, g)
 
-    @staticmethod
-    def cdf_grid(kde, N=None, cut=None):
+    def cdf_grid(self, kde, N=None, cut=None):
         """
         Evaluate the CDF of the distribution on a regular grid with at least 
         ``N`` elements.
@@ -353,10 +350,9 @@ class KDE1DMethod(object):
             :py:func:`generate_grid`
         """
         g = generate_grid(kde, N, cut)
-        return g, kde.cdf(g)
+        return g, self.cdf(kde, g)
 
-    @staticmethod
-    def icdf_grid(kde, N=None, cut=None):
+    def icdf_grid(self, kde, N=None, cut=None):
         """
         Compute the inverse cumulative distribution (quantile) function on 
         a grid.
@@ -374,14 +370,13 @@ class KDE1DMethod(object):
             estimations.
         :Default: Linear interpolation of the inverse CDF on a grid
         """
-        xs, ys = kde.cdf_grid(N, cut)
+        xs, ys = self.cdf_grid(kde, N, cut)
         N = len(xs)
         points = np.linspace(0, 1, N)
         icdf = np.interp(points, ys, xs, kde.lower, kde.upper)
         return points, icdf
 
-    @staticmethod
-    def sf_grid(kde, N, cut):
+    def sf_grid(self, kde, N=None, cut=None):
         r"""
         Compute the survival function on a grid.
 
@@ -395,13 +390,12 @@ class KDE1DMethod(object):
             estimated on, and the estimations.
         :Default: Compute explicitly :math:`1 - cdf(x)`
         """
-        points, out = kde.cdf_grid(N, cut)
+        points, out = self.cdf_grid(kde, N, cut)
         out -= 1
         out *= -1
         return points, out
 
-    @staticmethod
-    def isf_grid(kde, N=None, cut=None):
+    def isf_grid(self, kde, N=None, cut=None):
         """
         Compute the inverse survival function on a grid.
 
@@ -418,14 +412,13 @@ class KDE1DMethod(object):
             estimations.
         :Default: Linear interpolation of the inverse survival function on a grid
         """
-        xs, ys = kde.sf_grid(N, cut)
+        xs, ys = self.sf_grid(kde, N, cut)
         N = len(xs)
         points = np.linspace(0, 1, N)
-        isf = np.interp(points, ys, xs, kde.lower, kde.upper)
+        isf = np.interp(points, ys[::-1], xs[::-1], kde.upper, kde.lower)
         return points, isf
 
-    @staticmethod
-    def hazard_grid(kde, N, cut):
+    def hazard_grid(self, kde, N=None, cut=None):
         r"""
         Compute the hazard function on a grid.
 
@@ -439,13 +432,12 @@ class KDE1DMethod(object):
             estimated on, and the estimations.
         :Default: Compute explicitly :math:`pdf(x) / sf(x)`
         """
-        points, out = kde.grid(N, cut)
-        _, sf = kde.sf_grid(N, cut)
+        points, out = self.grid(kde, N, cut)
+        _, sf = self.sf_grid(kde, N, cut)
         out /= sf
         return points, out
 
-    @staticmethod
-    def cumhazard_grid(kde, N, cut):
+    def cumhazard_grid(self, kde, N=None, cut=None):
         r"""
         Compute the hazard function on a grid.
 
@@ -459,7 +451,7 @@ class KDE1DMethod(object):
             estimated on, and the estimations.
         :Default: Compute explicitly :math:`-\ln sf(x)`
         """
-        points, out = kde.sf_grid(N, cut)
+        points, out = self.sf_grid(kde, N, cut)
         np.log(out, out=out)
         out *= -1
         return points, out
@@ -470,8 +462,7 @@ class KDE1DMethod(object):
         """
         return self.name
 
-    @staticmethod
-    def numeric_cdf(kde, points, out=None):
+    def numeric_cdf(self, kde, points, out=None):
         """
         Provide a numeric approximation of the CDF based on integrating the pdf 
         using :py:func:`scipy.integrate.quad`.
@@ -487,10 +478,13 @@ class KDE1DMethod(object):
 
         sp = pts[ix]
 
+        def pdf(x):
+            return self.pdf(kde, x)
+
         @make_ufunc()
         def comp_cdf(i):
             low = kde.lower if i == 0 else sp[i-1]
-            return integrate.quad(kde.pdf, low, sp[i])[0]
+            return integrate.quad(pdf, low, sp[i])[0]
 
         parts = np.empty(sp.shape, dtype=float)
         comp_cdf(np.arange(len(sp)), out=parts)
@@ -502,15 +496,16 @@ class KDE1DMethod(object):
         out.put(ix, ints)
         return out
 
-    @staticmethod
-    def numeric_cdf_grid(kde, N=None, cut=None):
+    def numeric_cdf_grid(self, kde, N=None, cut=None):
         """
         Compute the CDF on a grid using a trivial, but fast, numeric 
         integration of the pdf.
         """
-        pts, pdf = kde.grid(N, cut)
+        pts, pdf = self.grid(kde, N, cut)
         cdf = integrate.cumtrapz(pdf, pts, initial=0)
         return pts, cdf
+
+unbounded = KDE1DMethod()
 
 class RenormalizationMethod(KDE1DMethod):
     r"""
@@ -530,10 +525,9 @@ class RenormalizationMethod(KDE1DMethod):
 
     name = 'renormalization'
 
-    @staticmethod
-    def pdf(kde, points, out=None):
+    def pdf(self, kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.pdf(kde, points, out)
+            return KDE1DMethod.pdf(self, kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[..., np.newaxis]
@@ -555,10 +549,9 @@ class RenormalizationMethod(KDE1DMethod):
 
         return out
 
-    @staticmethod
-    def cdf(kde, points, out=None):
+    def cdf(self, kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.cdf(kde, points, out)
+            return KDE1DMethod.cdf(self, kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[..., np.newaxis]
@@ -607,10 +600,9 @@ class ReflectionMethod(KDE1DMethod):
 
     name = 'reflection'
 
-    @staticmethod
-    def pdf(kde, points, out=None):
+    def pdf(self, kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.pdf(kde, points, out)
+            return KDE1DMethod.pdf(self, kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[..., np.newaxis]
@@ -646,10 +638,9 @@ class ReflectionMethod(KDE1DMethod):
 
         return out
 
-    @staticmethod
-    def cdf(kde, points, out=None):
+    def cdf(self, kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.cdf(kde, points, out)
+            return KDE1DMethod.cdf(self, kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[..., np.newaxis]
@@ -698,7 +689,7 @@ class ReflectionMethod(KDE1DMethod):
         space to remove the boundary problems.
         """
         if kde.lambdas.shape:
-            return KDE1DMethod.grid(kde, N, cut)
+            return KDE1DMethod.grid(self, kde, N, cut)
 
         bw = kde.bandwidth * kde.lambdas
         data = kde.xdata
@@ -757,10 +748,9 @@ class LinearCombinationMethod(KDE1DMethod):
 
     name = 'linear combination'
 
-    @staticmethod
-    def pdf(kde, points, out=None):
+    def pdf(self, kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.pdf(kde, points, out)
+            return KDE1DMethod.pdf(self, kde, points, out)
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[..., np.newaxis]
@@ -788,19 +778,17 @@ class LinearCombinationMethod(KDE1DMethod):
 
         return out
 
-    @staticmethod
-    def cdf(kde, points, out=None):
+    def cdf(self, kde, points, out=None):
         if not kde.bounded:
-            return KDE1DMethod.cdf(kde, points, out)
-        return KDE1DMethod.numeric_cdf(kde, points, out)
+            return KDE1DMethod.cdf(self, kde, points, out)
+        return self.numeric_cdf(kde, points, out)
 
-    @staticmethod
-    def cdf_grid(kde, N=None, cut=None):
+    def cdf_grid(self, kde, N=None, cut=None):
         if N is None:
             N = 2**10
         if not kde.bounded or N >= 2**10:
-            return KDE1DMethod.cdf_grid(kde, N, cut)
-        return KDE1DMethod.numeric_cdf_grid(kde, N, cut)
+            return KDE1DMethod.cdf_grid(self, kde, N, cut)
+        return self.numeric_cdf_grid(kde, N, cut)
 
 linear_combination = LinearCombinationMethod()
 
@@ -826,8 +814,7 @@ class CyclicMethod(KDE1DMethod):
 
     name = 'cyclic'
 
-    @staticmethod
-    def pdf(kde, points, out=None):
+    def pdf(self, kde, points, out=None):
         if not kde.closed:
             raise ValueError("Cyclic boundary conditions can only be used with "
                              "closed domains.")
@@ -862,8 +849,7 @@ class CyclicMethod(KDE1DMethod):
         return out
 
 
-    @staticmethod
-    def cdf(kde, points, out=None):
+    def cdf(self, kde, points, out=None):
         if not kde.closed:
             raise ValueError("Cyclic boundary conditions can only be used with "
                              "closed domains.")
@@ -908,7 +894,7 @@ class CyclicMethod(KDE1DMethod):
         (i.e. lambdas = 1) and gaussian kernel.
         """
         if kde.lambdas.shape:
-            return KDE1DMethod.grid(kde, N, cut)
+            return KDE1DMethod.grid(self, kde, N, cut)
         if not kde.closed:
             raise ValueError("Error, cyclic boundary conditions require "
                              "a closed domain.")
@@ -1107,10 +1093,10 @@ class TransformKDE1DMethod(KDE1DMethod):
         return xs, ys
 
     def sf(self, kde, points, out):
-        return self.method.sf(self.fake_kde, self.trans(pts), out)
+        return self.method.sf(self.fake_kde, self.trans(points), out)
 
     def sf_grid(self, kde, N, cut):
-        xs, ys = self.method.sf_grid(N, cut)
+        xs, ys = self.method.sf_grid(self.fake_kde, N, cut)
         return self.trans.inv(xs), ys
 
     def icdf(self, kde, points, out):
@@ -1130,7 +1116,7 @@ class TransformKDE1DMethod(KDE1DMethod):
 
     def isf_grid(self, kde, N, cut):
         xs, ys = self.method.isf_grid(self.fake_kde, N, cut)
-        self.trans.inc(ys, out=ys)
+        self.trans.inv(ys, out=ys)
         return xs, ys
 
     def hazard(self, kde, points, out):

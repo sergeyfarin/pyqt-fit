@@ -413,7 +413,7 @@ class KDE1D(object):
 
         """
         self.fit_if_needed()
-        return self.method.sf(self, np.asleast1d(points), out)
+        return self.method.sf(self, np.atleast_1d(points), out)
 
     def sf_grid(self, N=None, cut=None):
         r"""

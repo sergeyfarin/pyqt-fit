@@ -4,6 +4,7 @@ from ..utils import namedtuple
 from ..compat import irange
 from scipy import stats, special
 from .. import kernels
+from .. import kde
 
 def generate(dist, N, low, high):
     start = dist.cdf(low)
@@ -13,7 +14,7 @@ def generate(dist, N, low, high):
 
 def setupClass_norm(cls):
     cls.dist = stats.norm(0, 1)
-    cls.sizes = np.array([512, 1024, 2048])
+    cls.sizes = [512, 1024, 2048]
     cls.vs = [generate(cls.dist, s, -5, 5) for s in cls.sizes]
     cls.args = {}
     cls.weights = [ cls.dist.pdf(v) for v in cls.vs ]
@@ -21,10 +22,11 @@ def setupClass_norm(cls):
     cls.xs = np.r_[-5:5:1024j]
     cls.lower = -5
     cls.upper = 5
+    cls.methods = methods
 
 def setupClass_lognorm(cls):
     cls.dist = stats.lognorm(1)
-    cls.sizes = np.array([512, 1024, 2048])
+    cls.sizes = [512, 1024, 2048]
     cls.args = {}
     cls.vs = [ generate(cls.dist, s, 0.001, 20) for s in cls.sizes ]
     cls.vs = [ v[v < 20] for v in cls.vs ]
@@ -33,10 +35,11 @@ def setupClass_lognorm(cls):
     cls.lambdas = [ 1 - ws for ws in cls.weights ]
     cls.lower = 0
     cls.upper = 20
+    cls.methods = methods_log
 
 test_method = namedtuple('test_method', ['instance', 'accuracy', 'grid_accuracy', 'bound_low', 'bound_high'])
 
-methods = [ test_method(None, 1e-5, 1e-4, False, False)
+methods = [ test_method(kde_methods.unbounded, 1e-5, 1e-4, False, False)
           , test_method(kde_methods.reflection, 1e-5, 1e-4, True, True)
           , test_method(kde_methods.cyclic, 1e-5, 1e-4, True, True)
           , test_method(kde_methods.renormalization, 1e-5, 1e-4, True, True)
@@ -55,42 +58,71 @@ kernels1d = [ test_kernel(kernels.normal_kernel1d, 1, 1, True)
 
 class KDETester(object):
 
+    def createKDE(self, data, method, **args):
+        all_args = dict(self.args)
+        all_args.update(args)
+        k = kde.KDE1D(data, **all_args)
+        if method.instance is None:
+            del k.method
+        else:
+            k.method = method.instance
+        if method.bound_low:
+            k.lower = self.lower
+        else:
+            del k.lower
+        if method.bound_high:
+            k.upper = self.upper
+        else:
+            del k.upper
+        assert k.fitted is False
+        return k
+
     def test_methods(self):
         for m in methods:
             for i in irange(len(self.sizes)):
-                yield self.method_works, i, m
+                k = self.createKDE(self.vs[i], m)
+                yield self.method_works, k, m, '{0}_{1}'.format(m.instance, i)
 
     def test_grid_methods(self):
-        for m in methods:
+        for m in self.methods:
             for i in irange(len(self.sizes)):
-                yield self.grid_method_works, i, m
+                k = self.createKDE(self.vs[i], m)
+                yield self.grid_method_works, k, m, '{0}_{1}'.format(m.instance, i)
 
     def test_weights_methods(self):
-        for m in methods:
+        for m in self.methods:
             for i in irange(len(self.sizes)):
-                yield self.weights_method_works, i, m
+                k = self.createKDE(self.vs[i], m)
+                k.weights = self.weights[i]
+                yield self.method_works, k, m, 'weights_{0}_{1}'.format(m.instance, i)
 
     def test_weights_grid_methods(self):
-        for m in methods:
+        for m in self.methods:
             for i in irange(len(self.sizes)):
-                yield self.weights_grid_method_works, i, m
+                k = self.createKDE(self.vs[i], m)
+                k.weights=self.weights[i]
+                yield self.grid_method_works, k, m, 'weights_{0}_{1}'.format(m.instance, i)
 
     def test_lambdas_methods(self):
-        for m in methods:
+        for m in self.methods:
             for i in irange(len(self.sizes)):
-                yield self.lambdas_method_works, i, m
+                k = self.createKDE(self.vs[i], m)
+                k.lambdas = self.lambdas[i]
+                yield self.method_works, k, m, 'lambdas_{0}_{1}'.format(m.instance, i)
 
     def test_lambdas_grid_methods(self):
-        for m in methods:
+        for m in self.methods:
             for i in irange(len(self.sizes)):
-                yield self.lambdas_grid_method_works, i, m
+                k = self.createKDE(self.vs[i], m)
+                k.lambdas = self.lambdas[i]
+                yield self.grid_method_works, k, m, 'lambdas_{0}_{1}'.format(m.instance, i)
 
     def kernel_works_(self, k):
-        self.kernel_works(k)
+        self.kernel_works(k, 'default')
         if kernels.HAS_CYTHON:
             try:
                 kernels.usePython()
-                self.kernel_works(k)
+                self.kernel_works(k, 'python')
             finally:
                 kernels.useCython()
 
@@ -99,11 +131,11 @@ class KDETester(object):
             yield self.kernel_works_, k
 
     def grid_kernel_works_(self, k):
-        self.grid_kernel_works(k)
+        self.grid_kernel_works(k, 'default')
         if kernels.HAS_CYTHON:
             try:
                 kernels.usePython()
-                self.grid_kernel_works(k)
+                self.grid_kernel_works(k, 'python')
             finally:
                 kernels.useCython()
 
