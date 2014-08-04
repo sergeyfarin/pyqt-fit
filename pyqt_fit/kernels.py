@@ -101,9 +101,11 @@ class Kernel1D(object):
         try:
             comp_pdf = self.__comp_pdf
         except AttributeError:
-            @make_ufunc(1)
+            def pdf(x):
+                return self.pdf(np.atleast_1d(x))
+            @make_ufunc()
             def comp_pdf(x):
-                return integrate.quad(self.pdf, self.lower, x)[0]
+                return integrate.quad(pdf, self.lower, x)[0]
             self.__comp_cdf = comp_pdf
         if out is None:
             out = np.empty(z.shape, dtype=float)
@@ -121,9 +123,11 @@ class Kernel1D(object):
         try:
             comp_pm1 = self.__comp_pm1
         except AttributeError:
-            @make_ufunc(1)
+            def pm1(x):
+                return x * self.pdf(np.atleast_1d(x))
+            @make_ufunc()
             def comp_pm1(x):
-                return integrate.quad(lambda x : x*self.pdf(x), -np.inf, x)[0]
+                return integrate.quad(pm1, -np.inf, x)[0]
             self.__comp_pm1 = comp_pm1
         if out is None:
             out = np.empty(z.shape, dtype=float)
@@ -142,9 +146,11 @@ class Kernel1D(object):
         try:
             comp_pm2 = self.__comp_pm2
         except AttributeError:
-            @make_ufunc(1)
+            def pm2(x):
+                return x * x * self.pdf(np.atleast_1d(x))
+            @make_ufunc()
             def comp_pm2(x):
-                return integrate.quad(lambda x : x*x*self.pdf(x), -np.inf, x)[0]
+                return integrate.quad(pm2, -np.inf, x)[0]
             self.__comp_pm2 = comp_pm2
         if out is None:
             out = np.empty(z.shape, dtype=float)

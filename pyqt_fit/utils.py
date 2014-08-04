@@ -11,6 +11,7 @@ from operator import itemgetter as _itemgetter
 import sys
 from .compat import text_type
 import numpy as np
+import inspect
 
 # Find the largest float available for this numpy
 if hasattr(np, 'float128'):
@@ -23,14 +24,22 @@ else:
 def finite(val):
     return val is not None and np.isfinite(val)
 
-def make_ufunc(nin, nout=1):
+def make_ufunc(nin = None, nout=1):
     """
-    Create a ufunc using `np.frompyfunc`. Note that the returns array will 
-    always be of object dtype. You should use the `out` if you know the wanted 
-    type of the outputs.
+    Decorator used to create a ufunc using `np.frompyfunc`. Note that the 
+    returns array will always be of dtype 'object'. You should use the `out` if 
+    you know the wanted type for the output.
+
+    :param int nin: Number of input. Default is found by using
+        ``inspect.getargspec``
+    :param int nout: Number of output. Default is 1.
     """
     def f(fct):
-        return np.frompyfunc(fct, nin, nout)
+        if nin is None:
+            Nin = len(inspect.getargspec(fct).args)
+        else:
+            Nin = nin
+        return np.frompyfunc(fct, Nin, nout)
     return f
 
 def namedtuple(typename, field_names, verbose=False, rename=False):

@@ -9,8 +9,8 @@ Helper class
 
 This class is provided with default implementations of everything in term of the PDF.
 
-.. autoclass:: Kernel
-    :members: pdf, cdf, dct, fft, pm1, pm2
+.. autoclass:: Kernel1D
+      :members: pdf, cdf, dct, fft, pm1, pm2
 
 Gaussian Kernels
 ----------------

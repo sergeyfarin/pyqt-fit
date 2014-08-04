@@ -34,22 +34,23 @@ def setupClass_lognorm(cls):
     cls.lower = 0
     cls.upper = 20
 
-test_method = namedtuple('test_method', ['cls', 'accuracy', 'grid_accuracy', 'bounded'])
+test_method = namedtuple('test_method', ['instance', 'accuracy', 'grid_accuracy', 'bound_low', 'bound_high'])
 
-methods = [ test_method(None, 1e-5, 1e-4, False)
-          , test_method(kde_methods.ReflectionMethod, 1e-5, 1e-4, True)
-          , test_method(kde_methods.CyclicMethod, 1e-5, 1e-4, True)
-          , test_method(kde_methods.RenormalizationMethod, 1e-5, 1e-4, True)
-          , test_method(kde_methods.LinearCombinationMethod, 1e-1, 1e-1, True)
+methods = [ test_method(None, 1e-5, 1e-4, False, False)
+          , test_method(kde_methods.reflection, 1e-5, 1e-4, True, True)
+          , test_method(kde_methods.cyclic, 1e-5, 1e-4, True, True)
+          , test_method(kde_methods.renormalization, 1e-5, 1e-4, True, True)
+          , test_method(kde_methods.linear_combination, 1e-1, 1e-1, True, False)
           ]
+methods_log = [test_method(kde_methods.transformKDE1D(kde_methods.LogTransform), 1e-5, 1e-4, True, False)]
 
-test_kernel = namedtuple('test_kernel', ['cls', 'precision_factor', 'var'])
+test_kernel = namedtuple('test_kernel', ['cls', 'precision_factor', 'var', 'positive'])
 
-kernels1d = [ test_kernel(kernels.normal_kernel1d, 1, 1)
-            , test_kernel(kernels.tricube, 1, 1)
-            , test_kernel(kernels.Epanechnikov, 1, 1)
-            , test_kernel(kernels.normal_order4, 10, 0)
-            , test_kernel(kernels.Epanechnikov_order4, 100, 0)
+kernels1d = [ test_kernel(kernels.normal_kernel1d, 1, 1, True)
+            , test_kernel(kernels.tricube, 1, 1, True)
+            , test_kernel(kernels.Epanechnikov, 1, 1, True)
+            , test_kernel(kernels.normal_order4, 10, 0, False) # Bad for precision because of high frequencies
+            , test_kernel(kernels.Epanechnikov_order4, 100, 0, False) # Bad for precision because of high frequencies
             ]
 
 class KDETester(object):

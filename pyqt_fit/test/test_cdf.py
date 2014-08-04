@@ -14,21 +14,23 @@ from . import kde_utils
 class TestCDF(kde_utils.KDETester):
     @classmethod
     def setUpClass(cls):
-        kde_utils.setupClass_norm(cls)
+        kde_utils.setupClass_lognorm(cls)
 
     def createKDE(self, data, method, **args):
         all_args = dict(self.args)
         all_args.update(args)
         k = kde.KDE1D(data, **all_args)
-        if method.cls is None:
+        if method.instance is None:
             del k.method
         else:
-            k.method = method.cls()
-        if method.bounded:
+            k.method = method.instance
+        if method.bound_low:
             k.lower = self.lower
-            k.upper = self.upper
         else:
             del k.lower
+        if method.bound_high:
+            k.upper = self.upper
+        else:
             del k.upper
         assert k.fitted is False
         return k
@@ -113,9 +115,13 @@ class TestCDF(kde_utils.KDETester):
         method = kde_utils.methods[0]
         k = self.createKDE(self.vs[1], method)
         k.kernel = ker.cls()
-        xs, ys = k.cdf_grid()
+        xs, ys = k.cdf_grid(cut=5)
         acc = method.accuracy * ker.precision_factor
-        assert np.all(ys >= -acc), "Some negative values"
-        assert np.all(ys <= 1+acc), "CDF must be below one"
-        assert np.all(ys[1:] - ys[:-1] >= -acc), "The CDF must be strictly growing."
+        if ker.positive: # This is true only if the kernel is a probability ... that is not higher order!
+            assert np.all(ys >= -acc), "Some negative values"
+            assert np.all(ys <= 1+acc), "CDF must be below one"
+            assert np.all(ys[1:] - ys[:-1] >= -acc), "The CDF must be strictly growing."
+        else:
+            assert abs(ys[0]) < acc, "Error, k.cdf({0}) = {1} should be close to 0".format(xs[0], ys[0])
+            assert abs(ys[-1]-1) < acc, "Error, k.cdf({0}) = {1} should be close to 1".format(xs[-1], ys[-1])
 

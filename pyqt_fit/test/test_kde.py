@@ -47,20 +47,23 @@ class TestKDE1D(kde_utils.KDETester):
     @classmethod
     def setUpClass(cls):
         kde_utils.setupClass_norm(cls)
+        cls.methods = kde_utils.methods
 
     def createKDE(self, data, method, **args):
         all_args = dict(self.args)
         all_args.update(args)
         k = kde.KDE1D(data, **all_args)
-        if method.cls is None:
+        if method.instance is None:
             del k.method
         else:
-            k.method = method.cls()
-        if method.bounded:
+            k.method = method.instance
+        if method.bound_low:
             k.lower = self.lower
-            k.upper = self.upper
         else:
             del k.lower
+        if method.bound_high:
+            k.upper = self.upper
+        else:
             del k.upper
         assert k.fitted is False
         return k
@@ -73,24 +76,19 @@ class TestKDE1D(kde_utils.KDETester):
     def method_works(self, i, method):
         k = self.createKDE(self.vs[i], method, **self.args)
         k.fit()
-        xs = kde_methods.generate_grid(k, 2048)
-        ys = k(xs)
-        tot = integrate.simps(ys, xs)
+        tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
         assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
 
     def grid_method_works(self, i, method):
         k = self.createKDE(self.vs[i], method, **self.args)
-        xs, ys = k.grid(2**10)
+        xs, ys = k.grid(4000)
         tot = integrate.simps(ys, xs)
         assert abs(tot - 1) < method.grid_accuracy, "Error, {} should be close to 1".format(tot)
 
     def weights_method_works(self, i, method):
         weights = self.weights[i]
         k = self.createKDE(self.vs[i], method, weights=weights, **self.args)
-        k.fit()
-        xs = kde_methods.generate_grid(k, 2048)
-        ys = k(xs)
-        tot = integrate.simps(ys, xs)
+        tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
         assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
         del k.weights
         k.fit()
@@ -106,10 +104,7 @@ class TestKDE1D(kde_utils.KDETester):
     def lambdas_method_works(self, i, method):
         lambdas = self.lambdas[i]
         k = self.createKDE(self.vs[i], method, lambdas=lambdas, **self.args)
-        k.fit()
-        xs = kde_methods.generate_grid(k, 2048)
-        ys = k(xs)
-        tot = integrate.simps(ys, xs)
+        tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
         assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
         del k.lambdas
         k.fit()
@@ -123,16 +118,16 @@ class TestKDE1D(kde_utils.KDETester):
         assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
 
     def test_copy(self):
-        k = self.createKDE(self.vs[0], kde_utils.methods[0])
+        k = self.createKDE(self.vs[0], self.methods[0])
         k.covariance = kde.silverman_covariance
-        xs = np.r_[-3:3:512j]
+        xs = np.r_[self.xs.min():self.xs.max():512j]
         ys = k(xs)
         k1 = k.copy()
         ys1 = k1(xs)
         np.testing.assert_allclose(ys1, ys, 1e-8, 1e-8)
 
     def test_bandwidths(self):
-        k = self.createKDE(self.vs[0], kde_utils.methods[0])
+        k = self.createKDE(self.vs[0], self.methods[0])
         k.covariance = kde.silverman_covariance
         assert k.fitted is not None
         k.fit()
@@ -149,21 +144,24 @@ class TestKDE1D(kde_utils.KDETester):
         k.fit()
 
     def kernel_works(self, ker):
-        method = kde_utils.methods[0]
+        method = self.methods[0]
         k = self.createKDE(self.vs[1], method)
         k.kernel = ker.cls()
-        k.fit()
-        xs = kde_methods.generate_grid(k, 2048)
-        ys = k(xs)
-        tot = integrate.simps(ys, xs)
+        tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
         acc = method.grid_accuracy * ker.precision_factor
         assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
     def grid_kernel_works(self, ker):
-        method = kde_utils.methods[0]
+        method = self.methods[0]
         k = self.createKDE(self.vs[1], method)
         xs, ys = k.grid()
         tot = integrate.simps(ys, xs)
         acc = method.grid_accuracy * ker.precision_factor
         assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
+
+class LogTestKDE1D(kde_utils.KDETester):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_lognorm(cls)
+        cls.methods = kde_utils.methods_log
 

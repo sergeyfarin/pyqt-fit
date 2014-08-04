@@ -3,6 +3,8 @@ Module :py:mod:`pyqt_fit.kde_methods`
 
 .. automodule:: pyqt_fit.kde_methods
 
+:module: pyqt_fit.kde_methods
+
 Univariate KDE estimation methods
 ---------------------------------
 
@@ -11,13 +13,56 @@ The exact definition of such a method is found in :py:attr:`pyqt_fit.kde.KDE1D.m
 .. autofunction:: generate_grid
 
 .. autoclass:: KDE1DMethod
-   :members: unbounded, __call__, default_grid, grid, __str__
 
+   The following methods are interface methods that should be overriden with ones specific to the implemented method. 
+   Each method will be called as a normal method. Any static or class method here is purely for convenience.
+
+   .. automethod:: fit
+
+   .. automethod:: pdf
+
+   .. automethod:: __call__
+
+   .. automethod:: grid
+
+   .. automethod:: cdf
+
+   .. automethod:: cdf_grid
+
+   .. automethod:: icdf
+
+   .. automethod:: icdf_grid
+
+   .. automethod:: sf
+
+   .. automethod:: sf_grid
+
+   .. automethod:: isf
+
+   .. automethod:: isf_grid
+
+   .. automethod:: hazard
+
+   .. automethod:: hazard_grid
+
+   .. automethod:: cumhazard
+
+   .. automethod:: cumhazard_grid
+
+   .. attribute:: name
+
+      :type: str
+      Specify a human-readable name for the method, for presentation purposes.
+
+   But the class also provide a number of utility methods to help implementing you own:
+
+   .. automethod:: numeric_cdf
+
+   .. automethod:: numeric_cdf_grid
 
 Estimation methods
 ``````````````````
-
-Here are the methods implemented in pyqt_fit. To access these methods, the simplest is to use the instances provided:
+Here are the methods implemented in pyqt_fit. To access these methods, the simplest is to use the instances provided.
 
 .. py:data:: renormalization
 
@@ -35,6 +80,8 @@ Here are the methods implemented in pyqt_fit. To access these methods, the simpl
 
     Instance of the :py:class:`CyclicMethod` class.
 
+.. autofunction:: transformKDE1D
+
 Classes implementing the estimation methods
 ```````````````````````````````````````````
 
@@ -45,4 +92,6 @@ Classes implementing the estimation methods
 .. autoclass:: LinearCombinationMethod
 
 .. autoclass:: CyclicMethod
+
+.. autoclass:: TransformKDE1DMethod
 

@@ -40,10 +40,10 @@ class TestKernels(object):
         val = ker.cdf(self.xs)
         acc = kernel.precision_factor * tol
         np.testing.assert_allclose(val, ref, acc, acc)
-        tot = ker.cdf(np.inf)
+        tot = ker.cdf([np.inf])
         assert abs(tot-1) < acc, "ker.cdf(inf) = {0}, while it should be close to 1".format(tot)
         short1 = ker.cdf(self.small)
-        short2 = [ker.cdf(x) for x in self.small]
+        short2 = [float(ker.cdf(x)) for x in self.small]
         np.testing.assert_allclose(short1, short2, acc, acc)
 
     def cdf(self, kernel):
@@ -65,7 +65,7 @@ class TestKernels(object):
         tot = ker.pm1(np.inf)
         assert abs(tot) < acc, "ker.cdf(inf) = {0}, while it should be close to 0".format(tot)
         short1 = ker.pm1(self.small)
-        short2 = [ker.pm1(x) for x in self.small]
+        short2 = [float(ker.pm1(x)) for x in self.small]
         np.testing.assert_allclose(short1, short2, acc, acc)
 
     def pm1(self, kernel):
@@ -87,7 +87,7 @@ class TestKernels(object):
         tot = ker.pm2(np.inf)
         assert abs(tot - kernel.var) < acc, "ker.cdf(inf) = {0}, while it should be close to {1}".format(tot, kernel.var)
         short1 = ker.pm2(self.small)
-        short2 = [ker.pm2(x) for x in self.small]
+        short2 = [float(ker.pm2(x)) for x in self.small]
         np.testing.assert_allclose(short1, short2, acc, acc)
 
     def pm2(self, kernel):
@@ -168,11 +168,26 @@ class TestNormal1d(object):
         tst_vals = getattr(n_tst, attr)(self.xs)
         np.testing.assert_allclose(ref_vals, tst_vals, tol, tol)
 
+    def python_attr(self, attr):
+        ker = self.kernel
+        ref = "_" + attr
+        ref_vals = getattr(ker, ref)(self.xs)
+        tst_vals = getattr(ker, attr)(self.xs)
+        np.testing.assert_allclose(ref_vals, tst_vals, tol, tol)
+
     def test_pdf(self):
         self.attr('pdf')
+        self.python_attr('pdf')
 
     def test_cdf(self):
         self.attr('cdf')
+        self.python_attr('pdf')
+
+    def test_pm1(self):
+        self.python_attr('pm1')
+
+    def test_pm2(self):
+        self.python_attr('pm2')
 
 class ComparePythonCython(object):
     @classmethod

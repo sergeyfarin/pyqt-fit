@@ -12,12 +12,6 @@ Kernel Density Estimation Methods
               lambdas, lower, method, total_weights, update_bandwidth, upper,
               weights, xdata, __call__
 
-Estimation in a Different Domain
-````````````````````````````````
-
-.. autoclass:: TransformKDE
-  :members: copy, evaluate, grid, __call__
-
 Bandwidth Estimation Methods
 ----------------------------
 

@@ -20,7 +20,7 @@ def variance_bandwidth(factor, xdata):
     return sq_bandwidth
 
 
-def silverman_covariance(xdata, ydata=None, model=None):
+def silverman_covariance(xdata, model=None):
     r"""
     The Silverman bandwidth is defined as a variance bandwidth with factor:
 
@@ -34,7 +34,7 @@ def silverman_covariance(xdata, ydata=None, model=None):
                               -1. / (d + 4.)), xdata)
 
 
-def scotts_covariance(xdata, ydata=None, model=None):
+def scotts_covariance(xdata, model=None):
     r"""
     The Scotts bandwidth is defined as a variance bandwidth with factor:
 
@@ -81,7 +81,7 @@ class botev_bandwidth(object):
                   "deprecated. Argument is ignored")
         self.N = N
 
-    def __call__(self, data, model, ydata=None):
+    def __call__(self, data, model):
         """
         Returns the optimal bandwidth based on the data
         """
