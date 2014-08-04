@@ -219,7 +219,7 @@ class KDE1DMethod(object):
 
     @staticmethod
     def sf(kde, points, out):
-        """
+        r"""
         Compute the survival function, defined as:
 
         .. math::
@@ -242,7 +242,7 @@ class KDE1DMethod(object):
 
     @staticmethod
     def isf(kde, points, out):
-        """
+        r"""
         Compute the inverse survival function, defined as:
 
         .. math::
