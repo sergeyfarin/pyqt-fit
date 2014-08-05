@@ -60,7 +60,7 @@ def generate_grid(kde, N=None, cut=None):
     if N is None:
         N = 2 ** 10
     if cut is None:
-        cut = 3
+        cut = kde.kernel.cut
     if kde.lower == -np.inf:
         lower = np.min(kde.xdata) - cut * kde.bandwidth
     else:
@@ -70,6 +70,20 @@ def generate_grid(kde, N=None, cut=None):
     else:
         upper = kde.upper
     return np.linspace(lower, upper, N)
+
+def compute_bandwidth(kde):
+    """
+    Compute the bandwidth and covariance for the model, based of its xdata attribute
+    """
+    if kde.bandwidth_function:
+        bw = float(kde.bandwidth_function(kde.xdata, model=kde))
+        cov = bw * bw
+    elif kde.covariance_function:
+        cov = float(kde.covariance_function(kde.xdata, model=kde))
+        bw = np.sqrt(cov)
+    else:
+        return kde.bandwidth, kde.covariance
+    return bw, cov
 
 class KDE1DMethod(object):
     """
@@ -124,9 +138,9 @@ class KDE1DMethod(object):
         one-time calculation.
 
         :param pyqt_fit.kde.KDE1D kde: KDE object being fitted
-        :Default: Does nothing.
+        :Default: Compute the bandwidth and covariance if specified as functions
         """
-        pass
+        kde.bandwidth, kde.covariance = compute_bandwidth(kde)
 
     def __call__(self, kde, points, out=None):
         """
@@ -330,6 +344,7 @@ class KDE1DMethod(object):
         :Default: Evaluate :math:`pdf(x)` on a grid generated using
             :py:func:`generate_grid`
         """
+        N = self.grid_size(N)
         g = generate_grid(kde, N, cut)
         return g, self.pdf(kde, g)
 
@@ -349,6 +364,7 @@ class KDE1DMethod(object):
         :Default: Evaluate :math:`cdf(x)` on a grid generated using
             :py:func:`generate_grid`
         """
+        N = self.grid_size(N)
         g = generate_grid(kde, N, cut)
         return g, self.cdf(kde, g)
 
@@ -504,6 +520,11 @@ class KDE1DMethod(object):
         pts, pdf = self.grid(kde, N, cut)
         cdf = integrate.cumtrapz(pdf, pts, initial=0)
         return pts, cdf
+
+    def grid_size(self, N=None):
+        if N is None:
+            return 2**10
+        return N
 
 unbounded = KDE1DMethod()
 
@@ -693,17 +714,17 @@ class ReflectionMethod(KDE1DMethod):
 
         bw = kde.bandwidth * kde.lambdas
         data = kde.xdata
-        if N is None:
-            N = 2 ** 14
-        else:
-            N = 2 ** int(np.ceil(np.log2(N)))
+        N = self.grid_size(N)
+
+        if cut is None:
+            cut = kde.kernel.cut
 
         if kde.lower == -np.inf:
-            lower = np.min(data) - 3 * kde.bandwidth
+            lower = np.min(data) - cut * kde.bandwidth
         else:
             lower = kde.lower
         if kde.upper == np.inf:
-            upper = np.max(data) + 3 * kde.bandwidth
+            upper = np.max(data) + cut * kde.bandwidth
         else:
             upper = kde.upper
 
@@ -729,6 +750,11 @@ class ReflectionMethod(KDE1DMethod):
         mesh = np.array([(bins[i] + bins[i + 1]) / 2 for i in irange(N)])
 
         return mesh, density
+
+    def grid_size(self, N=None):
+        if N is None:
+            return 2**14
+        return 2 ** int(np.ceil(np.log2(N)))
 
 reflection = ReflectionMethod()
 
@@ -900,10 +926,8 @@ class CyclicMethod(KDE1DMethod):
                              "a closed domain.")
         bw = kde.bandwidth * kde.lambdas
         data = kde.xdata
-        if N is None:
-            N = 2 ** 14
-        else:
-            N = 2 ** int(np.ceil(np.log2(N)))
+        N = self.grid_size(N)
+
         lower = kde.lower
         upper = kde.upper
         R = upper - lower
@@ -911,7 +935,7 @@ class CyclicMethod(KDE1DMethod):
         mesh = np.r_[lower:upper + dN:(N + 2) * 1j]
         weights = kde.weights
         if not weights.shape:
-            weights = None
+            weights=None
         DataHist, bin_edges = np.histogram(data, bins=mesh - dN / 2,
                                            weights=weights)
         DataHist[0] += DataHist[-1]
@@ -925,6 +949,23 @@ class CyclicMethod(KDE1DMethod):
         SmoothFFTData = FFTData * smth
         density = fftpack.ifft(SmoothFFTData) / (mesh[1] - mesh[0])
         return mesh[:-2], density.real
+
+    def cdf_grid(self, kde, N=None, cut=None):
+        if kde.lambdas.shape:
+            return KDE1DMethod.cdf_grid(self, kde, N, cut)
+        if not kde.closed:
+            raise ValueError("Error, cyclic boundary conditions require "
+                             "a closed domain.")
+        N = self.grid_size(N)
+
+        if N <= 2**12:
+            return KDE1DMethod.cdf_grid(self, kde, N, cut)
+        return self.numeric_cdf_grid(kde, N, cut)
+
+    def grid_size(self, N=None):
+        if N is None:
+            return 2**14
+        return 2 ** int(np.ceil(np.log2(N)))
 
 cyclic = CyclicMethod()
 
@@ -979,18 +1020,6 @@ class _fakeKDE(object):
     def __init__(self, method):
         self.method = method.method
 
-    def pdf(self, points, out=None):
-        return self.method.pdf(self, points, out)
-
-    def grid(self, N=None, cut=None):
-        return self.method.grid(self, N, cut)
-
-    def cdf(self, points, out=None):
-        return self.method.cdf(self, points, out)
-
-    def cdf_grid(self, N=None, cut=None):
-        return self.method.cdf_grid(self, N, cut)
-
 class TransformKDE1DMethod(KDE1DMethod):
     r"""
     Compute the Kernel Density Estimate of a dataset, transforming it first to 
@@ -1034,7 +1063,7 @@ class TransformKDE1DMethod(KDE1DMethod):
         get a pre-allocated array to store its result. Also the ``out`` 
         parameter may be one of the input argument.
     """
-    def __init__(self, trans, method = None, inv=None, Dinv=None):
+    def __init__(self, trans, method=None, inv=None, Dinv=None):
         self.trans = _create_transform(trans, inv, Dinv)
         if method is None:
             method = KDE1DMethod()
@@ -1053,91 +1082,90 @@ class TransformKDE1DMethod(KDE1DMethod):
         fake_kde.lower = self.trans(kde.lower)
         fake_kde.upper = self.trans(kde.upper)
         fake_kde.xdata = self.trans(kde.xdata)
-        fake_kde.weights = kde.weights
-        fake_kde.lambdas = kde.lambdas
-        fake_kde.kernel = kde.kernel
-        # Recompute bandwidth in transformed space
-        if kde.bandwidth_function is not None:
-            bw = float(kde.bandwidth_function(fake_kde.xdata, model=fake_kde))
-            cov = bw*bw
-        elif kde.covariance_function is not None:
-            cov = float(kde.covariance_function(fake_kde.xdata, model=fake_kde))
-            bw = np.sqrt(cov)
-        else:
-            bw = kde.bandwidth
-            cov = kde.covariance
-        fake_kde.bandwidth = bw
-        fake_kde.covariance = cov
-        fake_kde.total_weights = kde.total_weights
+
+        copy_attrs = [ 'weights', 'lambdas', 'kernel'
+                     , 'bandwidth', 'covariance'
+                     , 'bandwidth_function'
+                     , 'covariance_function'
+                     , 'total_weights' ]
+
+        for attr in copy_attrs:
+            setattr(fake_kde, attr, getattr(kde, attr))
+
+        # Compute the bandwidth for the fake KDE and update the KDE itself
+        bw, cov = compute_bandwidth(fake_kde)
+        fake_kde.bandwidth = kde.bandwidth = bw
+        fake_kde.covariance = kde.covariance = cov
+
         self.fake_kde = fake_kde
 
-    def pdf(self, kde, points, out):
+    def pdf(self, kde, points, out=None):
         trans = self.trans
         pts = trans(points)
-        out = self.method(self.fake_kde, pts, out)
+        out = self.method(self.fake_kde, pts, out = None)
         return transform_distribution(pts, out, trans.Dinv, out=out)
 
-    def grid(self, kde, N, cut):
+    def grid(self, kde, N=None, cut=None):
         xs, ys = self.method.grid(self.fake_kde, N, cut)
         trans = self.trans
         transform_distribution(xs, ys, trans.Dinv, out=ys)
         trans.inv(xs, out=xs)
         return xs, ys
 
-    def cdf(self, kde, points, out):
+    def cdf(self, kde, points, out=None):
         return self.method.cdf(self.fake_kde, self.trans(points), out)
 
-    def cdf_grid(self, kde, N, cut):
+    def cdf_grid(self, kde, N=None, cut=None):
         xs, ys = self.method.cdf_grid(self.fake_kde, N, cut)
         self.trans.inv(xs, out=xs)
         return xs, ys
 
-    def sf(self, kde, points, out):
+    def sf(self, kde, points, out=None):
         return self.method.sf(self.fake_kde, self.trans(points), out)
 
-    def sf_grid(self, kde, N, cut):
+    def sf_grid(self, kde, N=None, cut=None):
         xs, ys = self.method.sf_grid(self.fake_kde, N, cut)
         return self.trans.inv(xs), ys
 
-    def icdf(self, kde, points, out):
+    def icdf(self, kde, points, out=None):
         out = self.method.icdf(self.fake_kde, points, out)
         self.trans.inv(out, out=out)
         return out
 
-    def icdf_grid(self, kde, N, cut):
+    def icdf_grid(self, kde, N=None, cut=None):
         xs, ys = self.method.icdf_grid(self.fake_kde, N, cut)
         self.trans.inv(ys, out=ys)
         return xs, ys
 
-    def isf(self, kde, points, out):
+    def isf(self, kde, points, out=None):
         out = self.method.isf(self.fake_kde, points, out)
         self.trans.inv(out, out=out)
         return out
 
-    def isf_grid(self, kde, N, cut):
+    def isf_grid(self, kde, N=None, cut=None):
         xs, ys = self.method.isf_grid(self.fake_kde, N, cut)
         self.trans.inv(ys, out=ys)
         return xs, ys
 
-    def hazard(self, kde, points, out):
+    def hazard(self, kde, points, out=None):
         out = self.pdf(kde, points, out)
         sf = self.sf(kde, points)
         out /= sf
         return out
 
-    def hazard_grid(self, kde, N, cut):
-        xs, pdf = self.pdf_grid(kde, N, cut)
+    def hazard_grid(self, kde, N=None, cut=None):
+        xs, pdf = self.grid(kde, N, cut)
         _, sf = self.sf_grid(kde, N, cut)
         pdf /= sf
         return xs, pdf
 
-    def cumhazard(self, kde, points, out):
-        out = self.sf(points, out)
+    def cumhazard(self, kde, points, out=None):
+        out = self.sf(kde, points, out)
         np.log(out, out=out)
         out *= -1
         return out
 
-    def cumhazard_grid(self, kde, N, cut):
+    def cumhazard_grid(self, kde, N=None, cut=None):
         pts, out = self.sf_grid(kde, N, cut)
         np.log(out, out=out)
         out *= -1

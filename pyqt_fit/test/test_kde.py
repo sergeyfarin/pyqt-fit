@@ -114,6 +114,7 @@ class LogTestKDE1D(TestKDE1D):
     @classmethod
     def setUpClass(cls):
         kde_utils.setupClass_lognorm(cls)
+        cls.methods = kde_utils.methods_log
 
 class TestSF(kde_utils.KDETester):
     @classmethod
@@ -144,6 +145,7 @@ class TestLogSF(TestSF):
     @classmethod
     def setUpClass(cls):
         kde_utils.setupClass_lognorm(cls)
+        cls.methods = kde_utils.methods_log
         del cls.sizes[1:]
 
 class TestISF(kde_utils.KDETester):
@@ -154,7 +156,6 @@ class TestISF(kde_utils.KDETester):
         del cls.sizes[1:]
 
     def method_works(self, k, method, name):
-        k.fit()
         sf = np.linspace(0, 1, 64)
         sf_xs = k.isf(sf)
         cdf_xs = k.icdf(1-sf)
@@ -176,5 +177,113 @@ class TestLogISF(TestISF):
     def setUpClass(cls):
         kde_utils.setupClass_lognorm(cls)
         del cls.sizes[1:]
+
+class TestICDF(kde_utils.KDETester):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_norm(cls)
+        cls.methods = kde_utils.methods
+        del cls.sizes[1:]
+
+    def method_works(self, k, method, name):
+        quant = np.linspace(0, 1, 64)
+        xs = k.icdf(quant)
+        cdf_quant = k.cdf(xs)
+        np.testing.assert_allclose(cdf_quant, quant, method.accuracy, method.accuracy)
+
+    def grid_method_works(self, k, method, name):
+        comp_cdf, xs = k.icdf_grid()
+        ref_cdf = k.cdf(xs)
+        np.testing.assert_allclose(comp_cdf, ref_cdf, method.grid_accuracy, method.grid_accuracy)
+
+    def kernel_works(self, ker, name):
+        pass
+
+    def grid_kernel_works(self, ker, name):
+        pass
+
+class TestLogICDF(TestICDF):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_lognorm(cls)
+        cls.methods = kde_utils.methods_log
+        del cls.sizes[1:]
+
+
+class TestHazard(kde_utils.KDETester):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_norm(cls)
+        cls.methods = kde_utils.methods
+        del cls.sizes[1:]
+
+    def method_works(self, k, method, name):
+        k.fit()
+        xs = kde_methods.generate_grid(k)
+        h_comp = k.hazard(xs)
+        sf = k.sf(xs)
+        h_ref = k.pdf(xs)
+        h_ref /= k.sf(xs)
+        sel = sf > np.sqrt(method.accuracy)
+        np.testing.assert_allclose(h_comp[sel], h_ref[sel], method.accuracy, method.accuracy)
+
+    def grid_method_works(self, k, method, name):
+        xs, h_comp = k.hazard_grid()
+        xs, sf = k.sf_grid()
+        h_ref = k.grid()[1]
+        h_ref /= sf
+        sel = sf > np.sqrt(method.accuracy)
+        # Only tests for sf big enough or error is too large
+        np.testing.assert_allclose(h_comp[sel], h_ref[sel], method.accuracy, method.accuracy)
+
+    def kernel_works(self, ker, name):
+        pass
+
+    def grid_kernel_works(self, ker, name):
+        pass
+
+class TestLogHazard(TestHazard):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_lognorm(cls)
+        del cls.sizes[1:]
+        cls.methods = kde_utils.methods_log
+
+class TestCumHazard(kde_utils.KDETester):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_norm(cls)
+        cls.methods = kde_utils.methods
+        del cls.sizes[1:]
+
+    def method_works(self, k, method, name):
+        k.fit()
+        xs = kde_methods.generate_grid(k)
+        h_comp = k.cumhazard(xs)
+        sf = k.sf(xs)
+        h_ref = -np.log(sf)
+        sel = sf > np.sqrt(method.accuracy)
+        np.testing.assert_allclose(h_comp[sel], h_ref[sel], method.accuracy, method.accuracy)
+
+    def grid_method_works(self, k, method, name):
+        xs, h_comp = k.cumhazard_grid()
+        xs, sf = k.sf_grid()
+        h_ref = -np.log(sf)
+        sel = sf > np.sqrt(method.accuracy)
+        # Only tests for sf big enough or error is too large
+        np.testing.assert_allclose(h_comp[sel], h_ref[sel], method.accuracy, method.accuracy)
+
+    def kernel_works(self, ker, name):
+        pass
+
+    def grid_kernel_works(self, ker, name):
+        pass
+
+class TestLogCumHazard(TestCumHazard):
+    @classmethod
+    def setUpClass(cls):
+        kde_utils.setupClass_lognorm(cls)
+        del cls.sizes[1:]
+        cls.methods = kde_utils.methods_log
 
 

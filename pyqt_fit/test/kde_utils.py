@@ -78,7 +78,7 @@ class KDETester(object):
         return k
 
     def test_methods(self):
-        for m in methods:
+        for m in self.methods:
             for i in irange(len(self.sizes)):
                 k = self.createKDE(self.vs[i], m)
                 yield self.method_works, k, m, '{0}_{1}'.format(m.instance, i)

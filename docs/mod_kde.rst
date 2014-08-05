@@ -9,7 +9,7 @@ Kernel Density Estimation Methods
 .. autoclass:: KDE1D
     :members: bandwidth, closed, copy, covariance, evaluate, grid, kernel,
               cdf, cdf_grid, sf, hazard, cumhazard, icdf, icdf_grid,
-              lambdas, lower, method, total_weights, update_bandwidth, upper,
+              lambdas, lower, method, total_weights, fit, upper,
               weights, xdata, __call__
 
 Bandwidth Estimation Methods

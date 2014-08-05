@@ -69,7 +69,40 @@ class Kernel1D(object):
     - an average of 0 (i.e. centered);
     - a finite variance. It is even recommanded that the variance is close to 1 to give a uniform meaning to the 
       bandwidth.
+
+    .. py:attribute:: cut
+
+        :type: float
+
+        Cutting point after which there is a negligeable part of the probability. More formally, if :math:`c` is the 
+        cutting point:
+
+        .. math::
+
+            \int_{-c}^c p(x) dx \approx 1
+
+    .. py:attribute:: lower
+
+        :type: float
+
+        Lower bound of the support of the PDF. Formally, if :math:`l` is the lower bound:
+
+        .. math::
+
+            \int_{-\infty}^l p(x)dx = 0
+
+    .. py:attribute:: upper
+
+        :type: float
+
+        Upper bound of the support of the PDF. Formally, if :math:`u` is the upper bound:
+
+        .. math::
+
+            \int_u^\infty p(x)dx = 0
+
     """
+    cut = 3.
     lower = -np.inf
     upper = np.inf
 
@@ -103,9 +136,15 @@ class Kernel1D(object):
         except AttributeError:
             def pdf(x):
                 return self.pdf(np.atleast_1d(x))
+            lower = self.lower
+            upper = self.upper
             @make_ufunc()
             def comp_pdf(x):
-                return integrate.quad(pdf, self.lower, x)[0]
+                if x < lower:
+                    return 0
+                if x > upper:
+                    x = upper
+                return integrate.quad(pdf, lower, x)[0]
             self.__comp_cdf = comp_pdf
         if out is None:
             out = np.empty(z.shape, dtype=float)
@@ -123,11 +162,17 @@ class Kernel1D(object):
         try:
             comp_pm1 = self.__comp_pm1
         except AttributeError:
+            lower = self.lower
+            upper = self.upper
             def pm1(x):
                 return x * self.pdf(np.atleast_1d(x))
             @make_ufunc()
             def comp_pm1(x):
-                return integrate.quad(pm1, -np.inf, x)[0]
+                if x <= lower:
+                    return 0
+                if x > upper:
+                    x = upper
+                return integrate.quad(pm1, lower, x)[0]
             self.__comp_pm1 = comp_pm1
         if out is None:
             out = np.empty(z.shape, dtype=float)
@@ -146,11 +191,17 @@ class Kernel1D(object):
         try:
             comp_pm2 = self.__comp_pm2
         except AttributeError:
+            lower = self.lower
+            upper = self.upper
             def pm2(x):
                 return x * x * self.pdf(np.atleast_1d(x))
             @make_ufunc()
             def comp_pm2(x):
-                return integrate.quad(pm2, -np.inf, x)[0]
+                if x <= lower:
+                    return 0
+                if x > upper:
+                    x = upper
+                return integrate.quad(pm2, lower, x)[0]
             self.__comp_pm2 = comp_pm2
         if out is None:
             out = np.empty(z.shape, dtype=float)
@@ -370,8 +421,9 @@ class tricube(Kernel1D):
 
     __call__ = pdf
 
-    lower = -_kernels_py.tricube_width
-    upper = _kernels_py.tricube_width
+    upper = 1. / _kernels_py.tricube_width
+    lower = -upper
+    cut = upper
 
     def cdf(self, z, out=None):
         r"""
@@ -444,8 +496,9 @@ class Epanechnikov(Kernel1D):
         return kernels_imp.epanechnikov_pdf(xs, out)
     __call__ = pdf
 
-    lower = -_kernels_py.epanechnikov_width
-    upper = _kernels_py.epanechnikov_width
+    upper = 1./_kernels_py.epanechnikov_width
+    lower = -upper
+    cut = upper
 
     def cdf(self, xs, out=None):
         r"""
@@ -502,6 +555,11 @@ class Epanechnikov_order4(Kernel1D):
 
     where :math:`K` is the non-normalized Epanechnikov kernel.
     """
+
+    upper = 1
+    lower = -upper
+    cut = upper
+
     def pdf(self, xs, out=None):
         return kernels_imp.epanechnikov_o4_pdf(xs, out)
     __call__ = pdf
@@ -527,6 +585,11 @@ class normal_order4(Kernel1D):
     where :math:`\phi` is the normal kernel.
 
     """
+
+    lower = -np.inf
+    upper = np.inf
+    cut = 3.
+
     def pdf(self, xs, out=None):
         return kernels_imp.normal_o4_pdf(xs, out)
     __call__ = pdf
@@ -543,67 +606,3 @@ class normal_order4(Kernel1D):
 kernels1D = [normal_kernel1d, tricube, Epanechnikov, Epanechnikov_order4, normal_order4]
 kernelsnD = [normal_kernel]
 
-"""
-.. py:class:: Kernel
-
-
-    .. py:method:: pdf(self, z, out=None)
-
-        Returns the density of the kernel on the points `z`. This is the funtion :math:`K(z)` itself.
-
-        :param ndarray z: Array of points to evaluate the function on. The method should accept any shape of array.
-        :param ndarray out: If provided, it will be of the same shape as `z` and the result should be stored in it.
-            Ideally, it should be used for as many intermediate computation as possible.
-
-        .. note::
-
-            This is the only function that really needs to be implemented. Although the others will be required for an 
-            acceptable execution time.
-
-    .. py:method:: __call__(self, z, out=None)
-
-        Alias for the :py:meth:`pdf` method.
-
-    .. py:method:: cdf(self, z, out=None)
-
-        Returns the cumulative density function on the points `z`, i.e.:
-
-        .. math::
-
-            K_0(z) = \int_{-\infty}^z K(t) dt
-
-    .. py:method:: pm1(self, z, out=None)
-
-        Returns the first moment of the density function, i.e.:
-
-        .. math::
-
-            K_1(z) = \int_{-\infty}^z z K(t) dt
-
-    .. py:method:: pm2(self, z, out=None)
-
-        Returns the second moment of the density function, i.e.:
-
-        .. math::
-
-            K_2(z) = \int_{-\infty}^z z^2 K(t) dt
-
-    .. py:method:: fft(self, z, out=None)
-
-        FFT of the kernel on the points of ``z``. The points will always be provided as a grid with :math:`2^n` points, 
-        representing the whole frequency range to be explored. For convenience, the second half of the points will be 
-        provided as negative values.
-
-        .. note::
-
-            This method is optional. If note provided, the FFT will be computed using ``fftpack``.
-
-    .. py:method:: dct(self, z, out=None)
-
-        DCT of the kernel on the points of ``z``. The points will always be provided as a grid with :math:`2^n` points, 
-        representing the whole frequency range to be explored.
-
-        .. note::
-
-            This method is optional. If note provided, the DCT will be computed using ``fftpack``.
-"""

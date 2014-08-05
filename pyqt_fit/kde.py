@@ -145,18 +145,8 @@ class KDE1D(object):
 
     def fit(self):
         """
-        Re-compute the bandwidth if it was specified as a function.
+        Compute the various parameters needed by the kde method
         """
-        if self._bw_fct:
-            _bw = float(self._bw_fct(self._xdata, model=self))
-            _cov = _bw * _bw
-        elif self._cov_fct:
-            _cov = float(self._cov_fct(self._xdata, model=self))
-            _bw = np.sqrt(_cov)
-        else:
-            return
-        self._covariance = _cov
-        self._bw = _bw
         if self._weights.shape:
             assert self._weights.shape == self._xdata.shape, \
                 "There must be as many weights as data points"
@@ -476,6 +466,13 @@ class KDE1D(object):
         """
         self.fit_if_needed()
         return self.method.cumhazard(self, np.atleast_1d(points), out)
+
+    def cumhazard_grid(self, N=None, cut=None):
+        """
+        Compute the cumulative hazard function evaluated on a grid.
+        """
+        self.fit_if_needed()
+        return self.method.cumhazard_grid(self, N, cut)
 
     @property
     def method(self):

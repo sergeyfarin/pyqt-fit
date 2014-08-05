@@ -3,7 +3,7 @@ Module :py:mod:`pyqt_fit.kde_methods`
 
 .. automodule:: pyqt_fit.kde_methods
 
-:module: pyqt_fit.kde_methods
+.. py:currentmodule:: pyqt_fit.kde_methods
 
 Univariate KDE estimation methods
 ---------------------------------
@@ -11,6 +11,8 @@ Univariate KDE estimation methods
 The exact definition of such a method is found in :py:attr:`pyqt_fit.kde.KDE1D.method`
 
 .. autofunction:: generate_grid
+
+.. autofunction:: compute_bandwidth
 
 .. autoclass:: KDE1DMethod
 
@@ -52,6 +54,7 @@ The exact definition of such a method is found in :py:attr:`pyqt_fit.kde.KDE1D.m
    .. attribute:: name
 
       :type: str
+
       Specify a human-readable name for the method, for presentation purposes.
 
    But the class also provide a number of utility methods to help implementing you own:
