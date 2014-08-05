@@ -555,8 +555,8 @@ class RenormalizationMethod(KDE1DMethod):
 
         bw = kde.bandwidth * kde.lambdas
 
-        l = (kde.lower - xdata) / bw
-        u = (kde.upper - xdata) / bw
+        l = (kde.lower - points) / bw
+        u = (kde.upper - points) / bw
         z = (points - xdata) / bw
 
         kernel = kde.kernel
@@ -573,28 +573,40 @@ class RenormalizationMethod(KDE1DMethod):
     def cdf(self, kde, points, out=None):
         if not kde.bounded:
             return KDE1DMethod.cdf(self, kde, points, out)
+        return self.numeric_cdf(kde, points, out)
 
-        xdata = kde.xdata
-        points = np.atleast_1d(points)[..., np.newaxis]
+    def cdf_grid(self, kde, N=None, cut=None):
+        if N is None:
+            N = 2**10
+        if not kde.bounded or N <= 2**11:
+            return KDE1DMethod.cdf_grid(self, kde, N, cut)
+        return self.numeric_cdf_grid(kde, N, cut)
 
-        bw = kde.bandwidth * kde.lambdas
+    #def cdf(self, kde, points, out=None):
+        #if not kde.bounded:
+            #return KDE1DMethod.cdf(self, kde, points, out)
 
-        l = (kde.lower - xdata) / bw
-        u = (kde.upper - xdata) / bw
-        z = (points - xdata) / bw
+        #xdata = kde.xdata
+        #points = np.atleast_1d(points)[..., np.newaxis]
 
-        kernel = kde.kernel
+        #bw = kde.bandwidth * kde.lambdas
 
-        cl = kernel.cdf(l)
-        cu = kernel.cdf(u)
-        a1 = (cu - cl)
+        #l = (kde.lower - points) / bw
+        #u = (kde.upper - points) / bw
+        #z = (points - xdata) / bw
 
-        terms = (kernel.cdf(z) - cl) * (kde.weights / a1)
+        #kernel = kde.kernel
 
-        out = terms.sum(axis=-1, out=out)
-        out /= kde.total_weights
+        #cl = kernel.cdf(l)
+        #cu = kernel.cdf(u)
+        #a1 = (cu - cl)
 
-        return out
+        #terms = kernel.cdf(z) * (kde.weights / a1)
+
+        #out = terms.sum(axis=-1, out=out)
+        #out /= kde.total_weights
+
+        #return out
 
 
 renormalization = RenormalizationMethod()
@@ -812,7 +824,7 @@ class LinearCombinationMethod(KDE1DMethod):
     def cdf_grid(self, kde, N=None, cut=None):
         if N is None:
             N = 2**10
-        if not kde.bounded or N >= 2**10:
+        if not kde.bounded or N <= 2**11:
             return KDE1DMethod.cdf_grid(self, kde, N, cut)
         return self.numeric_cdf_grid(kde, N, cut)
 

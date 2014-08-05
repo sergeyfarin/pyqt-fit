@@ -70,6 +70,7 @@ KDE, making sure the width of the KDE and the histogram are the same::
   >>> kdes = np.empty((1000, 1024), dtype=float)
   >>> hs[0], edges = np.histogram(x[0], bins=nbins, range=(-3,3), density=True)
   >>> mod = kde.KDE1D(x[0])
+  >>> mod.fit()  # Force estimation of parameters
   >>> mod.bandwidth = mod.bandwidth  # Prevent future recalculation
   >>> kdes[0] = mod(xs)
   >>> for i in range(1, 1000):
@@ -106,7 +107,7 @@ Now, let's find the mean and the 90% confidence interval::
   >>> ax1.set_ylim(0, ymax)
   >>> ax1.set_title('Histogram, max variation = {:.3g}'.format((h_ci[1] - h_ci[0]).max()))
   >>> ax2.set_title('KDE, max variation = {:.3g}'.format((kde_ci[1] - kde_ci[0]).max()))
-  >>> fig.set_title('Comparison Histogram vs. KDE')
+  >>> fig.suptitle('Comparison Histogram vs. KDE')
 
 .. figure:: KDE_tut_compare.png
    :align: center
@@ -117,7 +118,8 @@ Now, let's find the mean and the 90% confidence interval::
 
 Note that the KDE doesn't tend toward the true density. Instead, given a kernel :math:`K`,
 the mean value will be the convolution of the true density with the kernel. But for that price, we
-get a much narrower variation on the values.
+get a much narrower variation on the values. We also avoid boundaries issues linked with the choices of where the bars 
+of the histogram start and stop.
 
 Boundary Conditions
 -------------------
@@ -138,7 +140,7 @@ default KDE::
 
   >>> from scipy import stats
   >>> from matplotlib import pylab as plt
-  >>> from pyqt_fit import kde
+  >>> from pyqt_fit import kde, kde_methods
   >>> import numpy as np
   >>> chi2 = stats.chi2(2)
   >>> x = chi2.rvs(1000)
@@ -160,9 +162,9 @@ the estimation becomes incorrect. The reason is that the method "sees" there are
 and therefore assumes the density continuously decreases to reach 0 in slightly negative values.
 
 There are a number of ways to take into account the bounded nature of the distribution. The default
-one consist in truncating the kernel if it goes below 0. This is called "renoamlizing" the kernel::
+one consist in truncating the kernel if it goes below 0. This is called "renormalizing" the kernel::
 
-  >>> est_ren = kde.KDE1D(x, lower=0)
+  >>> est_ren = kde.KDE1D(x, lower=0, method=kde_methods.renormalization)
   >>> plt.plot(xs, est_ren(xs), 'm', label=est_ren.method.name)
   >>> plt.legend(loc='best')
 
@@ -314,10 +316,9 @@ we should be working in log space::
   >>> plt.xlim(xmax=10)
   >>> plt.legend(loc='best')
 
-We can do the same for the KDE by using the `TransformKDE` object, that work as an adaptor for a
-normal KDE::
+We can do the same for the KDE by using the `transformKDE` method. This method requires the transformation as argument::
 
-  >>> trans = kde.TransformKDE(est, kde.LogTransform)
+  >>> trans = kde.KDE1D(x, method=kde_methods.transformKDE1D(kde_methods.LogTransform))
   >>> plt.plot(xs, trans(xs), color='b', lw=2, label='Transformed KDE')
   >>> plt.legend(loc='best')
 

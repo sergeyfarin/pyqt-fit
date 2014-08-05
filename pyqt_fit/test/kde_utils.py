@@ -42,7 +42,7 @@ test_method = namedtuple('test_method', ['instance', 'accuracy', 'grid_accuracy'
 methods = [ test_method(kde_methods.unbounded, 1e-5, 1e-4, False, False)
           , test_method(kde_methods.reflection, 1e-5, 1e-4, True, True)
           , test_method(kde_methods.cyclic, 1e-5, 1e-4, True, True)
-          , test_method(kde_methods.renormalization, 1e-5, 1e-4, True, True)
+          , test_method(kde_methods.renormalization, 1e-2, 1e-2, True, True)
           , test_method(kde_methods.linear_combination, 1e-1, 1e-1, True, False)
           ]
 methods_log = [test_method(kde_methods.transformKDE1D(kde_methods.LogTransform), 1e-5, 1e-4, True, False)]
