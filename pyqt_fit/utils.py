@@ -96,6 +96,37 @@ def numpy_trans_idx(fct):
         return out
     return f
 
+def numpy_method_idx(fct):
+    """
+    Decorator to create a function taking a single array-like argument and 
+    return a numpy array of same shape. In addition, if the input as no 
+    dimension, the function will still receive a 1D array, allowing for 
+    indexing.
+
+    The function is called as:
+
+        fct(self, z, out=out)
+
+    This decorator garanties that z and out are at least 1D ndarray of same 
+    shape and out is at least a float.
+
+    It also ensure the output is the shape of the initial input (even if it has 
+    no dimension)
+    """
+    def f(self, z, out=None):
+        z = np.asanyarray(z)
+        real_shape = z.shape
+        if len(real_shape) == 0:
+            z = z.reshape(1)
+        if out is None:
+            out = np.empty(z.shape, dtype=type(z.dtype.type() + 0.))
+        else:
+            out.shape = z.shape
+        out = fct(self, z, out=out)
+        out.shape = real_shape
+        return out
+    return f
+
 def namedtuple(typename, field_names, verbose=False, rename=False):
     """Returns a new subclass of tuple with named fields.
 

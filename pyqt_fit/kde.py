@@ -54,6 +54,7 @@ from .kernels import normal_kernel1d
 from . import kde_methods
 from .kde_bandwidth import variance_bandwidth, silverman_covariance, scotts_covariance, botev_bandwidth
 from scipy import stats, optimize
+from .utils import numpy_method_idx
 
 class KDE1D(object):
     r"""
@@ -339,7 +340,7 @@ class KDE1D(object):
         Compute the PDF of the distribution on the set of points ``points``
         """
         self.fit_if_needed()
-        return self._method.pdf(self, np.atleast_1d(points), out)
+        return self._method.pdf(self, points, out)
 
     def evaluate(self, points, out=None):
         """
@@ -347,12 +348,14 @@ class KDE1D(object):
         """
         return self.pdf(points, out)
 
+    @numpy_method_idx
     def __call__(self, points, out=None):
         """
         This method is an alias for :py:meth:`BoundedKDE1D.evaluate`
         """
         return self.pdf(points, out=out)
 
+    @numpy_method_idx
     def cdf(self, points, out=None):
         r"""
         Compute the cumulative distribution function defined as:
@@ -365,7 +368,7 @@ class KDE1D(object):
         :math:`p` the density of probability.
         """
         self.fit_if_needed()
-        return self.method.cdf(self, np.atleast_1d(points), out)
+        return self.method.cdf(self, points, out)
 
     def cdf_grid(self, N=None, cut=None):
         """
@@ -374,12 +377,13 @@ class KDE1D(object):
         self.fit_if_needed()
         return self.method.cdf_grid(self, N, cut)
 
+    @numpy_method_idx
     def icdf(self, points, out=None):
         r"""
         Compute the inverse cumulative distribution (quantile) function.
         """
         self.fit_if_needed()
-        return self.method.icdf(self, np.atleast_1d(points), out)
+        return self.method.icdf(self, points, out)
 
     def icdf_grid(self, N=None, cut=None):
         """
@@ -388,6 +392,7 @@ class KDE1D(object):
         self.fit_if_needed()
         return self.method.icdf_grid(self, N, cut)
 
+    @numpy_method_idx
     def sf(self, points, out=None):
         r"""
         Compute the survival function.
@@ -403,7 +408,7 @@ class KDE1D(object):
 
         """
         self.fit_if_needed()
-        return self.method.sf(self, np.atleast_1d(points), out)
+        return self.method.sf(self, points, out)
 
     def sf_grid(self, N=None, cut=None):
         r"""
@@ -412,6 +417,7 @@ class KDE1D(object):
         self.fit_if_needed()
         return self.method.sf_grid(self, N, cut)
 
+    @numpy_method_idx
     def isf(self, points, out=None):
         r"""
         Compute the inverse survival function, defined as:
@@ -421,8 +427,7 @@ class KDE1D(object):
             isf(p) = \sup\left\{x\in\mathbb{R} : sf(x) \leq p\right\}
         """
         self.fit_if_needed()
-        return self.method.isf(self, np.atleast_1d(points), out)
-
+        return self.method.isf(self, points, out)
 
     def isf_grid(self, N=None, cut=None):
         r"""
@@ -431,6 +436,7 @@ class KDE1D(object):
         self.fit_if_needed()
         return self.method.isf_grid(self, N, cut)
 
+    @numpy_method_idx
     def hazard(self, points, out=None):
         r"""
         Compute the hazard function evaluated on the points.
@@ -442,7 +448,7 @@ class KDE1D(object):
             h(x) = \frac{p(x)}{sf(x)}
         """
         self.fit_if_needed()
-        return self.method.hazard(self, np.atleast_1d(points), out)
+        return self.method.hazard(self, points, out)
 
     def hazard_grid(self, N=None, cut=None):
         """
@@ -451,6 +457,7 @@ class KDE1D(object):
         self.fit_if_needed()
         return self.method.hazard_grid(self, N, cut)
 
+    @numpy_method_idx
     def cumhazard(self, points, out=None):
         r"""
         Compute the cumulative hazard function evaluated on the points.
@@ -465,7 +472,7 @@ class KDE1D(object):
         function and :math:`sf` the survival function.
         """
         self.fit_if_needed()
-        return self.method.cumhazard(self, np.atleast_1d(points), out)
+        return self.method.cumhazard(self, points, out)
 
     def cumhazard_grid(self, N=None, cut=None):
         """

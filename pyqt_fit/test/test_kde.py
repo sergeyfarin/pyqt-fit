@@ -161,12 +161,14 @@ class TestISF(kde_utils.KDETester):
         sf = np.linspace(0, 1, 64)
         sf_xs = k.isf(sf)
         cdf_xs = k.icdf(1-sf)
-        np.testing.assert_allclose(sf_xs, cdf_xs, method.accuracy, method.accuracy)
+        acc = max(method.accuracy, method.normed_accuracy)
+        np.testing.assert_allclose(sf_xs, cdf_xs, acc, acc)
 
     def grid_method_works(self, k, method, name):
         comp_sf, xs = k.isf_grid()
         ref_sf = k.sf(xs)
-        np.testing.assert_allclose(comp_sf, ref_sf, 0.03, 0.03)
+        acc = max(method.grid_accuracy, method.normed_accuracy)
+        np.testing.assert_allclose(comp_sf, ref_sf, acc, acc)
 
     def kernel_works(self, ker, name):
         pass
@@ -191,12 +193,14 @@ class TestICDF(kde_utils.KDETester):
         quant = np.linspace(0, 1, 64)
         xs = k.icdf(quant)
         cdf_quant = k.cdf(xs)
-        np.testing.assert_allclose(cdf_quant, quant, method.accuracy, method.accuracy)
+        acc = max(method.accuracy, method.normed_accuracy)
+        np.testing.assert_allclose(cdf_quant, quant,  acc, acc)
 
     def grid_method_works(self, k, method, name):
         comp_cdf, xs = k.icdf_grid()
         ref_cdf = k.cdf(xs)
-        np.testing.assert_allclose(comp_cdf, ref_cdf, method.grid_accuracy, method.grid_accuracy)
+        acc = max(method.grid_accuracy, method.normed_accuracy)
+        np.testing.assert_allclose(comp_cdf, ref_cdf, acc, acc)
 
     def kernel_works(self, ker, name):
         pass
