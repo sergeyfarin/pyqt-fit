@@ -42,6 +42,57 @@ def make_ufunc(nin = None, nout=1):
         return np.frompyfunc(fct, Nin, nout)
     return f
 
+def numpy_function(fct):
+    """
+    Decorator for floating-point numpy-style function.
+
+    The function is called as:
+
+        fct(z, out=out)
+
+    This decorator garanties that z and out are ndarray of same shape and out is 
+    at least a float.
+    """
+    def f(z, out=None):
+        z = np.asanyarray(z)
+        if out is None:
+            out = np.empty(z.shape, dtype=type(z.dtype.type() + 0.))
+            arg_out = out
+        else:
+            arg_out = out.reshape(z.shape)
+        fct(z, out=arg_out)
+        return out
+    return f
+
+def numpy_function_nd(fct):
+    """
+    Decorator for numpy-style function requiring at least 1d (e.g. to allow for 
+    selection).
+
+    The function is called as:
+
+        fct(z, out=out)
+
+    This decorator garanties that z and out are at least 1D ndarray of same 
+    shape and out is at least a float.
+
+    It also ensure the output is the shape of the initial input (even if it has 
+    no dimension)
+    """
+    def f(z, out=None):
+        z = np.asanyarray(z)
+        real_shape = z.shape
+        if len(real_shape) == 0:
+            z = z.reshape(1)
+        if out is None:
+            out = np.empty(z.shape, dtype=type(z.dtype.type() + 0.))
+        else:
+            out.shape = z.shape
+        out = fct(z, out=out)
+        out.shape = real_shape
+        return out
+    return f
+
 def namedtuple(typename, field_names, verbose=False, rename=False):
     """Returns a new subclass of tuple with named fields.
 

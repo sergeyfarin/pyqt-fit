@@ -102,7 +102,7 @@ class KDE1D(object):
         for n in kwords:
             setattr(self, n, kwords[n])
 
-        self.xdata = np.atleast_1d(xdata)
+        self.xdata = xdata
 
         has_bw = (self._bw is not None or self._bw_fct is not None or
                   self._covariance is not None or self._cov_fct is not None)
@@ -110,7 +110,7 @@ class KDE1D(object):
             self.covariance = scotts_covariance
 
         if self._method is None:
-            self.method = kde_methods.renormalization
+            self.method = kde_methods.default_method
 
     @property
     def fitted(self):
@@ -482,6 +482,8 @@ class KDE1D(object):
         inherit the model.
 
         Available methods in the :py:mod:`pyqt_fit.kde_methods` sub-module.
+
+        :Default: :py:data:`pyqt_fit.kde_methods.default_method`
         """
         return self._method
 

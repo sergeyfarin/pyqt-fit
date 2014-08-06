@@ -159,10 +159,20 @@ default KDE::
 
 We can see that the estimation is correct far from the 0, but when closer than twice the bandwidth,
 the estimation becomes incorrect. The reason is that the method "sees" there are no points below 0,
-and therefore assumes the density continuously decreases to reach 0 in slightly negative values.
+and therefore assumes the density continuously decreases to reach 0 in slightly negative values. 
+Moreover, if we integrate the KDE in the domain :math:`[0,\infty]`::
 
-There are a number of ways to take into account the bounded nature of the distribution. The default
-one consist in truncating the kernel if it goes below 0. This is called "renormalizing" the kernel::
+  >>> from scipy import integrate
+  >>> integrate.quad(est, 0, np.inf)
+  (0.9138087148449997, 2.7788548831933142e-09)
+
+we can see the distribution sums up only to about 0.91, instead of 1. In short, we are "loosing 
+weight".
+
+There are a number of ways to take into account the bounded nature of the distribution and correct 
+with this loss. A common one consists in truncating the kernel if it goes below 0. This is called 
+"renormalizing" the kernel. The method can be specified setting the ``method`` attribute of the KDE 
+object to :py:data:`pyqt_fit.kde_methods.renormalization`::
 
   >>> est_ren = kde.KDE1D(x, lower=0, method=kde_methods.renormalization)
   >>> plt.plot(xs, est_ren(xs), 'm', label=est_ren.method.name)
@@ -190,12 +200,12 @@ approximate the density much better::
 
    Linear combination estimation of the :math:`\chi^2_2` distribution
 
-Reflexive Boundary
-``````````````````
-Sometimes, not only do we have a boundary, but we expect the density to be reflexive, that is the
-derivative on the boundary is 0, and the system is such that below or above is the same. An example
-is the distribution of the distance from a 2D point taken from a 2D gaussian distribution to the
-center:
+Reflective Boundary
+```````````````````
+Sometimes, not only do we have a boundary, but we expect the density to be reflective, that is the 
+derivative on the boundary is 0, we expect the data to behave the same as being repeated by 
+reflection on the boundaries. An example is the distribution of the distance from a 2D point taken 
+from a 2D gaussian distribution to the center:
 
 .. math::
 
@@ -225,9 +235,9 @@ To estimate the "real" distribution, we will increase the number of samples::
   >>> yy = f.rvs(1000000)
   >>> zz = np.abs(xx-yy)
 
-If you try to estimate the KDE, it will now be very slow. To speed up the process, you can use the
-``grid`` method. The ``grid`` method will compute the result using DCT or FFT if possible. It will
-work only if you don't have variable bandwidth and boundary conditions are either reflexive, cyclic,
+If you try to estimate the KDE, it will now be very slow. To speed up the process, you can use the 
+``grid`` method. The ``grid`` method will compute the result using DCT or FFT if possible. It will 
+work only if you don't have variable bandwidth and boundary conditions are either reflexive, cyclic, 
 or non-existent (i.e. unbounded)::
 
   >>> est_large = kde.KDE1D(zz, lower=0, method=kde_methods.reflection)

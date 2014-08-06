@@ -56,7 +56,8 @@ class TestKDE1D(kde_utils.KDETester):
     def method_works(self, k, method, name):
         k.fit()
         tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
-        assert abs(tot - 1) < method.accuracy, "Error, {} should be close to 1".format(tot)
+        acc = method.normed_accuracy
+        assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
         del k.weights
         del k.lambdas
         k.fit()
@@ -66,7 +67,8 @@ class TestKDE1D(kde_utils.KDETester):
     def grid_method_works(self, k, method, name):
         xs, ys = k.grid(4000)
         tot = integrate.simps(ys, xs)
-        assert abs(tot - 1) < method.grid_accuracy, "Error, {} should be close to 1".format(tot)
+        acc = max(method.normed_accuracy, method.grid_accuracy)
+        assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
     def test_copy(self):
         k = self.createKDE(self.vs[0], self.methods[0])
@@ -99,7 +101,7 @@ class TestKDE1D(kde_utils.KDETester):
         k = self.createKDE(self.vs[1], method)
         k.kernel = ker.cls()
         tot = integrate.quad(k.pdf, k.lower, k.upper, limit=100)[0]
-        acc = method.grid_accuracy * ker.precision_factor
+        acc = method.normed_accuracy * ker.precision_factor
         assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
     def grid_kernel_works(self, ker, name):
@@ -107,7 +109,7 @@ class TestKDE1D(kde_utils.KDETester):
         k = self.createKDE(self.vs[1], method)
         xs, ys = k.grid()
         tot = integrate.simps(ys, xs)
-        acc = method.grid_accuracy * ker.precision_factor
+        acc = max(method.grid_accuracy, method.normed_accuracy) * ker.precision_factor
         assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
 class LogTestKDE1D(TestKDE1D):

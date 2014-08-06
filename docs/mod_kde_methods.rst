@@ -89,6 +89,11 @@ Here are the methods implemented in pyqt_fit. To access these methods, the simpl
 
 .. autofunction:: transformKDE1D
 
+.. py:data:: default_method
+
+    Method used by :py:class:`pyqt_fit.kde.KDE1D` by default.
+    :Default: :py:data:`reflection`
+
 Classes implementing the estimation methods
 ```````````````````````````````````````````
 
@@ -99,6 +104,8 @@ Classes implementing the estimation methods
 .. autoclass:: LinearCombinationMethod
 
 .. autoclass:: CyclicMethod
+
+.. autofunction:: create_transform
 
 .. autoclass:: TransformKDE1DMethod
 

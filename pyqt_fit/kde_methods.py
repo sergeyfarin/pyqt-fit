@@ -4,34 +4,29 @@ r"""
 This module contains a set of methods to compute univariate KDEs. See the 
 objects in the :py:mod:`pyqt_fit.kde` module for more details on these methods.
 
+These methods provide various variations on :math:`\hat{K}(x;X,h,L,U)`, the 
+modified kernel evaluated on the point :math:`x` based on the estimation points 
+:math:`X`, a bandwidth :math:`h` and on the domain :math:`[L,U]`.
+
 The definitions of the methods rely on the following definitions:
 
 .. math::
 
-   \begin{array}{rclc|crcl}
-     a_0(l,u) &=& \int_l^u K(z) dz &\quad&\quad& z &=& \frac{x-X}{h} \\
-     a_1(l,u) &=& \int_l^u zK(z) dz &\quad&\quad& l &=& \frac{L-X}{h} \\
-     a_2(l,u) &=& \int_l^u z^2K(z) dz &\quad&\quad& u &=& \frac{U-X}{h}
+   \begin{array}{rcl}
+     a_0(l,u) &=& \int_l^u K(z) dz\\
+     a_1(l,u) &=& \int_l^u zK(z) dz\\
+     a_2(l,u) &=& \int_l^u z^2K(z) dz
    \end{array}
-
-where :math:`x` is the point where the distribution is evaluated, :math:`X` is 
-the vector of data points the distribution is evaluated from and :math:`(L,U)` 
-are the bounds of the distribution's domain (may be infinite).
 
 These definitions correspond to:
 
-- :math:`a_0(l,u)` -- The cumulative distribution function
-- :math:`a_1(l,u)` -- The first moment of the distribution. In particular, 
-  :math:`a_1(-\infty, \infty)` is the mean of 
-  the kernel (i.e. and should be 0).
-- :math:`a_2(l,u)` -- The second moment of the distribution. In particular, 
-  :math:`a_2(-\infty, \infty)` is the variance of the kernel (i.e. which should 
-  be close to 1, unless using higher order kernel).
-- :math:`z` -- The position of the points in the reference system of the kernel.
-- :math:`l` -- The position of the lower bound of the distribution domain, in 
-  the reference system of the kernel
-- :math:`u` -- The position of the upper bound of the distribution domain, in 
-  the reference system of the kernel
+- :math:`a_0(l,u)` -- The partial cumulative distribution function
+- :math:`a_1(l,u)` -- The partial first moment of the distribution. In 
+  particular, :math:`a_1(-\infty, \infty)` is the mean of the kernel (i.e. and 
+  should be 0).
+- :math:`a_2(l,u)` -- The partial second moment of the distribution. In 
+  particular, :math:`a_2(-\infty, \infty)` is the variance of the kernel (i.e. 
+  which should be close to 1, unless using higher order kernel).
 
 References:
 ```````````
@@ -538,10 +533,14 @@ class RenormalizationMethod(KDE1DMethod):
 
     .. math::
 
-        \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0(l,u)} K(z)
+        \hat{K}(x;X,h,L,U) \triangleq \frac{1}{a_0(u,l)} K(z)
 
-    See the :py:mod:`pyqt_fit.kde_methods` for a description of the various 
-    symbols.
+    where:
+
+    .. math::
+
+        z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
+
     """
 
     name = 'renormalization'
@@ -555,13 +554,13 @@ class RenormalizationMethod(KDE1DMethod):
 
         bw = kde.bandwidth * kde.lambdas
 
-        l = (kde.lower - points) / bw
-        u = (kde.upper - points) / bw
+        l = (points - kde.lower) / bw
+        u = (points - kde.upper) / bw
         z = (points - xdata) / bw
 
         kernel = kde.kernel
 
-        a1 = (kernel.cdf(u) - kernel.cdf(l))
+        a1 = (kernel.cdf(l) - kernel.cdf(u))
 
         terms = kernel(z) * ((kde.weights / bw) / a1)
 
@@ -582,34 +581,8 @@ class RenormalizationMethod(KDE1DMethod):
             return KDE1DMethod.cdf_grid(self, kde, N, cut)
         return self.numeric_cdf_grid(kde, N, cut)
 
-    #def cdf(self, kde, points, out=None):
-        #if not kde.bounded:
-            #return KDE1DMethod.cdf(self, kde, points, out)
-
-        #xdata = kde.xdata
-        #points = np.atleast_1d(points)[..., np.newaxis]
-
-        #bw = kde.bandwidth * kde.lambdas
-
-        #l = (kde.lower - points) / bw
-        #u = (kde.upper - points) / bw
-        #z = (points - xdata) / bw
-
-        #kernel = kde.kernel
-
-        #cl = kernel.cdf(l)
-        #cu = kernel.cdf(u)
-        #a1 = (cu - cl)
-
-        #terms = kernel.cdf(z) * (kde.weights / a1)
-
-        #out = terms.sum(axis=-1, out=out)
-        #out /= kde.total_weights
-
-        #return out
-
-
 renormalization = RenormalizationMethod()
+
 
 class ReflectionMethod(KDE1DMethod):
     r"""
@@ -623,6 +596,13 @@ class ReflectionMethod(KDE1DMethod):
         \hat{K}(x; X, h, L, U) \triangleq K(z)
         + K\left(\frac{x+X-2L}{h}\right)
         + K\left(\frac{x+X-2U}{h}\right)
+
+    where:
+
+    .. math::
+
+        z = \frac{x-X}{h}
+
 
     See the :py:mod:`pyqt_fit.kde_methods` for a description of the various 
     symbols.
@@ -781,7 +761,12 @@ class LinearCombinationMethod(KDE1DMethod):
         \hat{K}(x;X,h,L,U) \triangleq \frac{a_2(l,u) - a_1(-u, -l) z}{a_2(l,u)a_0(l,u)
         - a_1(-u,-l)^2} K(z)
 
-    See the :py:mod:`pyqt_fit.kde_methods` for a description of the various symbols.
+    where:
+
+    .. math::
+
+        z = \frac{x-X}{h} \qquad l = \frac{L-x}{h} \qquad u = \frac{U-x}{h}
+
     """
 
     name = 'linear combination'
@@ -843,8 +828,11 @@ class CyclicMethod(KDE1DMethod):
         + K\left(z - \frac{U-L}{h}\right)
         + K\left(z + \frac{U-L}{h}\right)
 
-    See the :py:mod:`pyqt_fit.kde_methods` for a description of the various 
-    symbols.
+    where:
+
+    .. math::
+
+        z = \frac{x-X}{h}
 
     When computing grids, if the bandwidth is constant, the result is computing 
     using FFT.
@@ -1008,17 +996,30 @@ def transform_distribution(xs, ys, Dfct, out=None):
     return out
 
 
-def _create_transform(obj, inv=None, Dinv=None):
+def create_transform(obj, inv=None, Dinv=None):
+    """
+    Create a transform object.
+
+    :param fun obj: This can be either simple a function, or a function-object with an 'inv' and/or 'Dinv' attributes
+        containing the inverse function and its derivative (respectively)
+    :param fun inv: If provided, inverse of the main function
+    :param fun Dinv: If provided, derivative of the inverse function
+    :rtype: Transform
+    :returns: A transform object with function, inverse and derivative of the inverse
+
+    The inverse function must be provided, either as argument or as attribute to the object. The derivative of the 
+    inverse will be estimated numerically if not provided.
+    """
     if isinstance(obj, Transform):
         return obj
     fct = obj.__call__
     if inv is None:
         if not hasattr(obj, 'inv'):
             raise AttributeError("Error, transform object must have a 'inv' "
-                                 "attribute or you must specify 'inv'")
-        inv = obj.inv if hasattr(obj, 'inv') else inv
+                                 "attribute or you must specify the 'inv' argument")
+        inv = obj.inv
     if Dinv is None:
-        if hasattr(obj, Dinv):
+        if hasattr(obj, 'Dinv'):
             Dinv = obj.Dinv
         else:
             def Dinv(x):
@@ -1064,7 +1065,8 @@ class TransformKDE1DMethod(KDE1DMethod):
 
     :param trans: Either a simple function, or a function object with
         attributes `inv` and `Dinv` to use in case they are not provided as 
-        arguments.
+        arguments. The helper :py:func:`create_transform` will provide numeric 
+        approximation of the derivative if required.
     :param method: instance of KDE1DMethod used in the transformed domain.
         Default is :py:class:`pyqt_fit.kde_methods.KDE1DMethod`
     :param inv: Invert of the function. If not provided, `trans` must have
@@ -1076,7 +1078,7 @@ class TransformKDE1DMethod(KDE1DMethod):
         parameter may be one of the input argument.
     """
     def __init__(self, trans, method=None, inv=None, Dinv=None):
-        self.trans = _create_transform(trans, inv, Dinv)
+        self.trans = create_transform(trans, inv, Dinv)
         if method is None:
             method = KDE1DMethod()
         self.method = method
@@ -1188,3 +1190,6 @@ def transformKDE1D(trans, method=None, inv=None, Dinv=None):
     Creates an instance of :py:class:`TransformKDE1DMethod`
     """
     return TransformKDE1DMethod(trans, method, inv, Dinv)
+
+default_method = reflection
+

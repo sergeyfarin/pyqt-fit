@@ -14,7 +14,7 @@ def generate(dist, N, low, high):
 
 def setupClass_norm(cls):
     cls.dist = stats.norm(0, 1)
-    cls.sizes = [512, 1024, 2048]
+    cls.sizes = [256, 512, 1024]
     cls.vs = [generate(cls.dist, s, -5, 5) for s in cls.sizes]
     cls.args = {}
     cls.weights = [ cls.dist.pdf(v) for v in cls.vs ]
@@ -26,7 +26,7 @@ def setupClass_norm(cls):
 
 def setupClass_lognorm(cls):
     cls.dist = stats.lognorm(1)
-    cls.sizes = [512, 1024, 2048]
+    cls.sizes = [256, 512, 1024]
     cls.args = {}
     cls.vs = [ generate(cls.dist, s, 0.001, 20) for s in cls.sizes ]
     cls.vs = [ v[v < 20] for v in cls.vs ]
@@ -37,15 +37,17 @@ def setupClass_lognorm(cls):
     cls.upper = 20
     cls.methods = methods_log
 
-test_method = namedtuple('test_method', ['instance', 'accuracy', 'grid_accuracy', 'bound_low', 'bound_high'])
+test_method = namedtuple('test_method',
+                         ['instance', 'accuracy', 'grid_accuracy',
+                          'normed_accuracy', 'bound_low', 'bound_high'])
 
-methods = [ test_method(kde_methods.unbounded, 1e-5, 1e-4, False, False)
-          , test_method(kde_methods.reflection, 1e-5, 1e-4, True, True)
-          , test_method(kde_methods.cyclic, 1e-5, 1e-4, True, True)
-          , test_method(kde_methods.renormalization, 1e-2, 1e-2, True, True)
-          , test_method(kde_methods.linear_combination, 1e-1, 1e-1, True, False)
+methods = [ test_method(kde_methods.unbounded, 1e-5, 1e-4, 1e-5, False, False)
+          , test_method(kde_methods.reflection, 1e-5, 1e-4, 1e-5,  True, True)
+          , test_method(kde_methods.cyclic, 1e-5, 1e-4, 1e-4, True, True)
+          , test_method(kde_methods.renormalization, 1e-5, 1e-4, 1e-2, True, True)
+          , test_method(kde_methods.linear_combination, 1e-1, 1e-1, 1e-1, True, False)
           ]
-methods_log = [test_method(kde_methods.transformKDE1D(kde_methods.LogTransform), 1e-5, 1e-4, True, False)]
+methods_log = [test_method(kde_methods.transformKDE1D(kde_methods.LogTransform), 1e-5, 1e-4, 1e-5, True, False)]
 
 test_kernel = namedtuple('test_kernel', ['cls', 'precision_factor', 'var', 'positive'])
 

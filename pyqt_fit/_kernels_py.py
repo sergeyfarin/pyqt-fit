@@ -5,13 +5,14 @@ Pure Python implementation of the kernel functions
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special import erf
-
+from .utils import numpy_function, numpy_function_nd
 
 s2pi = np.sqrt(2.0 * np.pi)
 s2 = np.sqrt(2.0)
 
 
-def norm1d_pdf(z, out=None):
+@numpy_function
+def norm1d_pdf(z, out):
     """
     Full-python implementation of :py:func:`normal_kernel1d.pdf`
     """
@@ -25,13 +26,11 @@ def norm1d_pdf(z, out=None):
     return out
 
 
-def norm1d_cdf(z, out=None):
+@numpy_function
+def norm1d_cdf(z, out):
     """
     Full-python implementation of :py:func:`normal_kernel1d.cdf`
     """
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.divide(z, s2, out)
     erf(out, out)
     out *= 0.5
@@ -39,13 +38,11 @@ def norm1d_cdf(z, out=None):
     return out
 
 
-def norm1d_pm1(z, out=None):
+@numpy_function
+def norm1d_pm1(z, out):
     """
     Full-python implementation of :py:func:`normal_kernel1d.pm1`
     """
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, z, out)
     out *= -0.5
     np.exp(out, out)
@@ -53,13 +50,11 @@ def norm1d_pm1(z, out=None):
     return out
 
 
-def norm1d_pm2(z, out=None):
+@numpy_function_nd
+def norm1d_pm2(z, out):
     """
     Full-python implementation of :py:func:`normal_kernel1d.pm2`
     """
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape)
     np.divide(z, s2, out)
     erf(out, out)
     out /= 2
@@ -76,10 +71,8 @@ def norm1d_pm2(z, out=None):
 tricube_width = np.sqrt(35. / 243)
 
 
+@numpy_function_nd
 def tricube_pdf(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, tricube_width, out)
     sel = (out > -1) & (out < 1)
     out[~sel] = 0
@@ -87,10 +80,8 @@ def tricube_pdf(z, out=None):
     return out
 
 
+@numpy_function_nd
 def tricube_cdf(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, tricube_width, out)
     sel_down = out <= -1
     sel_up = out >= 1
@@ -109,10 +100,8 @@ def tricube_cdf(z, out=None):
     return out
 
 
+@numpy_function_nd
 def tricube_pm1(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, tricube_width, out)
     out[out < 0] = -out[out < 0]
     sel = out < 1
@@ -123,10 +112,8 @@ def tricube_pm1(z, out=None):
     return out
 
 
+@numpy_function_nd
 def tricube_pm2(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, tricube_width, out)
     sel_down = out <= -1
     sel_up = out >= 1
@@ -144,10 +131,8 @@ def tricube_pm2(z, out=None):
 
 epanechnikov_width = 1. / np.sqrt(5.)
 
+@numpy_function_nd
 def epanechnikov_pdf(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, epanechnikov_width, out)
     sel = (out > -1) & (out < 1)
     out[~sel] = 0
@@ -155,10 +140,8 @@ def epanechnikov_pdf(z, out=None):
     return out
 
 
+@numpy_function_nd
 def epanechnikov_cdf(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, epanechnikov_width, out)
     sel_up = out >= 1
     sel_down = out <= -1
@@ -169,10 +152,8 @@ def epanechnikov_cdf(z, out=None):
     return out
 
 
+@numpy_function_nd
 def epanechnikov_pm1(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, epanechnikov_width, out)
     sel = (out > -1) & (out < 1)
     out[~sel] = 0
@@ -181,10 +162,8 @@ def epanechnikov_pm1(z, out=None):
     return out
 
 
+@numpy_function_nd
 def epanechnikov_pm2(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.multiply(z, epanechnikov_width, out)
     sel_up = out >= 1
     sel_down = out <= -1
@@ -195,49 +174,39 @@ def epanechnikov_pm2(z, out=None):
     return out
 
 
+@numpy_function
 def normal_o4_pdf(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     norm1d_pdf(z, out)
     out *= (3 - z ** 2) / 2
     return out
 
 
+@numpy_function_nd
 def normal_o4_cdf(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     norm1d_cdf(z, out)
     sel = np.isfinite(z)
     out[sel] += z[sel] * norm1d_pdf(z[sel]) / 2
     return out
 
 
+@numpy_function_nd
 def normal_o4_pm1(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     norm1d_pdf(z, out)
     out -= normal_o4_pdf(z)
     out[~np.isfinite(z)] = 0
     return out
 
 
+@numpy_function_nd
 def normal_o4_pm2(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.power(z, 3, out)
     out *= norm1d_pdf(z) / 2
     out[~np.isfinite(z)] = 0
     return out
 
 
+@numpy_function_nd
 def epanechnikov_o4_pdf(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.power(z, 2., out)
     out *= -15 / 8.
     out += 9. / 8.
@@ -245,10 +214,8 @@ def epanechnikov_o4_pdf(z, out=None):
     return out
 
 
+@numpy_function_nd
 def epanechnikov_o4_cdf(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     np.power(z, 3, out)
     out *= -5. / 8.
     out += (4 + 9 * z) / 8.
@@ -257,10 +224,8 @@ def epanechnikov_o4_cdf(z, out=None):
     return out
 
 
+@numpy_function_nd
 def epanechnikov_o4_pm1(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     out = np.power(z, 4, out)
     out *= -15. / 32.
     out += 1. / 32. * (18 * z ** 2 - 3)
@@ -268,10 +233,8 @@ def epanechnikov_o4_pm1(z, out=None):
     return out
 
 
+@numpy_function_nd
 def epanechnikov_o4_pm2(z, out=None):
-    z = np.atleast_1d(z)
-    if out is None:
-        out = np.empty(z.shape, dtype=z.dtype)
     out = np.power(z, 3, out)
     out *= .375
     out -= .375 * np.power(z, 5)
