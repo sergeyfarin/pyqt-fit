@@ -42,9 +42,10 @@ def make_ufunc(nin = None, nout=1):
         return np.frompyfunc(fct, Nin, nout)
     return f
 
-def numpy_function(fct):
+def numpy_trans(fct):
     """
-    Decorator for floating-point numpy-style function.
+    Decorator to create a function taking a single array-like argument and 
+    return a numpy array of same shape.
 
     The function is called as:
 
@@ -64,10 +65,12 @@ def numpy_function(fct):
         return out
     return f
 
-def numpy_function_nd(fct):
+def numpy_trans_idx(fct):
     """
-    Decorator for numpy-style function requiring at least 1d (e.g. to allow for 
-    selection).
+    Decorator to create a function taking a single array-like argument and 
+    return a numpy array of same shape. In addition, if the input as no 
+    dimension, the function will still receive a 1D array, allowing for 
+    indexing.
 
     The function is called as:
 

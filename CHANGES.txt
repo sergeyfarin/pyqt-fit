@@ -6,6 +6,8 @@ v1.2.5, ??
  - Restructured KDE tests.
  - Moved TransformKDE to the kde_methods
  - Updated tutorial
+ - Added decorators for 1 argument numpy transformations (i.e. functions working 
+   on arrays and returning an array of same shape as the input)
 v1.2.4, 30/7/2014
  - Corrected KDE code to pass tests
  - All tests pass for Python2 and Python3

@@ -5,13 +5,13 @@ Pure Python implementation of the kernel functions
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy.special import erf
-from .utils import numpy_function, numpy_function_nd
+from .utils import numpy_trans, numpy_trans_idx
 
 s2pi = np.sqrt(2.0 * np.pi)
 s2 = np.sqrt(2.0)
 
 
-@numpy_function
+@numpy_trans
 def norm1d_pdf(z, out):
     """
     Full-python implementation of :py:func:`normal_kernel1d.pdf`
@@ -26,7 +26,7 @@ def norm1d_pdf(z, out):
     return out
 
 
-@numpy_function
+@numpy_trans
 def norm1d_cdf(z, out):
     """
     Full-python implementation of :py:func:`normal_kernel1d.cdf`
@@ -38,7 +38,7 @@ def norm1d_cdf(z, out):
     return out
 
 
-@numpy_function
+@numpy_trans
 def norm1d_pm1(z, out):
     """
     Full-python implementation of :py:func:`normal_kernel1d.pm1`
@@ -50,7 +50,7 @@ def norm1d_pm1(z, out):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def norm1d_pm2(z, out):
     """
     Full-python implementation of :py:func:`normal_kernel1d.pm2`
@@ -71,7 +71,7 @@ def norm1d_pm2(z, out):
 tricube_width = np.sqrt(35. / 243)
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def tricube_pdf(z, out=None):
     np.multiply(z, tricube_width, out)
     sel = (out > -1) & (out < 1)
@@ -80,7 +80,7 @@ def tricube_pdf(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def tricube_cdf(z, out=None):
     np.multiply(z, tricube_width, out)
     sel_down = out <= -1
@@ -100,7 +100,7 @@ def tricube_cdf(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def tricube_pm1(z, out=None):
     np.multiply(z, tricube_width, out)
     out[out < 0] = -out[out < 0]
@@ -112,7 +112,7 @@ def tricube_pm1(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def tricube_pm2(z, out=None):
     np.multiply(z, tricube_width, out)
     sel_down = out <= -1
@@ -131,7 +131,7 @@ def tricube_pm2(z, out=None):
 
 epanechnikov_width = 1. / np.sqrt(5.)
 
-@numpy_function_nd
+@numpy_trans_idx
 def epanechnikov_pdf(z, out=None):
     np.multiply(z, epanechnikov_width, out)
     sel = (out > -1) & (out < 1)
@@ -140,7 +140,7 @@ def epanechnikov_pdf(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def epanechnikov_cdf(z, out=None):
     np.multiply(z, epanechnikov_width, out)
     sel_up = out >= 1
@@ -152,7 +152,7 @@ def epanechnikov_cdf(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def epanechnikov_pm1(z, out=None):
     np.multiply(z, epanechnikov_width, out)
     sel = (out > -1) & (out < 1)
@@ -162,7 +162,7 @@ def epanechnikov_pm1(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def epanechnikov_pm2(z, out=None):
     np.multiply(z, epanechnikov_width, out)
     sel_up = out >= 1
@@ -174,14 +174,14 @@ def epanechnikov_pm2(z, out=None):
     return out
 
 
-@numpy_function
+@numpy_trans
 def normal_o4_pdf(z, out=None):
     norm1d_pdf(z, out)
     out *= (3 - z ** 2) / 2
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def normal_o4_cdf(z, out=None):
     norm1d_cdf(z, out)
     sel = np.isfinite(z)
@@ -189,7 +189,7 @@ def normal_o4_cdf(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def normal_o4_pm1(z, out=None):
     norm1d_pdf(z, out)
     out -= normal_o4_pdf(z)
@@ -197,7 +197,7 @@ def normal_o4_pm1(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def normal_o4_pm2(z, out=None):
     np.power(z, 3, out)
     out *= norm1d_pdf(z) / 2
@@ -205,7 +205,7 @@ def normal_o4_pm2(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def epanechnikov_o4_pdf(z, out=None):
     np.power(z, 2., out)
     out *= -15 / 8.
@@ -214,7 +214,7 @@ def epanechnikov_o4_pdf(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def epanechnikov_o4_cdf(z, out=None):
     np.power(z, 3, out)
     out *= -5. / 8.
@@ -224,7 +224,7 @@ def epanechnikov_o4_cdf(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def epanechnikov_o4_pm1(z, out=None):
     out = np.power(z, 4, out)
     out *= -15. / 32.
@@ -233,7 +233,7 @@ def epanechnikov_o4_pm1(z, out=None):
     return out
 
 
-@numpy_function_nd
+@numpy_trans_idx
 def epanechnikov_o4_pm2(z, out=None):
     out = np.power(z, 3, out)
     out *= .375
