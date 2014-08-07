@@ -24,19 +24,22 @@ class TestCDF(kde_utils.KDETester):
     def same_numeric(self, i, method):
         k = self.createKDE(self.vs[i], method)
         ys = k.cdf(self.xs)
-        ys2 = k.method.numeric_cdf(k, self.xs)
+        ys2 = np.empty(self.xs.shape, dtype=float)
+        k.method.numeric_cdf(k, self.xs, ys2)
         np.testing.assert_allclose(ys, ys2, method.accuracy, method.accuracy)
 
     def grid_same_numeric(self, i, method):
         k = self.createKDE(self.vs[i], method)
         xs, ys = k.cdf_grid()
-        ys2 = k.method.numeric_cdf(k, xs)
+        ys2 = np.empty(self.xs.shape, dtype=float)
+        k.method.numeric_cdf(k, xs, out=ys2)
         np.testing.assert_allclose(ys, ys2, method.grid_accuracy, method.grid_accuracy)
 
     def numeric_cdf(self, i, method):
         k = self.createKDE(self.vs[i], method)
         k.fit()
-        ys = k.method.numeric_cdf(k, self.xs)
+        ys = np.empty(self.xs.shape, dtype=float)
+        k.method.numeric_cdf(k, self.xs, out=ys)
         xxs, yys = k.method.numeric_cdf_grid(k, N=2**12)
         ys2 = np.interp(self.xs, xxs, yys)
         np.testing.assert_allclose(ys, ys2, 100*method.accuracy, 100*method.accuracy)

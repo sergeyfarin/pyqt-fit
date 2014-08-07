@@ -229,13 +229,16 @@ class TestHazard(kde_utils.KDETester):
         h_comp = k.hazard(xs)
         sf = k.sf(xs)
         h_ref = k.pdf(xs)
-        h_ref /= k.sf(xs)
+        sf = k.sf(xs)
+        sf[sf < 0] = 0 # Some methods can produce negative sf
+        h_ref /= sf
         sel = sf > np.sqrt(method.accuracy)
         np.testing.assert_allclose(h_comp[sel], h_ref[sel], method.accuracy, method.accuracy)
 
     def grid_method_works(self, k, method, name):
         xs, h_comp = k.hazard_grid()
         xs, sf = k.sf_grid()
+        sf[sf < 0] = 0 # Some methods can produce negative sf
         h_ref = k.grid()[1]
         h_ref /= sf
         sel = sf > np.sqrt(method.accuracy)
@@ -267,6 +270,7 @@ class TestCumHazard(kde_utils.KDETester):
         xs = kde_methods.generate_grid(k)
         h_comp = k.cumhazard(xs)
         sf = k.sf(xs)
+        sf[sf < 0] = 0 # Some methods can produce negative sf
         h_ref = -np.log(sf)
         sel = sf > np.sqrt(method.accuracy)
         np.testing.assert_allclose(h_comp[sel], h_ref[sel], method.accuracy, method.accuracy)
@@ -274,6 +278,7 @@ class TestCumHazard(kde_utils.KDETester):
     def grid_method_works(self, k, method, name):
         xs, h_comp = k.cumhazard_grid()
         xs, sf = k.sf_grid()
+        sf[sf < 0] = 0 # Some methods can produce negative sf
         h_ref = -np.log(sf)
         sel = sf > np.sqrt(method.accuracy)
         # Only tests for sf big enough or error is too large

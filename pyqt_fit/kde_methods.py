@@ -38,7 +38,7 @@ from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy import fftpack, integrate, optimize
 from .compat import irange
-from .utils import make_ufunc, namedtuple
+from .utils import make_ufunc, namedtuple, numpy_trans_idx
 
 def generate_grid(kde, N=None, cut=None):
     r"""
@@ -96,21 +96,20 @@ class KDE1DMethod(object):
 
     name = 'unbounded'
 
-    def pdf(self, kde, points, out=None):
+    def pdf(self, kde, points, out):
         """
         Compute the PDF of the estimated distribution.
 
         :param pyqt_fit.kde.KDE1D kde: KDE object
-        :param float|array-like points: Points to evaluate the distribution on
-        :param ndarray out: if not ``None``, it should be of the right shape to
-            store the result and will be the returned object.
+        :param ndarray points: Points to evaluate the distribution on
+        :param ndarray out: Result object. If must have the same shapes as ``points``
         :rtype: ndarray
-        :return: the evaluated PDF
+        :return: Returns the ``out`` variable, updated with the PDF.
         :Default: Direct implementation of the formula for unbounded pdf
             computation.
         """
         xdata = kde.xdata
-        points = np.atleast_1d(points)[..., np.newaxis]
+        points = points[..., np.newaxis]
 
         bw = kde.bandwidth * kde.lambdas
 
@@ -122,7 +121,7 @@ class KDE1DMethod(object):
 
         terms *= kde.weights / bw
 
-        out = terms.sum(axis=-1, out=out)
+        terms.sum(axis=-1, out=out)
         out /= kde.total_weights
 
         return out
@@ -137,13 +136,13 @@ class KDE1DMethod(object):
         """
         kde.bandwidth, kde.covariance = compute_bandwidth(kde)
 
-    def __call__(self, kde, points, out=None):
+    def __call__(self, kde, points, out):
         """
         Call the :py:meth:`pdf` method.
         """
         return self.pdf(kde, points, out)
 
-    def cdf(self, kde, points, out=None):
+    def cdf(self, kde, points, out):
         r"""
         Compute the CDF of the estimated distribution, defined as:
 
@@ -155,16 +154,15 @@ class KDE1DMethod(object):
         :math:`p` the density of probability
 
         :param pyqt_fit.kde.KDE1D kde: KDE object
-        :param float|array-like points: Points to evaluate the CDF on
-        :param ndarray out: if not ``None``, it should be of the right shape to
-            store the result and will be the returned object.
+        :param ndarray points: Points to evaluate the CDF on
+        :param ndarray out: Result object. If must have the same shapes as ``points``
         :rtype: ndarray
-        :return: the evaluated CDF
+        :return: Returns the ``out`` variable, updated with the CDF.
         :Default: Direct implementation of the formula for unbounded CDF
             computation.
         """
         xdata = kde.xdata
-        points = np.atleast_1d(points)[..., np.newaxis]
+        points = points[..., np.newaxis]
         bw = kde.bandwidth * kde.lambdas
 
         z = (points - xdata) / bw
@@ -174,12 +172,12 @@ class KDE1DMethod(object):
         terms = kernel.cdf(z)
         terms *= kde.weights
 
-        out = terms.sum(axis=-1, out=out)
+        terms.sum(axis=-1, out=out)
         out /= kde.total_weights
 
         return out
 
-    def icdf(self, kde, points, out=None):
+    def icdf(self, kde, points, out):
         r"""
         Compute the inverse cumulative distribution (quantile) function, 
         defined as:
@@ -189,11 +187,10 @@ class KDE1DMethod(object):
             icdf(p) = \inf\left\{x\in\mathbb{R} : cdf(x) \geq p\right\}
 
         :param pyqt_fit.kde.KDE1D kde: KDE object
-        :param float|array-like points: Points to evaluate the iCDF on
-        :param ndarray out: if not ``None``, it should be of the right shape to
-            store the result and will be the returned object.
+        :param ndarray points: Points to evaluate the iCDF on
+        :param ndarray out: Result object. If must have the same shapes as ``points``
         :rtype: ndarray
-        :return: the evaluated iCDF
+        :return: Returns the ``out`` variable, updated with the iCDF.
         :Default: First approximate the result using linear interpolation on
             the CDF and refine the result numerically using the Newton method.
         """
@@ -202,12 +199,13 @@ class KDE1DMethod(object):
         lower = kde.lower
         upper = kde.upper
         cdf = self.cdf
+        pdf_out = np.empty(1, dtype=float)
         def pdf(x):
             if x <= lower:
                 return 0
             if x >= upper:
                 return 0
-            return self.pdf(kde, np.atleast_1d(x), None)
+            return self.pdf(kde, np.atleast_1d(x), pdf_out)
 
         @make_ufunc()
         def find_inverse(p, approx):
@@ -217,19 +215,18 @@ class KDE1DMethod(object):
                 return lower
             if approx >= xs[-1] or approx <= xs[0]:
                 return approx
+            cdf_out = np.empty(1, dtype=float)
             def f(x):
                 if x <= lower:
                     return -p
                 elif x >= upper:
                     return 1-p
-                return cdf(kde, np.atleast_1d(x), None) - p
+                return cdf(kde, np.atleast_1d(x), cdf_out) - p
             return optimize.newton(f, approx, fprime=pdf, tol=1e-6)
 
-        if out is None:
-            out = np.empty(points.shape)
         return find_inverse(points, coarse_result, out=out)
 
-    def sf(self, kde, points, out=None):
+    def sf(self, kde, points, out):
         r"""
         Compute the survival function, defined as:
 
@@ -238,20 +235,18 @@ class KDE1DMethod(object):
             sf(x) = P(X \geq x) = \int_x^u p(t) dt = 1 - cdf(x)
 
         :param pyqt_fit.kde.KDE1D kde: KDE object
-        :param float|array-like points: Points to evaluate the survival
-            function on
-        :param ndarray out: if not ``None``, it should be of the right shape to
-            store the result and will be the returned object.
+        :param ndarray points: Points to evaluate the survival function on
+        :param ndarray out: Result object. If must have the same shapes as ``points``
         :rtype: ndarray
-        :return: the evaluated survival function
+        :return: Returns the ``out`` variable, updated with the survival function.
         :Default: Compute explicitly :math:`1 - cdf(x)`
         """
-        out = self.cdf(kde, points, out)
+        self.cdf(kde, points, out)
         out -= 1
         out *= -1
         return out
 
-    def isf(self, kde, points, out=None):
+    def isf(self, kde, points, out):
         r"""
         Compute the inverse survival function, defined as:
 
@@ -260,16 +255,15 @@ class KDE1DMethod(object):
             isf(p) = \sup\left\{x\in\mathbb{R} : sf(x) \leq p\right\}
 
         :param pyqt_fit.kde.KDE1D kde: KDE object
-        :param float|array-like points: Points to evaluate the iSF on
-        :param ndarray out: if not ``None``, it should be of the right shape to
-            store the result and will be the returned object.
+        :param ndarray points: Points to evaluate the iSF on
+        :param ndarray out: Result object. If must have the same shapes as ``points``
         :rtype: ndarray
-        :return: the evaluated iCDF
+        :return: Returns the ``out`` variable, updated with the inverse survival function.
         :Default: Compute :math:`icdf(1-p)`
         """
         return self.icdf(kde, 1-points, out)
 
-    def hazard(self, kde, points, out=None):
+    def hazard(self, kde, points, out):
         r"""
         Compute the hazard function evaluated on the points.
 
@@ -283,20 +277,20 @@ class KDE1DMethod(object):
         :math:`sf(x)` is the survival function.
 
         :param pyqt_fit.kde.KDE1D kde: KDE object
-        :param float|array-like points: Points to evaluate the hazard
-            function on
-        :param ndarray out: if not ``None``, it should be of the right shape to
-            store the result and will be the returned object.
+        :param ndarray points: Points to evaluate the hazard function on
+        :param ndarray out: Result object. If must have the same shapes as ``points``
         :rtype: ndarray
-        :return: the evaluated hazard function
+        :return: Returns the ``out`` variable, updated with the hazard function
         :Default: Compute explicitly :math:`pdf(x) / sf(x)`
         """
-        out = self.pdf(kde, points, out=out)
-        sf = self.sf(kde, points)
+        self.pdf(kde, points, out=out)
+        sf = np.empty(out.shape, dtype=out.dtype)
+        self.sf(kde, points, sf)
+        sf[sf < 0] = 0 # Some methods can produce negative sf
         out /= sf
         return out
 
-    def cumhazard(self, kde, points, out=None):
+    def cumhazard(self, kde, points, out):
         r"""
         Compute the cumulative hazard function evaluated on the points.
 
@@ -310,15 +304,14 @@ class KDE1DMethod(object):
         function and :math:`sf` the survival function.
 
         :param pyqt_fit.kde.KDE1D kde: KDE object
-        :param float|array-like points: Points to evaluate the cumulative
-            hazard function on
-        :param ndarray out: if not ``None``, it should be of the right shape to
-            store the result and will be the returned object.
+        :param ndarray points: Points to evaluate the cumulative hazard function on
+        :param ndarray out: Result object. If must have the same shapes as ``points``
         :rtype: ndarray
-        :return: the evaluated cumulative hazard function
+        :return: Returns the ``out`` variable, updated with the cumulative hazard function
         :Default: Compute explicitly :math:`-\ln sf(x)`
         """
-        out = self.sf(kde, points, out)
+        self.sf(kde, points, out)
+        out[out < 0] = 0 # Some methods can produce negative sf
         np.log(out, out=out)
         out *= -1
         return out
@@ -341,7 +334,8 @@ class KDE1DMethod(object):
         """
         N = self.grid_size(N)
         g = generate_grid(kde, N, cut)
-        return g, self.pdf(kde, g)
+        out = np.empty(g.shape, dtype=float)
+        return g, self.pdf(kde, g, out)
 
     def cdf_grid(self, kde, N=None, cut=None):
         """
@@ -361,7 +355,8 @@ class KDE1DMethod(object):
         """
         N = self.grid_size(N)
         g = generate_grid(kde, N, cut)
-        return g, self.cdf(kde, g)
+        out = np.empty(g.shape, dtype=float)
+        return g, self.cdf(kde, g, out)
 
     def icdf_grid(self, kde, N=None, cut=None):
         """
@@ -445,6 +440,7 @@ class KDE1DMethod(object):
         """
         points, out = self.grid(kde, N, cut)
         _, sf = self.sf_grid(kde, N, cut)
+        sf[sf < 0] = 0 # Some methods can produce negative sf
         out /= sf
         return points, out
 
@@ -463,6 +459,7 @@ class KDE1DMethod(object):
         :Default: Compute explicitly :math:`-\ln sf(x)`
         """
         points, out = self.sf_grid(kde, N, cut)
+        out[out < 0] = 0 # Some methods can produce negative sf
         np.log(out, out=out)
         out *= -1
         return points, out
@@ -473,14 +470,12 @@ class KDE1DMethod(object):
         """
         return self.name
 
-    def numeric_cdf(self, kde, points, out=None):
+    def numeric_cdf(self, kde, points, out):
         """
         Provide a numeric approximation of the CDF based on integrating the pdf 
         using :py:func:`scipy.integrate.quad`.
         """
-        pts = np.atleast_1d(np.array(points, dtype=float))
-        pts_shape = pts.shape
-        pts = pts.ravel()
+        pts = points.ravel()
 
         pts[pts < kde.lower] = kde.lower
         pts[pts > kde.upper] = kde.upper
@@ -489,8 +484,9 @@ class KDE1DMethod(object):
 
         sp = pts[ix]
 
+        pdf_out = np.empty((1,), dtype=float)
         def pdf(x):
-            return self.pdf(kde, x)
+            return self.pdf(kde, np.array([x]), pdf_out)
 
         @make_ufunc()
         def comp_cdf(i):
@@ -501,8 +497,6 @@ class KDE1DMethod(object):
         comp_cdf(np.arange(len(sp)), out=parts)
 
         ints = parts.cumsum()
-        if out is None:
-            out = np.empty(pts_shape, dtype=float)
 
         out.put(ix, ints)
         return out
@@ -545,12 +539,12 @@ class RenormalizationMethod(KDE1DMethod):
 
     name = 'renormalization'
 
-    def pdf(self, kde, points, out=None):
+    def pdf(self, kde, points, out):
         if not kde.bounded:
             return KDE1DMethod.pdf(self, kde, points, out)
 
         xdata = kde.xdata
-        points = np.atleast_1d(points)[..., np.newaxis]
+        points = points[..., np.newaxis]
 
         bw = kde.bandwidth * kde.lambdas
 
@@ -564,12 +558,12 @@ class RenormalizationMethod(KDE1DMethod):
 
         terms = kernel(z) * ((kde.weights / bw) / a1)
 
-        out = terms.sum(axis=-1, out=out)
+        terms.sum(axis=-1, out=out)
         out /= kde.total_weights
 
         return out
 
-    def cdf(self, kde, points, out=None):
+    def cdf(self, kde, points, out):
         if not kde.bounded:
             return KDE1DMethod.cdf(self, kde, points, out)
         return self.numeric_cdf(kde, points, out)
@@ -613,12 +607,12 @@ class ReflectionMethod(KDE1DMethod):
 
     name = 'reflection'
 
-    def pdf(self, kde, points, out=None):
+    def pdf(self, kde, points, out):
         if not kde.bounded:
             return KDE1DMethod.pdf(self, kde, points, out)
 
         xdata = kde.xdata
-        points = np.atleast_1d(points)[..., np.newaxis]
+        points = points[..., np.newaxis]
 
         # Make sure points are between the bounds, with reflection if needed
         if any(points < kde.lower) or any(points > kde.upper):
@@ -646,17 +640,17 @@ class ReflectionMethod(KDE1DMethod):
             terms += kernel(z1 - (2 * U / bw))
 
         terms *= kde.weights / bw
-        out = terms.sum(axis=-1, out=out)
+        terms.sum(axis=-1, out=out)
         out /= kde.total_weights
 
         return out
 
-    def cdf(self, kde, points, out=None):
+    def cdf(self, kde, points, out):
         if not kde.bounded:
             return KDE1DMethod.cdf(self, kde, points, out)
 
         xdata = kde.xdata
-        points = np.atleast_1d(points)[..., np.newaxis]
+        points = points[..., np.newaxis]
 
         # Make sure points are between the bounds, with reflection if needed
         if any(points < kde.lower) or any(points > kde.upper):
@@ -686,7 +680,7 @@ class ReflectionMethod(KDE1DMethod):
             terms += kernel.cdf(z1 - (2 * U / bw)) # Add the reflected part
 
         terms *= kde.weights
-        out = terms.sum(axis=-1, out=out)
+        terms.sum(axis=-1, out=out)
         out /= kde.total_weights
 
         return out
@@ -771,7 +765,7 @@ class LinearCombinationMethod(KDE1DMethod):
 
     name = 'linear combination'
 
-    def pdf(self, kde, points, out=None):
+    def pdf(self, kde, points, out):
         if not kde.bounded:
             return KDE1DMethod.pdf(self, kde, points, out)
 
@@ -796,12 +790,12 @@ class LinearCombinationMethod(KDE1DMethod):
         upper /= denom
         upper *= (kde.weights / bw) * kernel(z)
 
-        out = upper.sum(axis=-1, out=out)
+        upper.sum(axis=-1, out=out)
         out /= kde.total_weights
 
         return out
 
-    def cdf(self, kde, points, out=None):
+    def cdf(self, kde, points, out):
         if not kde.bounded:
             return KDE1DMethod.cdf(self, kde, points, out)
         return self.numeric_cdf(kde, points, out)
@@ -840,7 +834,7 @@ class CyclicMethod(KDE1DMethod):
 
     name = 'cyclic'
 
-    def pdf(self, kde, points, out=None):
+    def pdf(self, kde, points, out):
         if not kde.closed:
             raise ValueError("Cyclic boundary conditions can only be used with "
                              "closed domains.")
@@ -869,13 +863,13 @@ class CyclicMethod(KDE1DMethod):
         terms += kernel(z - span) # Add points to the right
 
         terms *= kde.weights / bw
-        out = terms.sum(axis=-1, out=out)
+        terms.sum(axis=-1, out=out)
         out /= kde.total_weights
 
         return out
 
 
-    def cdf(self, kde, points, out=None):
+    def cdf(self, kde, points, out):
         if not kde.closed:
             raise ValueError("Cyclic boundary conditions can only be used with "
                              "closed domains.")
@@ -908,7 +902,7 @@ class CyclicMethod(KDE1DMethod):
         terms += kernel.cdf(z - span) # Repeat on the right
 
         terms *= kde.weights
-        out = terms.sum(axis=-1, out=out)
+        terms.sum(axis=-1, out=out)
         out /= kde.total_weights
 
         return out
@@ -978,9 +972,16 @@ LogTransform = Transform(np.log, np.exp, np.exp)
 ExpTransform = Transform(np.exp, np.log, _inverse)
 
 
-def transform_distribution(xs, ys, Dfct, out=None):
+def transform_distribution(xs, ys, Dinv, out):
     """
     Transform a distribution into another one by a change a variable.
+
+    :param ndarray xs: Evaluation points of the distribution
+    :param ndarray ys: Distribution value on the points xs
+    :param func Dinv: Function evaluating the derivative of the inverse transformation  function
+    :param ndarray out: Array in which to store the result
+    :rtype: ndarray
+    :returns: The variable ``out``, updated wih the transformed distribution
 
     Given a random variable :math:`X` of distribution :math:`f_X`, the random
     variable :math:`Y = g(X)` has a distribution :math:`f_Y` given by:
@@ -991,8 +992,10 @@ def transform_distribution(xs, ys, Dfct, out=None):
 
     """
     sel = ys == 0
-    out = np.multiply(np.abs(1 / Dfct(xs)), ys, out)
-    out[sel] = 0
+    Dinv(xs, out=out)
+    np.abs(out, out=out)
+    _inverse(out, out=out)
+    np.multiply(out, ys, out = out)
     return out
 
 
@@ -1009,6 +1012,8 @@ def create_transform(obj, inv=None, Dinv=None):
 
     The inverse function must be provided, either as argument or as attribute to the object. The derivative of the 
     inverse will be estimated numerically if not provided.
+
+    :Note: All the functions should accept an ``out`` argument to store the result.
     """
     if isinstance(obj, Transform):
         return obj
@@ -1022,8 +1027,8 @@ def create_transform(obj, inv=None, Dinv=None):
         if hasattr(obj, 'Dinv'):
             Dinv = obj.Dinv
         else:
+            @numpy_trans_idx
             def Dinv(x):
-                x = np.asfarray(x)
                 dx = x * 1e-9
                 dx[x == 0] = np.min(dx[x != 0])
                 return (inv(x + dx) - inv(x - dx)) / (2 * dx)
@@ -1113,10 +1118,10 @@ class TransformKDE1DMethod(KDE1DMethod):
 
         self.fake_kde = fake_kde
 
-    def pdf(self, kde, points, out=None):
+    def pdf(self, kde, points, out):
         trans = self.trans
         pts = trans(points)
-        out = self.method(self.fake_kde, pts, out = None)
+        self.method(self.fake_kde, pts, out)
         return transform_distribution(pts, out, trans.Dinv, out=out)
 
     def grid(self, kde, N=None, cut=None):
@@ -1126,7 +1131,7 @@ class TransformKDE1DMethod(KDE1DMethod):
         trans.inv(xs, out=xs)
         return xs, ys
 
-    def cdf(self, kde, points, out=None):
+    def cdf(self, kde, points, out):
         return self.method.cdf(self.fake_kde, self.trans(points), out)
 
     def cdf_grid(self, kde, N=None, cut=None):
@@ -1134,15 +1139,15 @@ class TransformKDE1DMethod(KDE1DMethod):
         self.trans.inv(xs, out=xs)
         return xs, ys
 
-    def sf(self, kde, points, out=None):
+    def sf(self, kde, points, out):
         return self.method.sf(self.fake_kde, self.trans(points), out)
 
     def sf_grid(self, kde, N=None, cut=None):
         xs, ys = self.method.sf_grid(self.fake_kde, N, cut)
         return self.trans.inv(xs), ys
 
-    def icdf(self, kde, points, out=None):
-        out = self.method.icdf(self.fake_kde, points, out)
+    def icdf(self, kde, points, out):
+        self.method.icdf(self.fake_kde, points, out)
         self.trans.inv(out, out=out)
         return out
 
@@ -1151,8 +1156,8 @@ class TransformKDE1DMethod(KDE1DMethod):
         self.trans.inv(ys, out=ys)
         return xs, ys
 
-    def isf(self, kde, points, out=None):
-        out = self.method.isf(self.fake_kde, points, out)
+    def isf(self, kde, points, out):
+        self.method.isf(self.fake_kde, points, out)
         self.trans.inv(out, out=out)
         return out
 
@@ -1160,30 +1165,6 @@ class TransformKDE1DMethod(KDE1DMethod):
         xs, ys = self.method.isf_grid(self.fake_kde, N, cut)
         self.trans.inv(ys, out=ys)
         return xs, ys
-
-    def hazard(self, kde, points, out=None):
-        out = self.pdf(kde, points, out)
-        sf = self.sf(kde, points)
-        out /= sf
-        return out
-
-    def hazard_grid(self, kde, N=None, cut=None):
-        xs, pdf = self.grid(kde, N, cut)
-        _, sf = self.sf_grid(kde, N, cut)
-        pdf /= sf
-        return xs, pdf
-
-    def cumhazard(self, kde, points, out=None):
-        out = self.sf(kde, points, out)
-        np.log(out, out=out)
-        out *= -1
-        return out
-
-    def cumhazard_grid(self, kde, N=None, cut=None):
-        pts, out = self.sf_grid(kde, N, cut)
-        np.log(out, out=out)
-        out *= -1
-        return pts, out
 
 def transformKDE1D(trans, method=None, inv=None, Dinv=None):
     """

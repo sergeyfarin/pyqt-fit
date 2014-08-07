@@ -155,6 +155,7 @@ class KDE1D(object):
         else:
             self._total_weights = len(self._xdata)
         self.method.fit(self)
+        self._fitted = True
 
     @property
     def xdata(self):
@@ -335,6 +336,7 @@ class KDE1D(object):
     def covariance_function(self):
         return self._cov_fct
 
+    @numpy_method_idx
     def pdf(self, points, out=None):
         """
         Compute the PDF of the distribution on the set of points ``points``
@@ -348,7 +350,6 @@ class KDE1D(object):
         """
         return self.pdf(points, out)
 
-    @numpy_method_idx
     def __call__(self, points, out=None):
         """
         This method is an alias for :py:meth:`BoundedKDE1D.evaluate`
