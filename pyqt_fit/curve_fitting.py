@@ -8,8 +8,8 @@ different kind of residual and added constraints function.
 
 from __future__ import division, print_function, absolute_import
 from scipy import optimize
-from numpy import array, inf
 from .compat import lrange
+import numpy as np
 
 
 class CurveFitting(object):
@@ -22,54 +22,7 @@ class CurveFitting(object):
     :type  ydata: ndarray
     :param ydata: Target values
 
-    :type  p0: tuple
-    :param p0: Initial estimates for the parameters of fct
-
-    :type  fct: callable
-    :param fct: Function to optimize. The call will be equivalent
-        to ``fct(p0, xdata, *args)``
-
-    :type  args: tuple
-    :param args: Additional arguments for the function
-
-    :type  residuals: callable or None
-    :param residuals: Function computing the residuals. The call is equivalent
-        to ``residuals(y, fct(x))`` and it should return a ndarray. If None,
-        residuals are simply the difference between the computed and expected
-        values.
-
-    :type  fix_params: tuple of int
-    :param fix_params: List of indices for the parameters in p0 that shouldn't
-        change
-
-    :type  Dfun: callable
-    :param Dfun: Function computing the jacobian of fct w.r.t. the parameters.
-        The call will be equivalent to ``Dfun(p0, xdata, *args)``
-
-    :type  Dres: callable
-    :param Dres: Function computing the jacobian of the residuals w.r.t. the
-        parameters. The call will be equivalent to
-        ``Dres(y, fct(x), DFun(x))``. If None, residuals must also be None.
-
-    :type  col_deriv: int
-    :param col_deriv: Define if Dfun returns the derivatives by row or column.
-        With n = len(xdata) and m = len(p0), the shape of output of Dfun must
-        be (n,m) if 0, and (m,n) if non-0.
-
-    :type  constraints: callable
-    :param constraints: If not None, this is a function that should always
-        return a list ofvalues (the same), to add penalties for bad parameters.
-        The function call is equivalent to: ``constraints(p0)``
-
-    :type  lsq_args: tuple
-    :param lsq_args: List of unnamed arguments passed to ``optimize.leastsq``,
-        starting with ``ftol``
-
-    :type  lsq_kword: dict
-    :param lsq_kword: Dictionnary of named arguments passed to
-        py:func:`scipy.optimize.leastsq`, starting with ``ftol``
-
-    Once constructed, the following variables contain the result of
+    Once fitted, the following variables contain the result of
     the fitting:
 
     :ivar ndarray popt: The solution (or the result of the last iteration for
@@ -121,20 +74,260 @@ class CurveFitting(object):
         fitted.
     """
 
-    def __init__(self, xdata, ydata, p0, fct, args=(), residuals=None,
-                 fix_params=(), Dfun=None, Dres = None, col_deriv=1,
-                 constraints = None, *lsq_args, **lsq_kword):
-        self.fct = fct
-        if residuals is None:
-            residuals = lambda x, y: (x - y)
-            Dres = lambda y1, y0, dy: -dy
+    def __init__(self, xdata, ydata, **kwords):
+        self._fct = None
+        self._Dfun = None
+        self._residuals = None
+        self._Dres = None
+        self._col_deriv = True
+        self._constraints = None
+        self._lsq_args = ()
+        self._lsq_kwords = {}
+        self._xdata = None
+        self._ydata = None
+        self._p0 = None
+        self._fix_params = None
+
+        self.xdata = xdata
+        self.ydata = ydata
+
+        self._fitted = False
+
+        for n in kwords:
+            setattr(self, n, kwords[n])
+
+        if self._residuals is None:
+            self._residuals = lambda x, y: (x - y)
+            self._Dres = lambda y1, y0: -1
+
+    def need_fit(self):
+        """
+        Function to be called if the object need to be fitted again
+        """
+        self._fitted = False
+
+    @property
+    def fitted(self):
+        """
+        Check if the object has been fitted or not
+        """
+        return self._fitted
+
+    @property
+    def function(self):
+        """
+        Function to be fitted. The call of the function will be::
+
+            function(params, xs)
+        """
+        return self._fct
+
+    @function.setter
+    def function(self, f):
+        self.need_fit()
+        self._fct = f
+
+    @property
+    def Dfun(self):
+        """
+        Jacobian of the function with respect to its parameters.
+
+        :Note: col_deriv defines if the derivative with respect to a given parameter is in column or row
+
+        If not provided, a numerical approximation will be used instead.
+        """
+        return self._Dfun
+
+    @Dfun.setter
+    def Dfun(self, df):
+        self.need_fit()
+        self._Dfun = df
+
+    @Dfun.deleter
+    def Dfun(self):
+        self.need_fit()
+        self._Dfun = None
+
+    @property
+    def col_deriv(self):
+        """
+        Define if Dfun returns the derivatives by row or column.
+
+        If ``col_deriv`` is ``True``, each line correspond to a parameter and each column to a point.
+        """
+        return self._col_deriv
+
+    @col_deriv.setter
+    def col_deriv(self, value):
+        self._col_deriv = bool(value)
+        self.need_fit()
+
+    @property
+    def residuals(self):
+        """
+        Residual function to use. The call will be::
+
+            residuals(y_measured, y_est)
+
+        where ``y_measured`` are the estimated values and ``y_est`` the measured ones.
+
+        :Default: the defauls is ``y_measured - y_est``
+        """
+        return self._residuals
+
+    @residuals.setter
+    def residuals(self, f):
+        self.need_fit()
+        self._residuals = f
+
+    @property
+    def Dres(self):
+        """
+        Derivative of the residual function with respec to the estimated values. The call will be:
+
+            Dres(y_measured, y_est)
+
+        :Default: as the default residual is ``y_measured - y_est``, the default derivative is ``-1``
+        """
+        return self._Dres
+
+    @Dres.setter
+    def Dres(self, df):
+        self.need_fit()
+        self._Dres = df
+
+    @Dres.deleter
+    def Dres(self):
+        self.need_fit()
+        self._Dres = None
+
+    @property
+    def lsq_args(self):
+        """
+        Extra arguments to give to the least-square algorithm.
+
+        See :py:func:`scipy.optimize.leastsq` for details
+        """
+        return self._lsq_args
+
+    @lsq_args.setter
+    def lsq_args(self, val):
+        self.need_fit()
+        self._lsq_args = tuple(val)
+
+    @lsq_args.deleter
+    def lsq_args(self):
+        self._lsq_args = ()
+
+    @property
+    def lsq_kwords(self):
+        """
+        Extra named arguments to give to the least-square algorithm.
+
+        See :py:func:`scipy.optimize.leastsq` for details
+        """
+        return self._lsq_kwords
+
+    @lsq_kwords.setter
+    def lsq_kwords(self, val):
+        self.need_fit()
+        self._lsq_kwords = dict(val)
+
+    @lsq_kwords.deleter
+    def lsq_kwords(self):
+        self._lsq_kwords = {}
+
+    @property
+    def xdata(self):
+        """
+        Explaining values.
+        """
+        return self._xdata
+
+    @xdata.setter
+    def xdata(self, value):
+        value = np.atleast_1d(value).squeeze()
+        assert len(value.shape) < 3, "Error, xdata must be at most a 2D array"
+        self._xdata = value
+        self.need_fit()
+
+    @property
+    def ydata(self):
+        """
+        Target values.
+        """
+        return self._ydata
+
+    @ydata.setter
+    def ydata(self, value):
+        value = np.atleast_1d(value).squeeze()
+        assert len(value.shape) == 1, "Error, ydata must be at most a 1D array"
+        self._ydata = value
+        self.need_fit()
+
+    @property
+    def p0(self):
+        """
+        Initial fitting parameters
+        """
+        return self._p0
+
+    @p0.setter
+    def p0(self, value):
+        value = np.atleast_1d(value)
+        assert len(value.shape) == 1, "Error, p0 must be at most a 1D array"
+        self._p0 = value
+
+    @property
+    def constraints(self):
+        """
+        Function returning additional constraints to the problem
+        """
+        return self._constraints
+
+    @constraints.setter
+    def constraints(self, value):
+        assert callable(value), "Error, constraints must be a callable returning a 1d array"
+        self._constraints = value
+
+    @constraints.deleter
+    def constraints(self):
+        self._constraints = None
+
+    @property
+    def fix_params(self):
+        """
+        Index of parameters that shouldn't be touched by the algorithm
+        """
+        return self._fix_params
+
+    @fix_params.setter
+    def fix_params(self, value):
+        self._fix_params = tuple(value)
+
+    @fix_params.deleter
+    def fix_params(self):
+        self._fix_params = None
+
+    def fit(self):
+        """
+        Fit the curve
+        """
+        Dres = self.Dres
+        Dfun = self.Dfun
+        fct = self.function
+        residuals = self.residuals
+        col_deriv = self.col_deriv
+        p0 = self.p0
+        xdata = self.xdata
+        ydata = self.ydata
+        fix_params = self.fix_params
 
         use_derivs = (Dres is not None) and (Dfun is not None)
         df = None
 
         if fix_params:
-            fix_params = tuple(fix_params)
-            p_save = array(p0, dtype=float)
+            p_save = np.array(p0, dtype=float)
             change_params = lrange(len(p0))
             try:
                 for i in fix_params:
@@ -145,41 +338,40 @@ class CurveFitting(object):
                                  "out of range.")
             p0 = p_save[change_params]
 
-            def f(p, *args):
-                p1 = array(p_save)
+            def f(p):
+                p1 = np.array(p_save)
                 p1[change_params] = p
-                y0 = fct(p1, xdata, *args)
+                y0 = fct(p1, xdata)
                 return residuals(ydata, y0)
             if use_derivs:
-                def df(p, *args):
-                    p1 = array(p_save)
+                def df(p):
+                    p1 = np.array(p_save)
                     p1[change_params] = p
-                    y0 = fct(p1, xdata, *args)
-                    dfct = Dfun(p1, xdata, *args)
-                    result = Dres(ydata, y0, dfct)
-                    if col_deriv != 0:
-                        return result[change_params]
-                    else:
-                        return result[:, change_params]
-                    return result
+                    y0 = fct(p1, xdata)
+                    dfct = Dfun(p1, xdata)
+                    dr = Dres(ydata, y0)
+                    if col_deriv:
+                        return dfct[change_params]*dr
+                    return dfct[:,change_params]*dr[:, np.newaxis]
         else:
-
-            def f(p, *args):  # noqa
-                y0 = fct(p, xdata, *args)
+            def f(p):
+                y0 = fct(p, xdata)
                 return residuals(ydata, y0)
             if use_derivs:
+                def df(p):
+                    dfct = Dfun(p, xdata)
+                    y0 = fct(p, xdata)
+                    dr = np.atleast_1d(Dres(ydata, y0))
+                    if col_deriv:
+                        return dfct*dr
+                    return dfct*dr[:, np.newaxis]
 
-                def df(p, *args):  # noqa
-                    dfct = Dfun(p, xdata, *args)
-                    y0 = fct(p, xdata, *args)
-                    return Dres(ydata, y0, dfct)
+        if use_derivs:
+            self.df = df
 
-    def fit(self):
-        """
-        Fit the curve
-        """
-        optim = optimize.leastsq(f, p0, args, full_output=1, Dfun=df,
-                                 col_deriv=col_deriv, *lsq_args, **lsq_kword)
+        cd = 1 if col_deriv else 0
+        optim = optimize.leastsq(f, p0, full_output=1, Dfun=df,
+                                 col_deriv=cd, *self.lsq_args, **self.lsq_kwords)
         popt, pcov, infodict, mesg, ier = optim
         #infodict['est_jacobian'] = not use_derivs
 
@@ -192,21 +384,25 @@ class CurveFitting(object):
                                "Error returned by scipy.optimize.leastsq:\n%s"
                                % (mesg,))
 
-        res = residuals(ydata, fct(popt, xdata, *args))
+        res = residuals(ydata, fct(popt, xdata))
         if (len(res) > len(p0)) and pcov is not None:
             s_sq = (res ** 2).sum() / (len(ydata) - len(p0))
             pcov = pcov * s_sq
         else:
-            pcov = inf
+            pcov = np.inf
 
         self.popt = popt
         self.pcov = pcov
         self.res = res
         self.infodict = infodict
+        self._fitted = True
 
     def __call__(self, xdata):
         """
         Return the value of the fitted function for each of the points in
         ``xdata``
         """
-        return self.fct(self.popt, xdata)
+        if not self.fitted:
+            raise ValueError("Error, the object has't been fitted yet.")
+        return self.function(self.popt, xdata)
+

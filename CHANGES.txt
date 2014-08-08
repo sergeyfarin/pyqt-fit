@@ -1,5 +1,8 @@
-v1.2.6, ??
+v1.3.0, ??
  - Removed unnecessary type conversion
+ - Rewrote the non-parametric fitting
+ - Rewrote parametric fitting
+ - The interface should be now uniform across the board, but incompatible with previous versions
 v1.2.5, 6/8/2014
  - Using 'out' rather than 'output' for in-place operations to conform to numpy convention
  - Added a kernels.Kernel base-class implementing cdf, pm1, pm2, fft and dct in term of the pdf

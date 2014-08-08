@@ -61,8 +61,9 @@ So we will expect to find something close to :math:`(0,2,4)`.
 
 To perform the analysis, we first need to define the function to be fitted::
 
-  >>> def f((a0,a1,a2), x):
-  >>>   return a0 + a1*x+ a2*x**2
+  >>> def f(params, x):
+  ...   a0, a1, a2 = params
+  ...   return a0 + a1*x+ a2*x**2
 
 Then, we construct a :py:class:`CurveFitting` object, which computes and stores the
 optimal parameters, and also behaves as a function for the fitted data::
@@ -149,6 +150,36 @@ Do not hesitate to look at the code for :py:func:`pyqt_fit.plot_fit.plot1d` to e
 how things are plotted. The function should return all the handles you may need
 to tune the presentation of the various curves.
 
+Speeding up the fitting: providing the jacobian
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The least-square algorithm uses the jacobian (i.e. the derivative of the function with respect to each parameter on each 
+point). By default, the jacobian is estimated numerically, which can be quite expensive (if the function itself is). But 
+in many cases, it is fairly easy to compute. For example, in our case we have:
+
+.. math::
+
+    \begin{array}{rcl}
+    \frac{\partial f(x)}{\partial a_0} &=& 1 \\
+    \frac{\partial f(x)}{\partial a_1} &=& x \\
+    \frac{\partial f(x)}{\partial a_2} &=& x^2
+    \end{array}
+
+By default, the derivatives should be given in columns (i.e. each line correspond to a parameter, each column to 
+a point)::
+
+  >>> def df(params, x):
+  ...   result = np.ones((3, x.shape[0]), dtype=float)
+  ...   result[1] = x
+  ...   result[2] = x**2
+  ...   return result # result[0] is already 1
+  >>> fit.Dfun = df
+  >>> fit.fit()
+
+Of course there is no change in the result, but it should be slightly faster (note that in this case, the function is so 
+fast that to make it worth it, you need a lot of points as input).
+
+
 Confidence Intervals
 --------------------
 
@@ -158,7 +189,7 @@ distribution by resampling the data provided. For our problem, we will call::
 
   >>> import pyqt_fit.bootstrap as bs
   >>> xs = np.arange(0, 3, 0.01)
-  >>> result = bs.bootstrap(pyqt_fit.CurveFitting, x, y, eval_points = xs, fit_args = ((0,1,0), f), CI = (95,99), extra_attrs = ('popt',))
+  >>> result = bs.bootstrap(pyqt_fit.CurveFitting, x, y, eval_points = xs, fit_kwrds = dict(p0 = (0,1,0), function = f), CI = (95,99), extra_attrs = ('popt',))
 
 This will compute the 95% and 99% confidence intervals for the curves and for
 the optimised parameters (``popt``). The result is a named tuple
@@ -239,11 +270,11 @@ residuals. It must be provided as a function of 3 arguments:
   3. the jacobian of the function on the fitted data
 
 The shape of the output must be the same as the shape of the jacobian of the
-function. For example, if ``col_deriv`` is set to 1, the jacobian of the
+function. For example, if ``col_deriv`` is set to True, the jacobian of the
 log-residuals will be defined as::
 
-  >>> def Dlog_residual(y1, y0, dy):
-  ...   return -dy/y0[np.newaxis,:]
+  >>> def Dlog_residual(y1, y0):
+  ...   return -1/y0[np.newaxis,:]
 
 This is because:
 

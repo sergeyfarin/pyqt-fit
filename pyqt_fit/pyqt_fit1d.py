@@ -87,12 +87,12 @@ class ParametersModel(QtCore.QAbstractTableModel):
         c = index.column()
         if 0 <= r < len(self.parm_names) and 0 < c < 3:
             if c == 1 and role == Qt.EditRole:
-                f, ok = value.toDouble()
-                if ok:
+                try:
+                    f = float(value)
                     self.parm_values[r] = f
                     self.dataChanged.emit(index, index)
                     return True
-                else:
+                except ValueError:
                     print("Error, cannot convert value to double")
             elif c == 2 and role == Qt.CheckStateRole:
                 self.fixed[r] = value
@@ -446,9 +446,14 @@ class QtFitDlg(QtGui.QDialog):
             loc = str(self.legendLocation.currentText())
             fct_desc = "$%s$" % (fct.description,)
             try:
-                cf_args = (p0, fct)
-                cf_kwrds = {"residuals": res.__call__, "maxfev": 10000, "fix_params": fixed,
-                            "Dfun": fct.Dfun, "Dres": res.Dfun, "col_deriv": 1}
+                cf_kwrds = dict(residuals=res.__call__,
+                                p0=p0,
+                                function=fct,
+                                maxfev=10000,
+                                fix_params=fixed,
+                                Dfun=fct.Dfun,
+                                Dres=res.Dfun,
+                                col_deriv=True)
                 if self.CI is not None:
                     CI = self.CI[1]
                     bs = bootstrap.bootstrap(CurveFitting, xdata, ydata, CI,
@@ -456,14 +461,14 @@ class QtFitDlg(QtGui.QDialog):
                                              shuffle_kwrds={"add_residual": res.invert,
                                                             "fit": CurveFitting},
                                              extra_attrs=('popt',), eval_points=eval_points,
-                                             fit_args=cf_args, fit_kwrds=cf_kwrds)
+                                             fit_kwrds=cf_kwrds)
                     result = plot_fit.fit_evaluation(bs.y_fit, xdata, ydata,
                                                      eval_points=eval_points, xname=self.fieldX,
                                                      yname=self.fieldY, fct_desc=fct_desc,
                                                      param_names=parm_names, res_name=res.name,
                                                      CI=CI, CIresults=bs)
                 else:
-                    fit = CurveFitting(xdata, ydata, *cf_args, **cf_kwrds)
+                    fit = CurveFitting(xdata, ydata, **cf_kwrds)
                     fit.fit()
                     result = plot_fit.fit_evaluation(fit, xdata, ydata, eval_points=eval_points,
                                                      xname=self.fieldX, yname=self.fieldY,

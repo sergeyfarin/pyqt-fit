@@ -23,7 +23,7 @@ class Standard(object):
         J(y1-y0) = J(y1)-J(y0) = -J(y0)
         where J is the jacobian
         """
-        return -dy
+        return -1
 
 
 class LogResiduals(object):
@@ -35,12 +35,12 @@ class LogResiduals(object):
         return log(y1 / y0)
 
     @staticmethod
-    def Dfun(y1, y0, dy):
+    def Dfun(y1, y0):
         """
-        J(log(y1/y0)) = -J(y0)/y0
+        d(log(y1/y0))/dy0 = -1/y0
         where J is the jacobian and division is element-wise (per row)
         """
-        return -dy / y0[newaxis, :]
+        return -1 / y0
 
     @staticmethod
     def invert(y, res):
