@@ -284,7 +284,8 @@ class NonParamRegression(object):
         self._fitted = True
 
     def evaluate(self, points, out=None):
-        assert self.fitted, "Error, the object needs to be fitted first."
+        if not self.fitter:
+            self.fit()
         points = np.asanyarray(points)
         real_shape = points.shape
         assert len(real_shape) < 3, "The input points can be at most a 2D array"

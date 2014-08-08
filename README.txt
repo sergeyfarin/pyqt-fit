@@ -50,3 +50,6 @@ the residuals and the histogram of the residuals. All this can be output to a
 CSV file for further analysis in your favorite software (including most
 spreadsheet programs).
 
+
+:Note: Version 1.3.0 is not fully compatible with previous versions. Although
+the interfaces offer better flexibility, it will require some code change.

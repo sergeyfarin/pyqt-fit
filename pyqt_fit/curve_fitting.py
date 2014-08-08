@@ -403,6 +403,6 @@ class CurveFitting(object):
         ``xdata``
         """
         if not self.fitted:
-            raise ValueError("Error, the object has't been fitted yet.")
+            self.fit()
         return self.function(self.popt, xdata)
 
