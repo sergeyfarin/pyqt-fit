@@ -17,7 +17,6 @@ The exact definition of such a method is found in :py:attr:`pyqt_fit.kde.KDE1D.m
 .. autoclass:: KDE1DMethod
 
    The following methods are interface methods that should be overriden with ones specific to the implemented method. 
-   Each method will be called as a normal method. Any static or class method here is purely for convenience.
 
    .. automethod:: fit
 

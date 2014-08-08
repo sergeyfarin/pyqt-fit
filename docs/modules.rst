@@ -6,7 +6,8 @@ Modules of PyQt-Fit
   mod_plot_fit
   mod_curve_fitting
   mod_bootstrap
-  mod_kernel_smoothing
+  mod_nonparam_regression
+  mod_npr_methods
   mod_kde
   mod_kde_methods
   mod_kernels

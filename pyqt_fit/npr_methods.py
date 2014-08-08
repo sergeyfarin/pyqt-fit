@@ -161,6 +161,13 @@ class SpatialAverage(RegressionKernelMethod):
         dens[dens < 1e-50] = dm
         self._correction = dm / dens
 
+    @property
+    def q(self):
+        """
+        Degree of the fitted polynom
+        """
+        return 0
+
 class LocalLinearKernel1D(RegressionKernelMethod):
     r"""
     Perform a local-linear regression using a gaussian kernel.
@@ -197,6 +204,12 @@ class LocalLinearKernel1D(RegressionKernelMethod):
         self.li2 = li2
         return out
 
+    @property
+    def q(self):
+        """
+        Degree of the fitted polynom
+        """
+        return 1
 
 class PolynomialDesignMatrix1D(object):
     def __init__(self, degree):
@@ -280,6 +293,13 @@ class LocalPolynomialKernel1D(RegressionKernelMethod):
             Lx = linalg.solve(XWX, WxXx.T)[0]
             out[i] = np.dot(Lx, ydata)
         return out
+
+    @property
+    def q(self):
+        """
+        Degree of the fitted polynom
+        """
+        return 1
 
 class PolynomialDesignMatrix(object):
     """
@@ -428,7 +448,18 @@ class LocalPolynomialKernel(RegressionKernelMethod):
         **Default:** ``scotts_covariance``
     """
     def __init__(self, q=3):
-        self.q = q
+        self._q = q
+
+    @property
+    def q(self):
+        '''
+        Degree of the fitted polynomials
+        '''
+        return self._q
+
+    @q.setter
+    def q(self, val):
+        self._q = int(val)
 
     def fit(self, reg):
         if reg.dim == 1:
