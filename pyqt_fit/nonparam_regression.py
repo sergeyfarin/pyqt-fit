@@ -10,7 +10,7 @@ from scipy.linalg import sqrtm, solve
 import scipy
 import numpy as np
 from .compat import irange
-from . import npr_methods, kernels
+from . import npr_methods, kernels, kde_bandwidth
 from .utils import numpy_method_idx
 
 class NonParamRegression(object):
@@ -27,7 +27,6 @@ class NonParamRegression(object):
     def __init__(self, xdata, ydata, **kwords):
         self._xdata = np.atleast_2d(xdata)
         self._ydata = np.atleast_1d(ydata)
-        self._kernel_class = None
         self._covariance = None
         self._cov_fct = None
         self._bandwidth = None
@@ -37,6 +36,8 @@ class NonParamRegression(object):
         self._kernel = None
         self._lower = None
         self._upper = None
+        self._kernel_type = None
+        self._method_obj = None
         self._n = None
         self._d = None
 
@@ -44,10 +45,13 @@ class NonParamRegression(object):
             setattr(self, kw, kwords[kw])
 
         if self._kernel is None:
-            self.kernel_class = kernels.normal_kernel
+            self.kernel_type = kernels.normal_kernel
 
         if self._method is None:
             self._method = npr_methods.default_method
+
+        if self._cov_fct is None and self._bw_fct is None and self._covariance is None and self._bandwidth is None:
+            self._cov_fct = kde_bandwidth.scotts_covariance
 
     def copy(self):
         res = NonParamRegression.__new__(NonParamRegression)
@@ -61,6 +65,19 @@ class NonParamRegression(object):
                     setattr(res, m, obj)
         return res
 
+    def need_fit(self):
+        """
+        Calling this function will mark the object as needing fitting.
+        """
+        self._fitted = False
+
+    @property
+    def fitted(self):
+        """
+        Check if the fitting needs to be performed.
+        """
+        return self._fitted
+
     @property
     def kernel(self):
         r"""
@@ -73,22 +90,23 @@ class NonParamRegression(object):
 
     @kernel.setter
     def kernel(self, k):
-        self._kernel_class = None
+        self._kernel_type = None
         self._kernel = k
+        self.need_fit()
 
     @property
-    def kernel_class(self):
-        r"""
-        Kernel class. This is useful for kernels whose instance depend on the
-        dimension. The constructor of the class should take as argument the
-        dimension of the kernel.
+    def kernel_type(self):
         """
-        return self._kernel_class
+        Type of the kernel. The kernel type is a class or function accepting
+        the dimension of the domain as argument and returning a valid kernel object.
+        """
+        return self._kernel_type
 
-    @kernel_class.setter
-    def kernel_class(self, k):
+    @kernel_type.setter
+    def kernel_type(self, ker):
+        self._kernel_type = ker
         self._kernel = None
-        self._kernel_class = k
+        self.need_fit()
 
     @property
     def bandwidth(self):
@@ -108,6 +126,11 @@ class NonParamRegression(object):
         else:
             self._bandwidth = bw
             self._covariance = None
+        self.need_fit()
+
+    @property
+    def bandwidth_function(self):
+        return self._bw_fct
 
     @property
     def covariance(self):
@@ -127,6 +150,11 @@ class NonParamRegression(object):
         else:
             self._covariance = cov
             self._bandwidth = None
+        self.need_fit()
+
+    @property
+    def covariance_function(self):
+        return self._cov_fct
 
     @property
     def lower(self):
@@ -140,6 +168,7 @@ class NonParamRegression(object):
         l = np.atleast_1d(l)
         assert len(l.shape) == 1, "The lower bound must be at most a 1D array"
         self._lower = l
+        self.need_fit()
 
     @lower.deleter
     def lower(self):
@@ -157,6 +186,7 @@ class NonParamRegression(object):
         l = np.atleast_1d(l)
         assert len(l.shape) == 1, "The upper bound must be at most a 1D array"
         self._upper = l
+        self.need_fit()
 
     @upper.deleter
     def upper(self):
@@ -174,6 +204,7 @@ class NonParamRegression(object):
         xd = np.atleast_2d(xd)
         assert len(xd.shape) == 2, "The xdata must be at most a 2D array"
         self._xdata = xd
+        self.need_fit()
 
     @property
     def ydata(self):
@@ -187,6 +218,7 @@ class NonParamRegression(object):
         yd = np.atleast_1d(yd)
         assert len(yd.shape) == 1, "The ydata must be at most a 1D array"
         self._ydata = yd
+        self.need_fit()
 
     @property
     def method(self):
@@ -199,6 +231,14 @@ class NonParamRegression(object):
     @method.setter
     def method(self, m):
         self._method = m
+        self.need_fit()
+
+    @property
+    def method_object(self):
+        """
+        Instance of the method, fitted for the current class.
+        """
+        return self._method_obj
 
     @property
     def N(self):
@@ -214,22 +254,39 @@ class NonParamRegression(object):
         """
         return self._d
 
+    def _create_kernel(self, D):
+        if self._kernel_type is None:
+            return self._kernel
+        return self._kernel_type(D)
+
+    def _create_method(self):
+        return self._method(self)
+
+    def compute_bandwidth(self):
+        """
+        Method computing the bandwidth if needed (i.e. if it was defined by functions)
+        """
+        self._bandwidth, self._covariance = npr_methods.compute_bandwidth(self)
+
     def fit(self):
         """
         Method to call to fit the parameters of the fitting
         """
-        D, N == self._xdata.shape
+        D, N = self._xdata.shape
         assert self._ydata.shape[0] == N, "There must be as many points for X and Y"
+        self._kernel = self._create_kernel(D)
         if self._lower is None:
-            self._lower = -np.inf * np.ones((N,), dtype=float)
+            self._lower = -np.inf * np.ones((D,), dtype=float)
         if self._upper is None:
-            self._upper = np.inf * np.ones((N,), dtype=float)
+            self._upper = np.inf * np.ones((D,), dtype=float)
         self._n = N
         self._d = D
-        self._method.fit(self)
+        self._method_obj = self._create_method()
+        self._method_obj.fit(self)
         self._fitted = True
 
     def evaluate(self, points, out=None):
+        assert self.fitted, "Error, the object needs to be fitted first."
         points = np.asanyarray(points)
         real_shape = points.shape
         assert len(real_shape) < 3, "The input points can be at most a 2D array"
@@ -238,12 +295,13 @@ class NonParamRegression(object):
         elif len(real_shape) == 1:
             points = points.reshape(1, real_shape[0])
         if out is None:
-            out = np.empty((points.shape[-1],), dtype=type(y.dtype.type() + 0.))
+            out = np.empty((points.shape[-1],), dtype=type(points.dtype.type() + 0.))
         else:
             out.shape = (points.shape[-1],)
-        self._method.evaluate(self, points, out)
+        self._method_obj.evaluate(self, points, out)
         out.shape = real_shape[-1:]
         return out
 
     def __call__(self, points, out=None):
         return self.evaluate(points, out)
+

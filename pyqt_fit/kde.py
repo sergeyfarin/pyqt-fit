@@ -129,7 +129,7 @@ class KDE1D(object):
 
     def need_fit(self):
         """
-        Calling this function will require a fitting before the next use
+        Calling this function will mark the object as needing fitting.
         """
         self._fitter = False
 
