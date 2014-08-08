@@ -174,6 +174,10 @@ class CurveFitting(object):
                     y0 = fct(p, xdata, *args)
                     return Dres(ydata, y0, dfct)
 
+    def fit(self):
+        """
+        Fit the curve
+        """
         optim = optimize.leastsq(f, p0, args, full_output=1, Dfun=df,
                                  col_deriv=col_deriv, *lsq_args, **lsq_kword)
         popt, pcov, infodict, mesg, ier = optim

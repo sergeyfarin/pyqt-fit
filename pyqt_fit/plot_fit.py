@@ -11,11 +11,11 @@ from .compat import izip
 from itertools import chain
 from scipy.special import erfinv, gamma
 from scipy import stats
-from .kernel_smoothing import LocalLinearKernel1D
+#from .kernel_smoothing import LocalLinearKernel1D
+from .nonparam_regression import NonParamRegression
+from . import npr_methods
 from .compat import unicode_csv_writer as csv_writer
 from collections import namedtuple
-
-smoothing = LocalLinearKernel1D
 
 import sys
 if sys.version_info >= (3,):
@@ -55,7 +55,8 @@ def plot_residuals(xname, xdata, res_desc, res):
     """
     p_res = plot(xdata, res, '+', label='residuals')[0]
     plot([xdata.min(), xdata.max()], [0, 0], 'r--')
-    av = LocalLinearKernel1D(xdata, res)
+    av = NonParamRegression(xdata, res)
+    av.fit()
     xr = arange(xdata.min(), xdata.max(), (xdata.max() - xdata.min()) / 1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g', label='smoothed residuals')
@@ -81,7 +82,8 @@ def scaled_location_plot(yname, yopt, scaled_res):
 
     scr = sqrt(abs(scaled_res))
     p_scaled = plot(yopt, scr, '+')[0]
-    av = LocalLinearKernel1D(yopt, scr)
+    av = NonParamRegression(yopt, scr)
+    av.fit()
     xr = arange(yopt.min(), yopt.max(), (yopt.max() - yopt.min()) / 1024)
     rr = av(xr)
     p_smooth = plot(xr, rr, 'g')[0]

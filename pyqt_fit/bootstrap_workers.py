@@ -34,6 +34,7 @@ def bootstrap_result(worker, start_repeats, end_repeats):
             #print("Worker {} runs iteration {} with fit: {}".format(worker, i, fit))
             new_fit = fit(shuffled_x[..., i % nx, :], shuffled_y[i % ny, :],
                           *fit_args, **fit_kwrds)
+            new_fit.fit()
             #print("new_fit = {}".format(new_fit))
             result_array[i + 1] = new_fit(eval_points)
             for ea, attr in izip(extra_arrays, extra_attrs):

@@ -70,7 +70,7 @@ We can then visualize the data::
   >>> import matplotlib.pyplot as plt
   >>> grid = np.r_[0:10:512j]
   >>> plt.plot(grid, f(grid), 'r--', label='Reference')
-  >>> plt.plot(xs, ys, '+', label='Data')
+  >>> plt.plot(xs, ys, 'o', alpha=0.5, label='Data')
   >>> plt.legend(loc='best')
 
 .. figure:: NonParam_tut_data.png
@@ -80,9 +80,11 @@ We can then visualize the data::
 
 At first, we will try to use a simple Nadaraya-Watson method, or spatial averaging, using a gaussian kernel::
 
-  >>> import pyqt_fit.kernel_smoothing as smooth
-  >>> k0 = smooth.SpatialAverage(xs, ys)
-  >>> plt.plot(grid, k0(grid), label="Spatial Averaging")
+  >>> import pyqt_fit.nonparam_regression as smooth
+  >>> from pyqt_fit import npr_methods
+  >>> k0 = smooth.NonParamRegression(xs, ys, method=npr_methods.SpatialAverage())
+  >>> k0.fit()
+  >>> plt.plot(grid, k0(grid), label="Spatial Averaging", linewidth=2)
   >>> plt.legend(loc='best')
 
 .. figure:: NonParam_tut_spatial_ave.png
@@ -109,30 +111,31 @@ averaging, as it doesn't cope well with strong maxima, especially on the
 boundaries. As an improvement, we can try local-linear or local-polynomial. The
 process is exactly the same::
 
-  >>> k1 = smooth.LocalLinearKernel1D(xs, ys)
-  >>> k2 = smooth.LocalPolynomialKernel1D(xs, ys, q=2)
-  >>> k3 = smooth.LocalPolynomialKernel1D(xs, ys, q=3)
-  >>> k15 = smooth.LocalPolynomialKernel1D(xs, ys, q=15)
+  >>> k1 = smooth.NonParamRegression(xs, ys, method=npr_methods.LocalPolynomialKernel(q=1))
+  >>> k2 = smooth.NonParamRegression(xs, ys, method=npr_methods.LocalPolynomialKernel(q=2))
+  >>> k3 = smooth.NonParamRegression(xs, ys, method=npr_methods.LocalPolynomialKernel(q=3))
+  >>> k12 = smooth.NonParamRegression(xs, ys, method=npr_methods.LocalPolynomialKernel(q=12))
+  >>> k1.fit(); k2.fit(); k3.fit(); k12.fit()
   >>> plt.figure()
-  >>> plt.plot(xs, ys, '+', label='Data')
-  >>> plt.plot(grid, f(grid), 'r--', label='Target')
-  >>> plt.plot(grid, k1(grid), 'g', label='linear')
-  >>> plt.plot(grid, k2(grid), 'k', label='quadratic')
-  >>> plt.plot(grid, k3(grid), 'y', label='cubic')
-  >>> plt.plot(grid, k15(grid), 'b', label='polynom order 15')
+  >>> plt.plot(xs, ys, 'o', alpha=0.5, label='Data')
+  >>> plt.plot(grid, k12(grid), 'b', label='polynom order 12', linewidth=2)
+  >>> plt.plot(grid, k3(grid), 'y', label='cubic', linewidth=2)
+  >>> plt.plot(grid, k2(grid), 'k', label='quadratic', linewidth=2)
+  >>> plt.plot(grid, k1(grid), 'g', label='linear', linewidth=2)
+  >>> plt.plot(grid, f(grid), 'r--', label='Target', linewidth=2)
   >>> plt.legend(loc='best')
 
 .. figure:: NonParam_tut_spatial_poly.png
   :align: center
 
-  Result of polynomial fitting with orders 1, 2, 3 and 15
+  Result of polynomial fitting with orders 1, 2, 3 and 12
 
 In this example, we can see that linear, quadratic and cubic give very similar
-result, while a polynom of order 15 is clearly over-fitting the data. Looking
-closer at the data, we can see that the linear fit seems to be better adapted,
-as quadratic and cubic both seem to over-fit the data. Note that this is not to
-be generalise and is very dependent on the data you have! We can now redo the
-residual plots::
+result, while a polynom of order 12 is clearly over-fitting the data. Looking
+closer at the data, we can see that the quadratic and cubic fits seem to be
+better adapted, as quadratic and cubic both seem to over-fit the data. Note that
+this is not to be generalise and is very dependent on the data you have! We can
+now redo the residual plots::
 
   >>> yopts = k1(xs)
   >>> res = ys - yopts
@@ -154,10 +157,10 @@ We can also look at the residuals for the quadratic polynomial::
 
   Residuals of the Local Quadratic Regression
 
-We can see from the structure of the noise that the quadratic curve, although
-farther from our target, seems to fit much better the data. Unlike in the local
-linear regression, we do not have significant bias along the X axis. Also, the
-residuals seem "more normal" (i.e. the points in the QQ-plot are better aligned)
+We can see from the structure of the noise that the quadratic curve seems indeed 
+to fit much better the data. Unlike in the local linear regression, we do not 
+have significant bias along the X axis. Also, the residuals seem "more normal" 
+(i.e. the points in the QQ-plot are better aligned)
 than in the linear case.
 
 Confidence Intervals
@@ -168,7 +171,11 @@ paragraph, you can get confidence interval on the estimation with::
 
   >>> import pyqt_fit.bootstrap as bs
   >>> grid = np.r_[0:10:512j]
-  >>> result = bs.bootstrap(smooth.LocalPolynomialKernel1D, xs, ys, eval_points = grid, fit_kwrds = {'q': 2}, CI = (95,99))
+  >>> def fit(xs, ys):
+  ...   est = smooth.NonParamRegression(xs, ys, method=npr_methods.LocalPolynomialKernel(q=2))
+  ...   est.fit()
+  ...   return est
+  >>> result = bs.bootstrap(fit, xs, ys, eval_points = grid, CI = (95,99))
 
 This will compute the 95% and 99% confidence intervals for the quadratic
 fitting. The result is a named tuple
@@ -178,10 +185,10 @@ intervals for the curve.
 
 The data can be plotted with::
 
-  >>> plt.plot(grid, result.y_fit(grid), 'r', label="Fitted curve")
-  >>> plt.plot(grid, result.CIs[0][0,0], 'g--', label='95% CI')
-  >>> plt.plot(grid, result.CIs[0][0,1], 'g--')
-  >>> plt.plot(xs, ys, '+', label='Data')
+  >>> plt.plot(xs, ys, 'o', alpha=0.5, label='Data')
+  >>> plt.plot(grid, result.y_fit(grid), 'r', label="Fitted curve", linewidth=2)
+  >>> plt.plot(grid, result.CIs[0][0,0], 'g--', label='95% CI', linewidth=2)
+  >>> plt.plot(grid, result.CIs[0][0,1], 'g--', linewidth=2)
   >>> plt.fill_between(grid, result.CIs[0][0,0], result.CIs[0][0,1], color='g', alpha=0.25)
   >>> plt.legend(loc=0)
 

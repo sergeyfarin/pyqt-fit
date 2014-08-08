@@ -135,7 +135,7 @@ class SpatialAverage(object):
             result += self.ydata[i] * energy
             norm += energy
 
-        result[norm > 1e-50] /= norm[norm > 1e-50]
+        result[norm > 0] /= norm[norm > 0]
 
         return result
 

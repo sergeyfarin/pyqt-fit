@@ -249,6 +249,8 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals,
         estimated distributions.
     """
     y_fit = fit(xdata, ydata, *fit_args, **fit_kwrds)
+    y_fit.fit()
+
     shuffled_x, shuffled_y = shuffle_method(y_fit, xdata, ydata,
                                             repeats=repeats,
                                             *shuffle_args, **shuffle_kwrds)

@@ -5,8 +5,7 @@ Module implementing non-parametric regressions using kernel methods.
 """
 
 from __future__ import division, absolute_import, print_function
-from scipy import stats
-from scipy.linalg import sqrtm, solve
+from scipy import stats, linalg
 import scipy
 import numpy as np
 from .compat import irange
@@ -47,7 +46,7 @@ def compute_bandwidth(reg):
         cov = np.dot(bw, bw).real
     elif reg.covariance_function:
         cov = np.atleast_2d(reg.covariance_function(reg.xdata, model=reg))
-        bw = sqrtm(cov)
+        bw = linalg.sqrtm(cov)
     else:
         return reg.bandwidth, reg.covariance
     return bw, cov
@@ -110,23 +109,30 @@ class SpatialAverage(RegressionKernelMethod):
 
     def fit(self, reg):
         self = super(SpatialAverage, self).fit(reg)
+        self.inv_cov = linalg.inv(reg.covariance)
         return self
 
-    def evaluate(self, points, out=None):
+    def evaluate(self, reg, points, out):
         d, m = points.shape
         norm = np.zeros((m,), points.dtype)
+        xdata = reg.xdata[..., np.newaxis]
+        ydata = reg.ydata
+        correction = self.correction
+        N = reg.N
+        inv_cov = self.inv_cov
+        assert out.shape == (m,)
 
+        out.fill(0)
         # iterate on the internal points
-        for i, ci in np.broadcast(irange(self.n),
-                                  irange(self._correction.shape[0])):
-            diff = np.dot(self._correction[ci],
-                          self.xdata[:, i, np.newaxis] - points)
-            tdiff = np.dot(self._inv_cov, diff)
+        for i, ci in np.broadcast(irange(N),
+                                  irange(correction.shape[0])):
+            diff = correction[ci] * (xdata[:, i, :] - points)
+            tdiff = np.dot(inv_cov, diff)
             energy = np.exp(-np.sum(diff * tdiff, axis=0) / 2.0)
-            out += self.ydata[i] * energy
+            out += ydata[i] * energy
             norm += energy
 
-        out[norm > 1e-50] /= norm[norm > 1e-50]
+        out[norm > 0] /= norm[norm > 0]
         return out
 
     @property
@@ -271,7 +277,7 @@ class LocalPolynomialKernel1D(RegressionKernelMethod):
             Xx = designMatrix(dX)
             WxXx = Wx * Xx
             XWX = np.dot(Xx.T, WxXx)
-            Lx = solve(XWX, WxXx.T)[0]
+            Lx = linalg.solve(XWX, WxXx.T)[0]
             out[i] = np.dot(Lx, ydata)
         return out
 
@@ -455,7 +461,7 @@ class LocalPolynomialKernel(RegressionKernelMethod):
             designMatrix(dX, out=Xx)
             np.multiply(Wx, Xx, WxXx)
             np.dot(Xx, WxXx.T, XWX)
-            Lx = solve(XWX, WxXx)[0]
+            Lx = linalg.solve(XWX, WxXx)[0]
             out[i] = np.dot(Lx, ydata)
         return out
 
