@@ -77,6 +77,9 @@ class VoidFittingFct(object):
     def __call__(self, x):
         return x + self.y
 
+    def fit(self):
+        pass
+
 
 class VoidFitting(object):
     def __init__(self, *args, **kwords):
