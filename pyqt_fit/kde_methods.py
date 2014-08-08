@@ -134,7 +134,7 @@ class KDE1DMethod(object):
         :param pyqt_fit.kde.KDE1D kde: KDE object being fitted
         :Default: Compute the bandwidth and covariance if specified as functions
         """
-        kde.bandwidth, kde.covariance = compute_bandwidth(kde)
+        kde.compute_bandwidth()
 
     def __call__(self, kde, points, out):
         """

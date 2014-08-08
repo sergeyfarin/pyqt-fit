@@ -144,6 +144,12 @@ class KDE1D(object):
                 setattr(res, m, getattr(self, m))
         return res
 
+    def compute_bandwidth(self):
+        """
+        Method computing the bandwidth if needed (i.e. if it was defined by functions)
+        """
+        self._bw, self._covariance = kde_methods.compute_bandwidth(self)
+
     def fit(self):
         """
         Compute the various parameters needed by the kde method
