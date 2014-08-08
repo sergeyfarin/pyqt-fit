@@ -5,7 +5,8 @@ from libc.math cimport exp
 DTYPE = np.float
 ctypedef np.float_t DTYPE_t
 
-cdef void cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t, ndim=1] ydata, np.ndarray[DTYPE_t, ndim=1] points,
+cdef void cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t, ndim=1] ydata,
+                np.ndarray[DTYPE_t, ndim=1] points,
                 np.ndarray[DTYPE_t, ndim=1] li2, np.ndarray[DTYPE_t, ndim=1] output):
     cdef unsigned int nx = xdata.shape[0]
     cdef unsigned int npts = points.shape[0]
@@ -43,15 +44,11 @@ cdef void cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t
             li2[j] += li*li
             Op[j] += li * yp[i]
 
-def local_linear_1d(bw, xdata, ydata, points, output = None):
+def local_linear_1d(bw, xdata, ydata, points, out):
     bw = float(bw)
     xdata = np.ascontiguousarray(xdata, dtype=np.float)
     ydata = np.ascontiguousarray(ydata, dtype=np.float)
     points = np.ascontiguousarray(points, dtype=np.float)
     li2 = np.empty(points.shape, dtype=float)
-    if output is None:
-        output = np.empty(points.shape, dtype=float)
-    else:
-        output = np.ascontiguousarray(output, dtype=np.float)
-    cy_li(bw, xdata, ydata, points, li2, output)
-    return li2, output
+    cy_li(bw, xdata, ydata, points, li2, out)
+    return li2, out

@@ -32,12 +32,11 @@ class NonParamRegression(object):
         self._bandwidth = None
         self._bw_fct = None
         self._method = None
-        self._fitted = False
         self._kernel = None
         self._lower = None
         self._upper = None
         self._kernel_type = None
-        self._method_obj = None
+        self._fitted_method = None
         self._n = None
         self._d = None
 
@@ -48,7 +47,7 @@ class NonParamRegression(object):
             self.kernel_type = kernels.normal_kernel
 
         if self._method is None:
-            self._method = npr_methods.default_method
+            self.method = npr_methods.default_method
 
         if self._cov_fct is None and self._bw_fct is None and self._covariance is None and self._bandwidth is None:
             self._cov_fct = kde_bandwidth.scotts_covariance
@@ -69,14 +68,14 @@ class NonParamRegression(object):
         """
         Calling this function will mark the object as needing fitting.
         """
-        self._fitted = False
+        self._fitted_method = None
 
     @property
     def fitted(self):
         """
         Check if the fitting needs to be performed.
         """
-        return self._fitted
+        return self._fitted_method is not None
 
     @property
     def kernel(self):
@@ -223,7 +222,7 @@ class NonParamRegression(object):
     @property
     def method(self):
         """
-        Regression method itself. It should follow the template of
+        Regression method itself. It should be an instance of the class following the template 
         :py:class:`pyqt_fit.npr_methods.RegressionKernelMethod`.
         """
         return self._method
@@ -234,11 +233,13 @@ class NonParamRegression(object):
         self.need_fit()
 
     @property
-    def method_object(self):
+    def fitted_method(self):
         """
-        Instance of the method, fitted for the current class.
+        Method actually used after fitting.
+
+        The main method may choose to provide a more tuned method during fitting.
         """
-        return self._method_obj
+        return self._fitted_method
 
     @property
     def N(self):
@@ -259,14 +260,12 @@ class NonParamRegression(object):
             return self._kernel
         return self._kernel_type(D)
 
-    def _create_method(self):
-        return self._method(self)
-
-    def compute_bandwidth(self):
+    def set_actual_bandwidth(self, bandwidth, covariance):
         """
         Method computing the bandwidth if needed (i.e. if it was defined by functions)
         """
-        self._bandwidth, self._covariance = npr_methods.compute_bandwidth(self)
+        self._bandwidth = bandwidth
+        self._covariance = covariance
 
     def fit(self):
         """
@@ -281,8 +280,7 @@ class NonParamRegression(object):
             self._upper = np.inf * np.ones((D,), dtype=float)
         self._n = N
         self._d = D
-        self._method_obj = self._create_method()
-        self._method_obj.fit(self)
+        self._fitted_method = self._method.fit(self)
         self._fitted = True
 
     def evaluate(self, points, out=None):
@@ -298,7 +296,7 @@ class NonParamRegression(object):
             out = np.empty((points.shape[-1],), dtype=type(points.dtype.type() + 0.))
         else:
             out.shape = (points.shape[-1],)
-        self._method_obj.evaluate(self, points, out)
+        self._fitted_method.evaluate(self, points, out)
         out.shape = real_shape[-1:]
         return out
 

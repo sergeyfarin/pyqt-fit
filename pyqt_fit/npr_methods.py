@@ -10,8 +10,8 @@ from scipy.linalg import sqrtm, solve
 import scipy
 import numpy as np
 from .compat import irange
-
 from .cyth import HAS_CYTHON
+from . import kde
 
 local_linear = None
 
@@ -58,8 +58,222 @@ class RegressionKernelMethod(object):
     Base class for regression kernel methods
     """
     def fit(self, reg):
-        reg.compute_bandwidth()
+        """
+        Fit the method and returns the fitted object that will be used for actual evaluation.
 
+        The object needs to call the :py:meth:`pyqt_fit.nonparam_regression.NonParamRegression.set_actual_bandwidth` 
+        method with the computed bandwidth and covariance.
+
+        :Default: Compute the bandwidth based on the real data and set it in the regression object
+        """
+        reg.set_actual_bandwidth(*compute_bandwidth(reg))
+        return self
+
+
+    def evaluate(self, points, out):
+        """
+        Evaluate the regression of the provided points.
+
+        :param ndarray points: 2d-array of points to compute the regression on. Each column is a point.
+        :param ndarray out: 1d-array in which to store the result
+        :rtype: ndarray
+        :return: The method must return the ``out`` array, updated with the regression values
+        """
+        raise NotImplementedError()
+
+
+class SpatialAverage(RegressionKernelMethod):
+    r"""
+    Perform a Nadaraya-Watson regression on the data (i.e. also called
+    local-constant regression) using a gaussian kernel.
+
+    The Nadaraya-Watson estimate is given by:
+
+    .. math::
+
+        f_n(x) \triangleq \frac{\sum_i K\left(\frac{x-X_i}{h}\right) Y_i}
+        {\sum_i K\left(\frac{x-X_i}{h}\right)}
+
+    Where :math:`K(x)` is the kernel and must be such that :math:`E(K(x)) = 0`
+    and :math:`h` is the bandwidth of the method.
+
+    :param ndarray xdata: Explaining variables (at most 2D array)
+    :param ndarray ydata: Explained variables (should be 1D array)
+
+    :type  cov: ndarray or callable
+    :param cov: If an ndarray, it should be a 2D array giving the matrix of
+        covariance of the gaussian kernel. Otherwise, it should be a function
+        ``cov(xdata, ydata)`` returning the covariance matrix.
+    """
+    def __init__(self):
+        self.correction = 1.
+
+    def fit(self, reg):
+        self = super(SpatialAverage, self).fit(reg)
+        return self
+
+    def evaluate(self, points, out=None):
+        d, m = points.shape
+        norm = np.zeros((m,), points.dtype)
+
+        # iterate on the internal points
+        for i, ci in np.broadcast(irange(self.n),
+                                  irange(self._correction.shape[0])):
+            diff = np.dot(self._correction[ci],
+                          self.xdata[:, i, np.newaxis] - points)
+            tdiff = np.dot(self._inv_cov, diff)
+            energy = np.exp(-np.sum(diff * tdiff, axis=0) / 2.0)
+            out += self.ydata[i] * energy
+            norm += energy
+
+        out[norm > 1e-50] /= norm[norm > 1e-50]
+        return out
+
+    @property
+    def correction(self):
+        """
+        The correction coefficient allows to change the width of the kernel
+        depending on the point considered. It can be either a constant (to
+        correct globaly the kernel width), or a 1D array of same size as the
+        input.
+        """
+        return self._correction
+
+    @correction.setter
+    def correction(self, value):
+        value = np.atleast_1d(value)
+        assert len(value.shape) == 1, "Error, the correction must be a single value or a 1D array"
+        self._correction = value
+
+    def set_density_correction(self):
+        """
+        Add a correction coefficient depending on the density of the input
+        """
+        est = kde.KDE1D(self.xdata)
+        dens = est(self.xdata)
+        dm = dens.max()
+        dens[dens < 1e-50] = dm
+        self._correction = dm / dens
+
+class LocalLinearKernel1D(RegressionKernelMethod):
+    r"""
+    Perform a local-linear regression using a gaussian kernel.
+
+    The local constant regression is the function that minimises, for each
+    position:
+
+    .. math::
+
+        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}}
+            \sum_i K\left(\frac{x-X_i}{h}\right)
+            \left(Y_i - a_0 - a_1(x-X_i)\right)^2
+
+    Where :math:`K(x)` is the kernel and must be such that :math:`E(K(x)) = 0`
+    and :math:`h` is the bandwidth of the method.
+    """
+    def fit(self, reg):
+        return super(LocalLinearKernel1D, self).fit(reg)
+
+    def evaluate(self, reg, points, out):
+        """
+        Evaluate the spatial averaging on a set of points
+
+        :param ndarray points: Points to evaluate the averaging on
+        :param ndarray result: If provided, the result will be put in this
+            array
+        """
+        points = points[0]
+        xdata = reg.xdata[0]
+        ll = local_linear.local_linear_1d
+        if not out.flags['C_CONTIGUOUS']:
+            ll = py_local_linear.local_linear_1d
+        li2, out = ll(reg.bandwidth, xdata, reg.ydata, points, out)
+        self.li2 = li2
+        return out
+
+
+class PolynomialDesignMatrix1D(object):
+    def __init__(self, degree):
+        self.degree = degree
+        powers = np.arange(0, degree + 1).reshape((1, degree + 1))
+        self.powers = powers
+
+    def __call__(self, dX, out=None):
+        return np.power(dX, self.powers, out)
+
+
+class LocalPolynomialKernel1D(RegressionKernelMethod):
+    r"""
+    Perform a local-polynomial regression using a user-provided kernel
+    (Gaussian by default).
+
+    The local constant regression is the function that minimises, for each
+    position:
+
+    .. math::
+
+        f_n(x) \triangleq \argmin_{a_0\in\mathbb{R}}
+            \sum_i K\left(\frac{x-X_i}{h}\right)
+            \left(Y_i - a_0 - a_1(x-X_i) - \ldots -
+                a_q \frac{(x-X_i)^q}{q!}\right)^2
+
+    Where :math:`K(x)` is the kernel such that :math:`E(K(x)) = 0`, :math:`q`
+    is the order of the fitted polynomial  and :math:`h` is the bandwidth of
+    the method. It is also recommended to have :math:`\int_\mathbb{R} x^2K(x)dx
+    = 1`, (i.e. variance of the kernel is 1) or the effective bandwidth will be
+    scaled by the square-root of this integral (i.e. the standard deviation of
+    the kernel).
+
+    :param ndarray xdata: Explaining variables (at most 2D array)
+    :param ndarray ydata: Explained variables (should be 1D array)
+    :param int q: Order of the polynomial to fit. **Default:** 3
+
+    :type  cov: float or callable
+    :param cov: If an float, it should be a variance of the gaussian kernel.
+        Otherwise, it should be a function ``cov(xdata, ydata)`` returning
+        the variance.
+        **Default:** ``scotts_covariance``
+
+    """
+    def __init__(self, q=3):
+        self.q = q
+
+    def fit(self, reg):
+        assert reg.dim == 1, "This method can only be used with 1D data"
+        if self.q == 0:
+            obj = SpatialAverage()
+            return obj.fit(reg)
+        elif self.q == 1:
+            obj = LocalLinearKernel1D()
+            return obj.fit(reg)
+        self = super(LocalPolynomialKernel1D, self).fit(reg)
+        self.designMatrix = PolynomialDesignMatrix1D(self.q)
+        return self
+
+    def evaluate(self, reg, points, out):
+        """
+        Evaluate the spatial averaging on a set of points
+
+        :param ndarray points: Points to evaluate the averaging on
+        :param ndarray result: If provided, the result will be put
+            in this array
+        """
+        xdata = reg.xdata[0, :, np.newaxis]  # make it a column vector
+        ydata = reg.ydata[:, np.newaxis]  # make it a column vector
+        points = points[0] # make it a line vector
+        q = self.q
+        bw = reg.bandwidth
+        kernel = reg.kernel
+        designMatrix = self.designMatrix
+        for i, p in enumerate(points):
+            dX = (xdata - p)
+            Wx = kernel(dX / bw)
+            Xx = designMatrix(dX)
+            WxXx = Wx * Xx
+            XWX = np.dot(Xx.T, WxXx)
+            Lx = solve(XWX, WxXx.T)[0]
+            out[i] = np.dot(Lx, ydata)
+        return out
 
 class PolynomialDesignMatrix(object):
     """
@@ -67,6 +281,8 @@ class PolynomialDesignMatrix(object):
     """
     def __init__(self, dim, deg):
         self.dim = dim
+        if out is None:
+            out = np.empty(points.shape, dtype=float)
         self.deg = deg
 
         self._designMatrixSize()
@@ -205,12 +421,16 @@ class LocalPolynomialKernel(RegressionKernelMethod):
         the variance.
         **Default:** ``scotts_covariance``
     """
-    def __init__(self, reg, q=3):
+    def __init__(self, q=3):
         self.q = q
 
     def fit(self, reg):
-        super(LocalPolynomialKernel, self).fit(reg)
+        if reg.dim == 1:
+            obj = LocalPolynomialKernel1D(self.q)
+            return obj.fit(reg)
+        self = super(LocalPolynomialKernel, self).fit(reg)
         self.designMatrix = PolynomialDesignMatrix(reg.dim, self.q)
+        return self
 
     def evaluate(self, reg, points, out):
         """
@@ -239,5 +459,5 @@ class LocalPolynomialKernel(RegressionKernelMethod):
             out[i] = np.dot(Lx, ydata)
         return out
 
-default_method = LocalPolynomialKernel
+default_method = LocalPolynomialKernel(q=1)
 

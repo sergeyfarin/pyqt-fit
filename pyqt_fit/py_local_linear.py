@@ -2,8 +2,7 @@ from __future__ import division, absolute_import, print_function
 import numpy as np
 
 
-def local_linear_1d(bw, xdata, ydata, points, out=None):
-    points = np.atleast_1d(points).astype(xdata.dtype)
+def local_linear_1d(bw, xdata, ydata, points, out):
     x0 = points - xdata[:, np.newaxis]
     x02 = x0 * x0
     wi = np.exp(-x02 / (2.0 * bw * bw))
