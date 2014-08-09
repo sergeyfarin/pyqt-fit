@@ -255,7 +255,7 @@ class LocalPolynomialKernel1D(RegressionKernelMethod):
 
     """
     def __init__(self, q=3):
-        self.q = q
+        self._q = q
 
     def fit(self, reg):
         assert reg.dim == 1, "This method can only be used with 1D data"
@@ -299,7 +299,7 @@ class LocalPolynomialKernel1D(RegressionKernelMethod):
         """
         Degree of the fitted polynom
         """
-        return 1
+        return self._q
 
 class PolynomialDesignMatrix(object):
     """
