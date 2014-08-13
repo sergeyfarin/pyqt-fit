@@ -37,12 +37,11 @@ elif python_version.major == 3 and python_version.minor >= 3:
         if ext in ilm.SOURCE_SUFFIXES:
             return ilm.SourceFileLoader(pack_name, str(filepath))
         if ext in ilm.BYTECODE_SUFFIXES:
-            return ilm.SourcelessFileLoader(pack_name, str(filename))
+            return ilm.SourcelessFileLoader(pack_name, str(filepath))
         if ext in ilm.EXTENSION_SUFFIXES:
-            return ilm.ExtensionFileLoader(pack_name, str(filename))
+            return ilm.ExtensionFileLoader(pack_name, str(filepath))
 
     if python_version.minor == 3:
-        from importlib import find_loader
 
         def create_module(loader):
             " Version for Python 3.3 "

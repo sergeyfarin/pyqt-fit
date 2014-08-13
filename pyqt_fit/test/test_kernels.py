@@ -4,10 +4,8 @@ from .. import kernels
 from .. import _kernels
 
 from scipy import stats
-from scipy.fftpack import fft, dct
-from scipy.integrate import quad
-import numpy as np
 import numpy.testing
+import numpy as np
 from . import kde_utils
 
 class RefKernel1D(kernels.Kernel1D):

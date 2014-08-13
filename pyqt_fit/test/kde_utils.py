@@ -2,7 +2,7 @@ import numpy as np
 from .. import kde_methods
 from ..utils import namedtuple
 from ..compat import irange
-from scipy import stats, special
+from scipy import stats
 from .. import kernels
 from .. import kde
 

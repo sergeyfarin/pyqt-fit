@@ -1,14 +1,6 @@
 from __future__ import division, absolute_import, print_function
 
-from .. import kde
-from .. import kde_methods
 import numpy as np
-from numpy import newaxis
-from numpy.random import randn
-from scipy import stats, integrate, interpolate
-from ..compat import irange
-from ..utils import make_ufunc
-
 from . import kde_utils
 
 class TestCDF(kde_utils.KDETester):

@@ -973,7 +973,7 @@ ExpTransform = Transform(np.exp, np.log, _inverse)
 
 
 def transform_distribution(xs, ys, Dinv, out):
-    """
+    r"""
     Transform a distribution into another one by a change a variable.
 
     :param ndarray xs: Evaluation points of the distribution
@@ -991,11 +991,10 @@ def transform_distribution(xs, ys, Dinv, out):
         f_Y(y) = \left| \frac{1}{g'(g^{-1}(y))} \right| \cdot f_X(g^{-1}(y))
 
     """
-    sel = ys == 0
     Dinv(xs, out=out)
     np.abs(out, out=out)
     _inverse(out, out=out)
-    np.multiply(out, ys, out = out)
+    np.multiply(out, ys, out=out)
     return out
 
 

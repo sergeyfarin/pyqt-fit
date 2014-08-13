@@ -5,12 +5,13 @@ Module implementing non-parametric regressions using kernel methods.
 """
 
 from __future__ import division, absolute_import, print_function
-from scipy import stats, linalg
+from scipy import linalg
 import scipy
 import numpy as np
 from .compat import irange
 from .cyth import HAS_CYTHON
 from . import kde
+from . import py_local_linear
 
 local_linear = None
 
@@ -29,7 +30,6 @@ def usePython():
     Switch to using the python implementation of the methods
     """
     global local_linear
-    from . import py_local_linear
     local_linear = py_local_linear
 
 if HAS_CYTHON:
@@ -291,7 +291,6 @@ class LocalPolynomialKernel1D(RegressionKernelMethod):
         xdata = reg.xdata[0, :, np.newaxis]  # make it a column vector
         ydata = reg.ydata[:, np.newaxis]  # make it a column vector
         points = points[0] # make it a line vector
-        q = self.q
         bw = reg.bandwidth
         kernel = reg.kernel
         designMatrix = self.designMatrix
@@ -305,23 +304,13 @@ class LocalPolynomialKernel1D(RegressionKernelMethod):
             out[i] = np.dot(Lx, ydata)
         return out
 
-    @property
-    def q(self):
-        """
-        Degree of the fitted polynom
-        """
-        return 1
-
 class PolynomialDesignMatrix(object):
     """
     Class used to create a design matrix for polynomial regression
     """
     def __init__(self, dim, deg):
         self.dim = dim
-        if out is None:
-            out = np.empty(points.shape, dtype=float)
         self.deg = deg
-
         self._designMatrixSize()
 
     def _designMatrixSize(self):
@@ -473,7 +462,10 @@ class LocalPolynomialKernel(RegressionKernelMethod):
         self._q = int(val)
 
     def fit(self, reg):
-        if reg.dim == 1:
+        if self.q == 0:
+            obj = SpatialAverage()
+            return obj.fit(reg)
+        elif reg.dim == 1:
             obj = LocalPolynomialKernel1D(self.q)
             return obj.fit(reg)
         self = super(LocalPolynomialKernel, self).fit(reg)

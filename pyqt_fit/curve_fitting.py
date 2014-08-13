@@ -325,6 +325,7 @@ class CurveFitting(object):
 
         use_derivs = (Dres is not None) and (Dfun is not None)
         df = None
+        f = None
 
         if fix_params:
             p_save = np.array(p0, dtype=float)
@@ -338,13 +339,14 @@ class CurveFitting(object):
                                  "out of range.")
             p0 = p_save[change_params]
 
-            def f(p):
+            def f_fixed(p):
                 p1 = np.array(p_save)
                 p1[change_params] = p
                 y0 = fct(p1, xdata)
                 return residuals(ydata, y0)
+            f = f_fixed
             if use_derivs:
-                def df(p):
+                def df_fixed(p):
                     p1 = np.array(p_save)
                     p1[change_params] = p
                     y0 = fct(p1, xdata)
@@ -353,18 +355,21 @@ class CurveFitting(object):
                     if col_deriv:
                         return dfct[change_params]*dr
                     return dfct[:,change_params]*dr[:, np.newaxis]
+                df = df_fixed
         else:
-            def f(p):
+            def f_free(p):
                 y0 = fct(p, xdata)
                 return residuals(ydata, y0)
+            f = f_free
             if use_derivs:
-                def df(p):
+                def df_free(p):
                     dfct = Dfun(p, xdata)
                     y0 = fct(p, xdata)
                     dr = np.atleast_1d(Dres(ydata, y0))
                     if col_deriv:
                         return dfct*dr
                     return dfct*dr[:, np.newaxis]
+                df = df_free
 
         if use_derivs:
             self.df = df

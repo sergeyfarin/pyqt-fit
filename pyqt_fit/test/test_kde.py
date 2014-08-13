@@ -2,12 +2,9 @@ from __future__ import division, absolute_import, print_function
 
 from .. import kde
 from .. import kde_methods
-from .. import kernels
 import numpy as np
-from numpy import newaxis
 from numpy.random import randn
 from scipy import integrate
-from ..compat import irange
 from . import kde_utils
 
 class TestBandwidth(object):
@@ -15,7 +12,7 @@ class TestBandwidth(object):
     def setUpClass(cls):
         cls.ratios = np.array([1., 2., 5.])
         d = randn(500)
-        cls.vs = cls.ratios[:, newaxis]*np.array([d, d, d])
+        cls.vs = cls.ratios[:, np.newaxis]*np.array([d, d, d])
         cls.ss = np.var(cls.vs, axis=1)
 
     def variance_methods(self, m):

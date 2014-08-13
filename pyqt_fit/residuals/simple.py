@@ -1,5 +1,5 @@
 from __future__ import division
-from numpy import log, exp, newaxis
+from numpy import log, exp
 
 
 class Standard(object):

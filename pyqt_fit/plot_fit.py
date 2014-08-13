@@ -13,7 +13,6 @@ from scipy.special import erfinv, gamma
 from scipy import stats
 #from .kernel_smoothing import LocalLinearKernel1D
 from .nonparam_regression import NonParamRegression
-from . import npr_methods
 from .compat import unicode_csv_writer as csv_writer
 from collections import namedtuple
 

@@ -4,8 +4,6 @@ from .. import nonparam_regression, npr_methods
 import numpy as np
 
 from ..compat import irange, izip
-from . import kde_utils
-
 
 def fct(xs):
     """
@@ -32,7 +30,6 @@ class TestConvergence1D(object):
         sizes = [2 ** i for i in range(5, 8)]
         cls.sizes = sizes
         xs = [ np.tile(np.linspace(0.01, 3, s), cls.nb_samples) for s in sizes ]
-        noise = cls.yy.max() / 10
         ys = [fct(x) for x in xs]
         cls.xs = [x.reshape((cls.nb_samples, s)) for x, s in izip(xs, sizes)]
         cls.ys = [y.reshape((cls.nb_samples, s)) for y, s in izip(ys, sizes)]

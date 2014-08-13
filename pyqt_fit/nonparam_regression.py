@@ -5,13 +5,8 @@ Module implementing non-parametric regressions using kernel methods.
 """
 
 from __future__ import division, absolute_import, print_function
-from scipy import stats
-from scipy.linalg import sqrtm, solve
-import scipy
 import numpy as np
-from .compat import irange
 from . import npr_methods, kernels, kde_bandwidth
-from .utils import numpy_method_idx
 
 class NonParamRegression(object):
     r"""
@@ -284,7 +279,7 @@ class NonParamRegression(object):
         self._fitted = True
 
     def evaluate(self, points, out=None):
-        if not self.fitter:
+        if not self.fitted:
             self.fit()
         points = np.asanyarray(points)
         real_shape = points.shape

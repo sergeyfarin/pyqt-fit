@@ -53,7 +53,6 @@ import numpy as np
 from .kernels import normal_kernel1d
 from . import kde_methods
 from .kde_bandwidth import variance_bandwidth, silverman_covariance, scotts_covariance, botev_bandwidth
-from scipy import stats, optimize
 from .utils import numpy_method_idx
 
 class KDE1D(object):
