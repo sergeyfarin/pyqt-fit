@@ -36,6 +36,10 @@ Only extra methods will be described:
 
    .. autoattribute:: q
 
+This class uses the following function:
+
+.. autofunction:: pyqt_fit.py_local_linear.local_linear_1d
+
 .. autoclass:: LocalPolynomialKernel1D
 
    .. autoattribute:: q

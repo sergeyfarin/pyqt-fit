@@ -34,6 +34,8 @@ class NonParamRegression(object):
         self._fitted_method = None
         self._n = None
         self._d = None
+        self._ytrans = None
+        self._fitted_ydata = None
 
         for kw in kwords:
             setattr(self, kw, kwords[kw])
@@ -219,6 +221,33 @@ class NonParamRegression(object):
         self.need_fit()
 
     @property
+    def fitted_ydata(self):
+        """
+        Data actually fitted. It may differ from ydata if ytrans is specified.
+        """
+        return self._fitted_ydata
+
+    @property
+    def ytrans(self):
+        """
+        Function used to transform the Y data before fitting.
+
+        This must be a callable that also has a ``inv`` attribute returning the inverse function.
+
+        :Note: The ``inv`` method must accept an ``out`` argument to store the output.
+        """
+        return self._ytrans
+
+    @ytrans.setter
+    def ytrans(self, tr):
+        assert hasattr(tr, '__call__') and hasattr(tr, 'inv'), "The transform must be a callable with an `inv` attribute"
+        self._ytrans = tr
+
+    @ytrans.deleter
+    def ytrans(self):
+        self._ytrans = None
+
+    @property
     def method(self):
         """
         Regression method itself. It should be an instance of the class following the template 
@@ -272,6 +301,10 @@ class NonParamRegression(object):
         """
         D, N = self._xdata.shape
         assert self._ydata.shape[0] == N, "There must be as many points for X and Y"
+        if self.ytrans is not None:
+            self._fitted_ydata = self.ytrans(self.ydata)
+        else:
+            self._fitted_ydata = self.ydata
         self._kernel = self._create_kernel(D)
         self._n = N
         self._d = D
@@ -300,6 +333,8 @@ class NonParamRegression(object):
             out.shape = (points.shape[-1],)
         self._fitted_method.evaluate(self, points, out)
         out.shape = real_shape[-1:]
+        if self.ytrans:
+            self.ytrans.inv(out, out=out)
         return out
 
     def __call__(self, points, out=None):

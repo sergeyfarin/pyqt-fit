@@ -29,7 +29,7 @@ if HAS_CYTHON:
                 os.environ['PATH'] = r'C:\MinGW\bin'
             mingw_setup_args = {'options': {'build_ext': {'compiler': 'mingw32'}}}
 
-        pyximport.install(setup_args=mingw_setup_args, reload_support=True)
+        pyximport.install(setup_args=mingw_setup_args)
 
     elif os.name == 'posix':
         extra_flags = '-I' + numpy.get_include()
@@ -38,5 +38,5 @@ if HAS_CYTHON:
         os.environ['CXXFLAGS'] = " ".join([os.environ.get('CXXFLAGS', ''),
                                            extra_flags])
 
-        pyximport.install(reload_support=True)
+        pyximport.install()
 

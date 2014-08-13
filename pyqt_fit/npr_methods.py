@@ -12,6 +12,7 @@ from .compat import irange
 from .cyth import HAS_CYTHON
 from . import kde
 from . import py_local_linear
+from . import kernels
 
 local_linear = None
 
@@ -116,7 +117,7 @@ class SpatialAverage(RegressionKernelMethod):
         d, m = points.shape
         norm = np.zeros((m,), points.dtype)
         xdata = reg.xdata[..., np.newaxis]
-        ydata = reg.ydata
+        ydata = reg.fitted_ydata
         correction = self.correction
         N = reg.N
         inv_cov = self.inv_cov
@@ -198,9 +199,9 @@ class LocalLinearKernel1D(RegressionKernelMethod):
         points = points[0]
         xdata = reg.xdata[0]
         ll = local_linear.local_linear_1d
-        if not out.flags['C_CONTIGUOUS']:
+        if not isinstance(reg.kernel, kernels.normal_kernel1d):
             ll = py_local_linear.local_linear_1d
-        li2, out = ll(reg.bandwidth, xdata, reg.ydata, points, out)
+        li2, out = ll(reg.bandwidth, xdata, reg.fitted_ydata, points, reg.kernel, out)
         self.li2 = li2
         return out
 
@@ -289,7 +290,7 @@ class LocalPolynomialKernel1D(RegressionKernelMethod):
             in this array
         """
         xdata = reg.xdata[0, :, np.newaxis]  # make it a column vector
-        ydata = reg.ydata[:, np.newaxis]  # make it a column vector
+        ydata = reg.fitted_ydata[:, np.newaxis]  # make it a column vector
         points = points[0] # make it a line vector
         bw = reg.bandwidth
         kernel = reg.kernel
@@ -480,7 +481,7 @@ class LocalPolynomialKernel(RegressionKernelMethod):
         :param ndarray out: Pre-allocated array for the result
         """
         xdata = reg.xdata
-        ydata = reg.ydata[:, np.newaxis]  # make it a column vector
+        ydata = reg.fitted_ydata[:, np.newaxis]  # make it a column vector
         d, n = xdata.shape
         designMatrix = self.designMatrix
         dm_size = designMatrix.size

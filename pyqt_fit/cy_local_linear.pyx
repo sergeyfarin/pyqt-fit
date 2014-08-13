@@ -7,9 +7,10 @@ DTYPE = np.float
 ctypedef np.float64_t DTYPE_t
 
 @cython.boundscheck(False)
-cdef void cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t, ndim=1] ydata,
-                np.ndarray[DTYPE_t, ndim=1] points,
-                np.ndarray[DTYPE_t, ndim=1] li2, np.ndarray[DTYPE_t, ndim=1] out):
+cdef cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t, ndim=1] ydata,
+           np.ndarray[DTYPE_t, ndim=1] points,
+           np.ndarray[DTYPE_t, ndim=1] li2,
+           np.ndarray[DTYPE_t, ndim=1] out):
     cdef:
          unsigned int nx = xdata.shape[0]
          unsigned int npts = points.shape[0]
@@ -38,13 +39,16 @@ cdef void cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t
             bi[i] = lbi
             sbi += lbi
 
+        if sbi == 0:
+            raise ValueError("sbi == 0")
+
         out[j] = 0
         for i in range(nx):
             li = bi[i] / sbi
             li2[j] += li * li
             out[j] += li * ydata[i]
 
-def local_linear_1d(bw, xdata, ydata, points, out):
+def local_linear_1d(bw, xdata, ydata, points, kernel, out):
     bw = float(bw)
     li2 = np.empty(points.shape, dtype=float)
     cy_li(bw, xdata, ydata, points, li2, out)

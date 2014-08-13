@@ -5,7 +5,7 @@ This modules implement functions to test and plot parametric regression.
 """
 
 from __future__ import division, print_function, absolute_import
-from numpy import argsort, std, abs, sqrt, arange, pi, c_
+from numpy import argsort, std, abs, sqrt, arange, pi, c_, asarray
 from pylab import figure, title, legend, plot, xlabel, ylabel, subplot, ylim, hist, suptitle, gca
 from .compat import izip
 from itertools import chain
@@ -308,6 +308,10 @@ def plot_residual_tests(xdata, yopts, res, fct_name, xname="X", yname='Y', res_n
             figure(fig)
         except TypeError:
             figure(fig.number)
+
+    xdata = asarray(xdata)
+    yopts = asarray(yopts)
+    res = asarray(res)
 
     subplot(2, 2, 1)
 # First subplot is the residuals

@@ -9,7 +9,7 @@ import numpy as np
 from numpy.random import randint
 from scipy import optimize
 from collections import namedtuple
-from . import kernel_smoothing
+from . import nonparam_regression
 from . import sharedmem
 import multiprocessing as mp
 from . import bootstrap_workers
@@ -56,7 +56,7 @@ def bootstrap_residuals(fct, xdata, ydata, repeats=3000, residuals=None,
 
     :type  add_residual: callable or None
     :param add_residual: Function that add a residual to a value. The call
-        ``add_residual(ydata, residual)`` should return the new ydata, with
+        ``add_residual(yopt, residual)`` should return the new ydata, with
         the residuals 'applied'. If None, it is considered the residuals should
         simply be added.
 
@@ -97,7 +97,9 @@ def bootstrap_residuals(fct, xdata, ydata, repeats=3000, residuals=None,
     shuffled_res = res[shuffle]
 
     if correct_bias:
-        kde = kernel_smoothing.LocalLinearKernel1D(xdata, res)
+        kde = nonparam_regression.NonParamRegression(xdata, res)
+        kde.method.q = 1
+        kde.fit()
         bias = kde(xdata)
         shuffled_res += bias
 
