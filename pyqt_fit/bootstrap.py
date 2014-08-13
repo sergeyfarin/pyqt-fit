@@ -16,11 +16,6 @@ from . import bootstrap_workers
 from .compat import irange, izip
 
 
-def adapt_curve_fit(fct, x, y, p0, args=(), **kwrds):
-    popt, pcov = optimize.curve_fit(fct, x, y, **kwrds)
-    return (popt, pcov, fct(popt, x, *args) - y)
-
-
 def percentile(array, p, axis=0):
     """
     Compute the percentiles of the values in array
@@ -248,6 +243,8 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals,
         confidence intervals and, if requested, the shuffled X, Y and the full
         estimated distributions.
     """
+    xdata = np.asarray(xdata)
+    ydata = np.asarray(ydata)
     y_fit = fit(xdata, ydata, *fit_args, **fit_kwrds)
     y_fit.fit()
 
