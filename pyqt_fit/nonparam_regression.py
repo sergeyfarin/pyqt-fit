@@ -160,6 +160,8 @@ class NonParamRegression(object):
         """
         Lower bound of the domain for each dimension
         """
+        if self._lower is None:
+            return -np.inf*np.ones(self.dim, dtype=float)
         return self._lower
 
     @lower.setter
@@ -178,6 +180,8 @@ class NonParamRegression(object):
         """
         Lower bound of the domain for each dimension
         """
+        if self._upper is None:
+            return np.inf*np.ones(self.dim, dtype=float)
         return self._upper
 
     @upper.setter
@@ -274,17 +278,19 @@ class NonParamRegression(object):
         D, N = self._xdata.shape
         assert self._ydata.shape[0] == N, "There must be as many points for X and Y"
         self._kernel = self._create_kernel(D)
-        if self._lower is None:
-            self._lower = -np.inf * np.ones((D,), dtype=float)
-        if self._upper is None:
-            self._upper = np.inf * np.ones((D,), dtype=float)
         self._n = N
         self._d = D
+        lower = self.lower
+        upper = self.upper
+        assert len(lower) == D, "The 'lower' property must have one value per dimension of the domain."
+        assert len(upper) == D, "The 'upper' property must have one value per dimension of the domain."
         self._fitted_method = self._method.fit(self)
+        assert self.bandwidth.shape == (D, D), "The bandwidth should have a shape of ({0},{0}) (actual: {1})".format(D, self.bandwidth.shape)
+        assert self.covariance.shape == (D, D), "The covariance should have a shape of ({0},{0}) (actual: {1})".format(D, self.covariance.shape)
         self._fitted = True
 
     def evaluate(self, points, out=None):
-        if not self.fitter:
+        if not self.fitted:
             self.fit()
         points = np.asanyarray(points)
         real_shape = points.shape
