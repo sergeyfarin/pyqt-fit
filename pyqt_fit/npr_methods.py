@@ -110,7 +110,7 @@ class SpatialAverage(RegressionKernelMethod):
 
     def fit(self, reg):
         self = super(SpatialAverage, self).fit(reg)
-        self.inv_cov = linalg.inv(reg.covariance)
+        self.inv_bw = linalg.inv(reg.bandwidth)
         return self
 
     def evaluate(self, reg, points, out):
@@ -120,16 +120,17 @@ class SpatialAverage(RegressionKernelMethod):
         ydata = reg.fitted_ydata
         correction = self.correction
         N = reg.N
-        inv_cov = self.inv_cov
-        assert out.shape == (m,)
+        inv_bw = scipy.linalg.inv(reg.bandwidth)
+        kernel = reg.kernel
 
         out.fill(0)
         # iterate on the internal points
         for i, ci in np.broadcast(irange(N),
                                   irange(correction.shape[0])):
             diff = correction[ci] * (xdata[:, i, :] - points)
-            tdiff = np.dot(inv_cov, diff)
-            energy = np.exp(-np.sum(diff * tdiff, axis=0) / 2.0)
+            #tdiff = np.dot(inv_cov, diff)
+            #energy = np.exp(-np.sum(diff * tdiff, axis=0) / 2.0)
+            energy = kernel(np.dot(inv_bw, diff)).squeeze()
             out += ydata[i] * energy
             norm += energy
 
