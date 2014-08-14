@@ -25,20 +25,35 @@ Main Boostrap Functions
 
   .. py:attribute:: y_fit
 
-            Y estimated on xdata
+            Estimator object, fitted on the original data
+            :type: fun(xs) -> ys
 
-  .. py:attribute:: y_est: ndarray
+  .. py:attribute:: y_est
+
+            Y estimated on xdata
+            :type: ndarray
+
+  .. py:attribute:: eval_points
+
+            Points on which the confidence interval are evaluated
+
+  .. py:attribute:: y_eval
 
             Y estimated on eval_points
+
+  .. py:attribute:: CIs_val
+
+            Tuple containing the list of percentiles extracted (i.e. this is a copy of
+            the ``CIs`` argument of the bootstrap function.
 
   .. py:attribute:: CIs
 
             List of confidence intervals. The first element is for the estimated values
             on ``eval_points``. The others are for the extra attributes specified in
             ``extra_attrs``. Each array is a 3-dimensional array (Q,2,N), where
-            Q is the number of confidence interval and N is the number of data
-            points. Values (x,0,y) give the lower bounds and (x,1,y) the upper
-            bounds of the confidence intervals.
+            Q is the number of confidence interval (e.g. the length of ``CIs_val``)
+            and N is the number of data points. Values (x,0,y) give the lower bounds
+            and (x,1,y) the upper bounds of the confidence intervals.
 
   .. py:attribute:: shuffled_xs
 
