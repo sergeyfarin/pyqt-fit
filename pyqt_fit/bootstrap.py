@@ -98,7 +98,6 @@ def bootstrap_residuals(fct, xdata, ydata, repeats=3000, residuals=None,
 
     if correct_bias:
         kde = nonparam_regression.NonParamRegression(xdata, res)
-        kde.method.q = 1
         kde.fit()
         bias = kde(xdata)
         shuffled_res += bias
@@ -167,7 +166,7 @@ def getCIs(CI, *arrays):
 
     return CIs
 
-BootstrapResult = namedtuple('BootstrapResult', '''y_fit y_est y_eval CIs
+BootstrapResult = namedtuple('BootstrapResult', '''y_fit y_est eval_points y_eval CIs_val CIs
 shuffled_xs shuffled_ys full_results''')
 
 
@@ -325,7 +324,7 @@ def bootstrap(fit, xdata, ydata, CI, shuffle_method=bootstrap_residuals,
         result_array = result_array.copy()  # copy in local memory
         extra_arrays = [ea.copy for ea in extra_arrays]
 
-    return BootstrapResult(y_fit, y_fit(xdata), y_eval, CIs,
+    return BootstrapResult(y_fit, y_fit(xdata), eval_points, y_eval, tuple(CI), CIs,
                            shuffled_x, shuffled_y, result_array)
 
 
