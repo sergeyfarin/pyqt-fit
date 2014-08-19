@@ -27,6 +27,7 @@ setup(name='PyQt-Fit',
                                  'cy_local_linear.pyx',
                                  '_kernels.pyx',
                                  '_kde.pyx',
+                                 'cy_binning.pyx',
                                  'math.pxd'
                                  ]
                     },

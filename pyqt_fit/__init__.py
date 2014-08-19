@@ -11,7 +11,7 @@ __all__ = ['bootstrap', 'plot_fit',
            'curve_fitting', 'nonparam_regression',
            'functions', 'residuals', 'CurveFitting']
 
-from . import functions,residuals
+from . import functions, residuals
 from . import bootstrap, plot_fit, curve_fitting, nonparam_regression
 from .curve_fitting import CurveFitting
 from path import path

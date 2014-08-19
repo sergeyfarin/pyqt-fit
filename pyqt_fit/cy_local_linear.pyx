@@ -7,6 +7,7 @@ DTYPE = np.float
 ctypedef np.float64_t DTYPE_t
 
 @cython.boundscheck(False)
+@cython.wraparound(False)
 cdef cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t, ndim=1] ydata,
            np.ndarray[DTYPE_t, ndim=1] points,
            np.ndarray[DTYPE_t, ndim=1] li2,
@@ -39,15 +40,15 @@ cdef cy_li(double bw, np.ndarray[DTYPE_t, ndim=1] xdata, np.ndarray[DTYPE_t, ndi
             bi[i] = lbi
             sbi += lbi
 
-        if sbi == 0:
-            raise ValueError("sbi == 0")
-
         out[j] = 0
-        for i in range(nx):
-            li = bi[i] / sbi
-            li2[j] += li * li
-            out[j] += li * ydata[i]
+        li2[i] = 0
+        if sbi != 0: # The total weight is 0 only if all weights are 0
+            for i in range(nx):
+                li = bi[i] / sbi
+                li2[j] += li * li
+                out[j] += li * ydata[i]
 
+@cython.embedsignature(True)
 def local_linear_1d(bw, xdata, ydata, points, kernel, out):
     bw = float(bw)
     li2 = np.empty(points.shape, dtype=float)

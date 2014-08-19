@@ -39,6 +39,7 @@ import numpy as np
 from scipy import fftpack, integrate, optimize
 from .compat import irange
 from .utils import make_ufunc, namedtuple, numpy_trans_idx
+from .binning import fast_bin
 
 def generate_grid(kde, N=None, cut=None):
     r"""
@@ -720,8 +721,9 @@ class ReflectionMethod(KDE1DMethod):
         weights = kde.weights
         if not weights.shape:
             weights = None
-        DataHist, bins = np.histogram(data, bins=N, range=(lower, upper),
-                                      weights=weights)
+
+        DataHist, mesh = fast_bin(data, lower, upper, N, weights=weights, cyclic=False)
+
         DataHist = DataHist / kde.total_weights
         DCTData = fftpack.dct(DataHist, norm=None)
 
@@ -733,7 +735,6 @@ class ReflectionMethod(KDE1DMethod):
         SmDCTData = DCTData * smth
         # Inverse DCT to get density
         density = fftpack.idct(SmDCTData, norm=None) / (2 * R)
-        mesh = np.array([(bins[i] + bins[i + 1]) / 2 for i in irange(N)])
 
         return mesh, density
 
@@ -835,9 +836,11 @@ class CyclicMethod(KDE1DMethod):
     name = 'cyclic'
 
     def pdf(self, kde, points, out):
+        if not kde.bounded:
+            return KDE1DMethod.pdf(self, kde, points, out)
         if not kde.closed:
             raise ValueError("Cyclic boundary conditions can only be used with "
-                             "closed domains.")
+                             "closed or un-bounded domains.")
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[..., np.newaxis]
@@ -870,9 +873,11 @@ class CyclicMethod(KDE1DMethod):
 
 
     def cdf(self, kde, points, out):
+        if not kde.bounded:
+            return KDE1DMethod.cdf(self, kde, points, out)
         if not kde.closed:
             raise ValueError("Cyclic boundary conditions can only be used with "
-                             "closed domains.")
+                             "closed or unbounded domains.")
 
         xdata = kde.xdata
         points = np.atleast_1d(points)[..., np.newaxis]
@@ -915,34 +920,36 @@ class CyclicMethod(KDE1DMethod):
         """
         if kde.lambdas.shape:
             return KDE1DMethod.grid(self, kde, N, cut)
-        if not kde.closed:
+        if kde.bounded and not kde.closed:
             raise ValueError("Error, cyclic boundary conditions require "
-                             "a closed domain.")
+                             "a closed or un-bounded domain.")
         bw = kde.bandwidth * kde.lambdas
         data = kde.xdata
         N = self.grid_size(N)
 
         lower = kde.lower
         upper = kde.upper
+
+        if upper == np.inf:
+            lower = np.min(data) - cut * kde.bandwidth
+            upper = np.max(data) + cut * kde.bandwidth
+
         R = upper - lower
-        dN = 1 / N
-        mesh = np.r_[lower:upper + dN:(N + 2) * 1j]
         weights = kde.weights
         if not weights.shape:
-            weights=None
-        DataHist, bin_edges = np.histogram(data, bins=mesh - dN / 2,
-                                           weights=weights)
-        DataHist[0] += DataHist[-1]
+            weights = None
+
+        DataHist, mesh = fast_bin(data, lower, upper, N, weights=weights, cyclic=True)
         DataHist = DataHist / kde.total_weights
-        FFTData = np.fft.rfft(DataHist[:-1])
+        FFTData = np.fft.rfft(DataHist)
 
         t_star = (2 * bw / R)
-        gp = np.roll(np.arange(len(FFTData)) * np.pi * t_star, N // 2)
+        gp = np.arange(len(FFTData)) * np.pi * t_star
         smth = kde.kernel.fft(gp)
 
         SmoothFFTData = FFTData * smth
-        density = np.fft.irfft(SmoothFFTData, len(DataHist)-1) / (mesh[1] - mesh[0])
-        return mesh[:-2], density.real
+        density = np.fft.irfft(SmoothFFTData, len(DataHist)) / (mesh[1] - mesh[0])
+        return mesh, density
 
     def cdf_grid(self, kde, N=None, cut=None):
         if kde.lambdas.shape:

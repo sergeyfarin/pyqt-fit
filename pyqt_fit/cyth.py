@@ -8,35 +8,35 @@ Created on Tue Jul 31 20:11:03 2012
 from __future__ import absolute_import, print_function
 import os
 import numpy
+
 try:
     import pyximport
     HAS_CYTHON = True
 except ImportError:
     HAS_CYTHON = False
 
+def addFlags(var, flags, sep = ' '):
+    if var in os.environ:
+        flags = [os.environ[var]] + flags
+    os.environ[var] = sep.join(flags)
+
 if HAS_CYTHON:
     USE_MINGW=False
     if os.name == 'nt':
-        if 'CPATH' in os.environ:
-            os.environ['CPATH'] = os.environ['CPATH'] + numpy.get_include()
-        else:
-            os.environ['CPATH'] = numpy.get_include()
+        addFlags('CPATH', [numpy.get_include()], ';')
+
+        mingw_setup_args = dict(options={})
 
         if USE_MINGW:
-            if 'PATH' in os.environ:
-                os.environ['PATH'] = os.environ['PATH'] + r';C:\MinGW\bin'
-            else:
-                os.environ['PATH'] = r'C:\MinGW\bin'
-            mingw_setup_args = {'options': {'build_ext': {'compiler': 'mingw32'}}}
+            addFlags('PATH', [r'C:\MinGW\bin'], ';')
+            mingw_setup_args['options']['build_ext'] = {'compiler': 'mingw32'}
 
-        pyximport.install(setup_args=mingw_setup_args)
+        pyximport.install(setup_args=mingw_setup_args,reload_support=True)
 
     elif os.name == 'posix':
-        extra_flags = '-I' + numpy.get_include()
-        os.environ['CFLAGS'] = " ".join([os.environ.get('CFLAGS', ''),
-                                         extra_flags])
-        os.environ['CXXFLAGS'] = " ".join([os.environ.get('CXXFLAGS', ''),
-                                           extra_flags])
+        extra_flags = ['-I' + numpy.get_include()]
+        addFlags('CFLAGS', extra_flags)
+        addFlags('CXXFLAGS', extra_flags)
 
-        pyximport.install()
+        pyximport.install(reload_support=True)
 
