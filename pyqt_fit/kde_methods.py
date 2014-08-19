@@ -934,14 +934,14 @@ class CyclicMethod(KDE1DMethod):
                                            weights=weights)
         DataHist[0] += DataHist[-1]
         DataHist = DataHist / kde.total_weights
-        FFTData = fftpack.fft(DataHist[:-1])
+        FFTData = np.fft.rfft(DataHist[:-1])
 
         t_star = (2 * bw / R)
-        gp = np.roll((np.arange(N) - N / 2) * np.pi * t_star, N // 2)
+        gp = np.roll(np.arange(len(FFTData)) * np.pi * t_star, N // 2)
         smth = kde.kernel.fft(gp)
 
         SmoothFFTData = FFTData * smth
-        density = fftpack.ifft(SmoothFFTData) / (mesh[1] - mesh[0])
+        density = np.fft.irfft(SmoothFFTData, len(DataHist)-1) / (mesh[1] - mesh[0])
         return mesh[:-2], density.real
 
     def cdf_grid(self, kde, N=None, cut=None):

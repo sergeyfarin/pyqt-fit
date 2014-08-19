@@ -1,6 +1,7 @@
 v1.3.1, 8/8/2014
  - Removed necessity of calling fit
  - Added warning to main text
+ - Small FFT optimization
 v1.3.0, 8/8/2014
  - Removed unnecessary type conversion
  - Rewrote the non-parametric fitting
