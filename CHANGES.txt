@@ -1,7 +1,8 @@
-v1.3.2, ??
+v1.3.2, 19/9/2014
  - Correct use of kernel in non-parametric regression
  - Added attributes to BootstrapResult
- - Added linear binning in Cython
+ - Added efficient binning in Cythong and Python
+ - If using Cython, linear binning is used, which is better for small bin numbers
  - Using rfft to save time (computes half the values)
 v1.3.1, 8/8/2014
  - Removed necessity of calling fit
