@@ -1,3 +1,6 @@
+v1.3.4, 10/02/2015
+ - Corrected direct setting of bandwidth / covariance
+ - Added doc for convolution
 v1.3.3, 19/8/2014
  - Correct use of kernel in non-parametric regression
  - Added attributes to BootstrapResult

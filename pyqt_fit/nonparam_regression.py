@@ -7,6 +7,7 @@ Module implementing non-parametric regressions using kernel methods.
 from __future__ import division, absolute_import, print_function
 import numpy as np
 from . import npr_methods, kernels, kde_bandwidth
+from scipy import linalg
 
 class NonParamRegression(object):
     r"""
@@ -120,8 +121,8 @@ class NonParamRegression(object):
         if callable(bw):
             self._bw_fct = bw
         else:
-            self._bandwidth = bw
-            self._covariance = None
+            self._bandwidth = np.atleast_2d(bw)
+            self._covariance = np.dot(self._bandwidth, self._bandwidth)
         self.need_fit()
 
     @property
@@ -144,8 +145,8 @@ class NonParamRegression(object):
         if callable(cov):
             self._cov_fct = cov
         else:
-            self._covariance = cov
-            self._bandwidth = None
+            self._covariance = np.atleast_2d(cov)
+            self._bandwidth = linalg.sqrtm(self._covariance)
         self.need_fit()
 
     @property

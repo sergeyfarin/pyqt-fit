@@ -10,7 +10,7 @@ Helper class
 This class is provided with default implementations of everything in term of the PDF.
 
 .. autoclass:: Kernel1D
-      :members: pdf, cdf, dct, fft, pm1, pm2
+      :members: pdf, cdf, dct, fft, pm1, pm2, convolution
 
 Gaussian Kernels
 ----------------
@@ -19,7 +19,7 @@ Gaussian Kernels
     :members: pdf
 
 .. autoclass:: normal_kernel1d
-    :members: pdf, cdf, dct, fft, pm1, pm2
+    :members: pdf, cdf, dct, fft, pm1, pm2, convolution
 
 Tricube Kernel
 --------------
@@ -31,7 +31,7 @@ Epanechnikov Kernel
 -------------------
 
 .. autoclass:: Epanechnikov
-    :members: pdf, cdf, pm1, pm2
+    :members: pdf, cdf, pm1, pm2, convolution
 
 Higher Order Kernels
 --------------------
