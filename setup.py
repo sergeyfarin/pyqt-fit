@@ -36,7 +36,7 @@ setup(name='PyQt-Fit',
                         'numpy >=1.5.0',
                         'scipy >=0.10.0',
                         'matplotlib',
-                        'path.py >=2.4.1'
+                        'path.py==9.1'
                         ],
       extras_require={'Cython': ["Cython >=0.17"]
                       },
