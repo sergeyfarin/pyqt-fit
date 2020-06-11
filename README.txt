@@ -1,4 +1,11 @@
 ========
+INSTALLATION
+========
+- Clone this repo onto your computer
+- cd into pyqt-fit
+- type `python setup.py install`
+
+========
 PyQt-Fit
 ========
 
