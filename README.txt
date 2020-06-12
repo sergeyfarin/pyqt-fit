@@ -1,6 +1,6 @@
-========
+================
 INSTALLATION
-========
+================
 - Clone this repo onto your computer
 - cd into pyqt-fit
 - type `python setup.py install`
@@ -8,6 +8,9 @@ INSTALLATION
 ========
 PyQt-Fit
 ========
+
+-------
+This version is python3 compatible and fixes depreciated path imports by using pathlib.
 
 PyQt-Fit is a regression toolbox in Python with simple GUI and graphical tools
 to check your results. It currently handles regression based on user-defined
