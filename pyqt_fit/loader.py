@@ -1,6 +1,6 @@
 from __future__ import print_function, absolute_import
 import inspect
-from path import path
+from pathlib import Path
 import imp
 import sys
 import re
@@ -61,10 +61,10 @@ elif python_version.major == 3 and python_version.minor >= 3:
                        (ilm.BYTECODE_SUFFIXES, ilm.SourcelessFileLoader) ]
 
     def load_module(pack_name, module_name, search_path):
-        pth = path(search_path) / module_name
+        pth = Path(search_path) / module_name
         for exts, loader_cls in module_loaders:
             for ext in exts:
-                filename = pth + ext
+                filename = pth / Path(ext)
                 if filename.exists():
                     loader = loader_cls(pack_name, str(filename))
                     mod = create_module(loader)
@@ -81,27 +81,28 @@ def load(find_functions, search_path=None):
     """
     caller_module = inspect.getmodule(inspect.stack()[1][0])
     system_files = [caller_module.__file__]
-    module_path = path(caller_module.__file__).abspath().dirname()
+    module_path = Path(caller_module.__file__).resolve().parent
     sys_files = set()
     for f in system_files:
         if f.endswith(".pyo") or f.endswith(".pyc"):
             f = f[:-3] + "py"
-        sys_files.add(path(f).abspath())
+        sys_files.add(Path(f).resolve())
     if search_path is None:
         search_path = module_path
     else:
-        search_path = path(search_path).abspath()
+        search_path = Path(search_path).resolve()
     fcts = {}
 # Search for python, cython and modules
     modules = set()
     for ext in module_exts:
-        for f in search_path.files("*" + ext):
-            if f.basename()[:2] != '__':
-                module_name = f.namebase
+        # for f in search_path.files("*" + ext):
+        for f in list(search_path.glob("*" + ext)):
+            if f.stem[:2] != '__':
+                module_name = f.stem
                 modules.add(module_name)
     for module_name in modules:
         pack_name = '%s.%s_%s' % (caller_module.__name__,
-                                  bad_chars.sub('_', module_path),
+                                  bad_chars.sub('_', str(module_path)),
                                   module_name)
         try:
             mod = load_module(pack_name, module_name, search_path)

@@ -2,11 +2,6 @@
 
 from setuptools import setup
 
-#from path import path
-
-#with (path(__file__).dirname() / 'pyqt_fit' / 'version.txt').open() as f:
-    #__version__ = f.read().strip()
-
 import os.path
 
 version_filename = os.path.join(os.path.dirname(__file__), 'pyqt_fit', 'version.txt')
@@ -36,7 +31,6 @@ setup(name='PyQt-Fit',
                         'numpy >=1.5.0',
                         'scipy >=0.10.0',
                         'matplotlib',
-                        'path.py >=2.4.1,<=9.0.0'
                         ],
       extras_require={'Cython': ["Cython >=0.17"]
                       },
