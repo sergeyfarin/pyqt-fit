@@ -3,7 +3,7 @@ import numpy as np
 from numpy import linalg
 cimport numpy as np
 
-DTYPE = np.float
+DTYPE = np.float64
 ctypedef np.float_t DTYPE_t
 
 def quadratic(np.ndarray[DTYPE_t, ndim=1] x, ps):
