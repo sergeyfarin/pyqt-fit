@@ -32,7 +32,7 @@ CTYPES_FLOAT_LIST = [ctypes.c_float,
                      ]
 
 CTYPES_TO_NUMPY = {ctypes.c_char: np.dtype(np.character),
-                   ctypes.c_wchar: np.dtype(np.unicode),
+                   ctypes.c_wchar: np.dtype(np.unicode_),
                    }
 
 
