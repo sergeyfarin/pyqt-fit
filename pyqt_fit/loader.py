@@ -1,7 +1,6 @@
 from __future__ import print_function, absolute_import
 import inspect
 from pathlib import Path
-import imp
 import sys
 import re
 
@@ -12,6 +11,8 @@ python_version = sys.version_info
 
 if python_version.major == 2 and python_version.minor == 7:
 
+    import imp
+    
     if sys.platform == 'win32' or sys.platform == 'cygwin':
         module_exts = ['.dll']
     elif sys.platform == 'darwin':
