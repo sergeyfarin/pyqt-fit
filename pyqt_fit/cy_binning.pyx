@@ -48,7 +48,7 @@ def fast_linbin(np.ndarray[DOUBLE] X, double a, double b, int M, np.ndarray[DOUB
     cdef:
         Py_ssize_t i, li_i
         int nobs = X.shape[0]
-        np.ndarray[DOUBLE] gcnts = np.zeros(M, np.float)
+        np.ndarray[DOUBLE] gcnts = np.zeros(M, np.float64)
         np.ndarray[DOUBLE] mesh
         double delta = (b - a) / M
         double inv_delta = 1 / delta

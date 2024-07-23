@@ -9,7 +9,7 @@ from PyQt4.QtCore import pyqtSignature, Qt
 from PyQt4.QtGui import QMessageBox
 import matplotlib
 from numpy import nan, array, ma, arange
-from path import path
+from pathlib import Path
 from .curve_fitting import CurveFitting
 import sys
 from pylab import close as close_figure
@@ -104,7 +104,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
 class QtFitDlg(QtGui.QDialog):
     def __init__(self, *args, **kwords):
         QtGui.QDialog.__init__(self, *args, **kwords)
-        p = (path(__file__).dirname() / 'qt_fit.ui').abspath()
+        p = (Path(__file__).parent / 'qt_fit.ui').resolve()
         uic.loadUi(p, self)
         if sys.platform != "darwin":
             self.selectInputFile.setMaximumWidth(32)
@@ -199,14 +199,14 @@ class QtFitDlg(QtGui.QDialog):
 
     @pyqtSignature("const QString&")
     def on_inputFile_textChanged(self, txt):
-        txt = path(txt)
+        txt = Path(txt)
         self.input = txt
 
     def _getInput(self):
         return self._input
 
     def _setInput(self, txt):
-        txt = path(txt)
+        txt = Path(txt)
         if txt != self._input and txt.isfile():
             try:
                 data = None
@@ -262,7 +262,7 @@ class QtFitDlg(QtGui.QDialog):
         return self._output
 
     def _setOutput(self, txt):
-        txt = path(txt)
+        txt = Path(txt)
         if self._output != txt:
             if txt and not txt.endswith(".csv"):
                 txt += ".csv"
