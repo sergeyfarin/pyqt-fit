@@ -1,13 +1,13 @@
-NOSE=nosetests
+PYTHON=python
 EXTRA_ARGS=
 
-.PHONY: coverage test
+.PHONY: coverage test clean
 
 coverage:
-	$(NOSE) --with-coverage --cover-html --cover-html-dir=coverage --cover-package=pyqt_fit $(EXTRA_ARGS)
+	$(PYTHON) -m pytest --cov=pyqt_fit --cov-report=html $(EXTRA_ARGS)
 
 test:
-	$(NOSE) $(EXTRA_ARGS)
+	$(PYTHON) -m pytest $(EXTRA_ARGS)
 
 clean:
 	find pyqt_fit -name \*.pyc -exec rm -f '{}' ';'

@@ -5,7 +5,7 @@ from . import kde_utils
 
 class TestCDF(kde_utils.KDETester):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_lognorm(cls)
 
     def method_works(self, k, method, name):

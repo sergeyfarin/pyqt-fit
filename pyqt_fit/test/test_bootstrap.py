@@ -8,7 +8,7 @@ import numpy as np
 class TestBootstrapMethods(object):
 
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.xdata = np.r_[0:1000:129j]
         cls.res = np.r_[-4:5:129j]
         cls.centered_res = cls.res - np.mean(cls.res)
@@ -29,7 +29,7 @@ class TestBootstrapMethods(object):
 
     def test_residuals_simple(self):
         for args in self.iterate_base_residuals(bootstrap.bootstrap_residuals, self.centered_res):
-            yield args
+            args[0](*args[1:])
 
     def test_residuals_res_fct(self):
         def residuals(y1, y0):
@@ -41,7 +41,7 @@ class TestBootstrapMethods(object):
         for args in self.iterate_base_residuals(bootstrap.bootstrap_residuals,
                                                 self.centered_res - 1, residuals=residuals,
                                                 add_residual=add_residual):
-            yield args
+            args[0](*args[1:])
 
     def test_residuals_res_values(self):
         residuals = self.res + 1
@@ -52,7 +52,7 @@ class TestBootstrapMethods(object):
         for args in self.iterate_base_residuals(bootstrap.bootstrap_residuals,
                                                 self.centered_res - 1, residuals=residuals,
                                                 add_residual=add_residual):
-            yield args
+            args[0](*args[1:])
 
     def base_regression(self, rep, fct, args, kwords):
         def noop(x):
@@ -65,7 +65,7 @@ class TestBootstrapMethods(object):
 
     def test_regression_simple(self):
         for rep in (20, 129, 500):
-            yield self.base_regression, rep, bootstrap.bootstrap_regression, (), {}
+            self.base_regression(rep, bootstrap.bootstrap_regression, (), {})
 
 
 class VoidFittingFct(object):
@@ -120,7 +120,7 @@ class CountShuffleFull(object):
 
 class TestBoostrap(object):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.xdata = np.r_[0:1000:129j]
         cls.ydata = np.zeros((129,), dtype=float)
         cls.eval_points = np.r_[10:900:65j]
@@ -147,18 +147,21 @@ class TestBoostrap(object):
 
     def iter_simple(self, fit, shuffle, CI, extra_attrs=(),
                     other_tests = lambda x: None, *args, **kwords):
+        cases = []
         for rep in (20, 129, 500):
             for worker in (1, None, 2, 4):
                 kw = dict(kwords)
                 kw['nb_workers'] = worker
-                yield self.simple, rep, fit, shuffle, CI, extra_attrs, other_tests, args, kw
+                cases.append((self.simple, rep, fit, shuffle, CI, extra_attrs,
+                              other_tests, args, kw))
+        return cases
 
     def test_simple_sparse(self):
         for arg in self.iter_simple(VoidFitting(1, 2, a=3, b=4),
                                     CountShuffleSparse(10, 12, d=4, e=6), CI=(95,),
                                     shuffle_args = (10, 12), shuffle_kwrds = {'d': 4, 'e': 6},
                                     fit_args=(1, 2), fit_kwrds = {'a': 3, 'b': 4}):
-            yield arg
+            arg[0](*arg[1:])
 
     def test_simple_attrs(self):
         for arg in self.iter_simple(VoidFitting(1, 2, a=3, b=4),
@@ -167,9 +170,9 @@ class TestBoostrap(object):
                                     shuffle_args = (10, 12),
                                     shuffle_kwrds = {'d': 4, 'e': 6},
                                     fit_args=(1, 2), fit_kwrds = {'a': 3, 'b': 4}):
-            yield arg
+            arg[0](*arg[1:])
 
     def test_simple_full(self):
         for arg in self.iter_simple(VoidFitting(), CountShuffleSparse(),
                                     CI=(95,), full_results=True):
-            yield arg
+            arg[0](*arg[1:])

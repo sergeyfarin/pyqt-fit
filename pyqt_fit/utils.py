@@ -13,6 +13,11 @@ from .compat import text_type
 import numpy as np
 import inspect
 
+try:
+    _getargspec = inspect.getfullargspec
+except AttributeError:
+    _getargspec = inspect.getargspec
+
 # Find the largest float available for this numpy
 if hasattr(np, 'float128'):
     large_float = np.float128
@@ -36,10 +41,20 @@ def make_ufunc(nin = None, nout=1):
     """
     def f(fct):
         if nin is None:
-            Nin = len(inspect.getargspec(fct).args)
+            Nin = len(_getargspec(fct).args)
         else:
             Nin = nin
-        return np.frompyfunc(fct, Nin, nout)
+        ufunc = np.frompyfunc(fct, Nin, nout)
+
+        def call(*args, **kwargs):
+            out = kwargs.pop('out', None)
+            result = ufunc(*args, **kwargs)
+            if out is None:
+                return result
+            out[...] = result
+            return out
+
+        return call
     return f
 
 def numpy_trans(fct):
@@ -90,10 +105,9 @@ def numpy_trans_idx(fct):
         if out is None:
             out = np.empty(z.shape, dtype=type(z.dtype.type() + 0.))
         else:
-            out.shape = z.shape
+            out = out.reshape(z.shape)
         out = fct(z, out=out)
-        out.shape = real_shape
-        return out
+        return out.reshape(real_shape)
     return f
 
 def numpy_method_idx(fct):
@@ -121,10 +135,9 @@ def numpy_method_idx(fct):
         if out is None:
             out = np.empty(z.shape, dtype=type(z.dtype.type() + 0.))
         else:
-            out.shape = z.shape
+            out = out.reshape(z.shape)
         out = fct(self, z, out=out)
-        out.shape = real_shape
-        return out
+        return out.reshape(real_shape)
     return f
 
 def namedtuple(typename, field_names, verbose=False, rename=False):
@@ -235,7 +248,7 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
     try:
         exec(template, namespace)
     except SyntaxError as e:
-        raise SyntaxError(e.message + ':\n' + template)
+        raise SyntaxError(str(e) + ':\n' + template)
     result = namespace[typename]
 
     # For pickling to work, the __module__ variable needs to be set to the frame
@@ -251,8 +264,27 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
 
 
 #
-from scipy import sqrt
-from numpy import finfo, asarray, asfarray, zeros
+from numpy import sqrt, finfo, asarray, zeros
+
+
+def asfarray(a, dtype=None):
+    """Compatibility replacement for NumPy's removed ``asfarray``."""
+    if dtype is None:
+        dtype = float
+    else:
+        dtype = np.dtype(dtype)
+        if not (np.issubdtype(dtype, np.floating) or
+                np.issubdtype(dtype, np.complexfloating)):
+            dtype = float
+    return asarray(a, dtype=dtype)
+
+
+def as_scalar(value):
+    """Return a Python scalar from a scalar or single-value array."""
+    value = np.asarray(value)
+    if value.size != 1:
+        raise ValueError("expected a scalar or a single-value array")
+    return value.reshape(-1)[0].item()
 
 _epsilon = sqrt(finfo(float).eps)
 

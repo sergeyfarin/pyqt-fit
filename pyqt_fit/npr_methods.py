@@ -303,7 +303,7 @@ class LocalPolynomialKernel1D(RegressionKernelMethod):
             WxXx = Wx * Xx
             XWX = np.dot(Xx.T, WxXx)
             Lx = linalg.solve(XWX, WxXx.T)[0]
-            out[i] = np.dot(Lx, ydata)
+            out[i] = np.asarray(np.dot(Lx, ydata)).reshape(-1)[0]
         return out
 
 class PolynomialDesignMatrix(object):
@@ -498,7 +498,7 @@ class LocalPolynomialKernel(RegressionKernelMethod):
             np.multiply(Wx, Xx, WxXx)
             np.dot(Xx, WxXx.T, XWX)
             Lx = linalg.solve(XWX, WxXx)[0]
-            out[i] = np.dot(Lx, ydata)
+            out[i] = np.asarray(np.dot(Lx, ydata)).reshape(-1)[0]
         return out
 
 default_method = LocalPolynomialKernel(q=1)

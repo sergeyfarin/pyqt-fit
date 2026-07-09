@@ -38,8 +38,13 @@ from __future__ import division, absolute_import, print_function
 import numpy as np
 from scipy import fftpack, integrate, optimize
 from .compat import irange
-from .utils import make_ufunc, namedtuple, numpy_trans_idx
+from .utils import as_scalar, make_ufunc, namedtuple, numpy_trans_idx
 from .binning import fast_bin
+
+try:
+    cumulative_trapezoid = integrate.cumulative_trapezoid
+except AttributeError:
+    cumulative_trapezoid = integrate.cumtrapz
 
 def generate_grid(kde, N=None, cut=None):
     r"""
@@ -72,10 +77,10 @@ def compute_bandwidth(kde):
     Compute the bandwidth and covariance for the model, based of its xdata attribute
     """
     if kde.bandwidth_function:
-        bw = float(kde.bandwidth_function(kde.xdata, model=kde))
+        bw = as_scalar(kde.bandwidth_function(kde.xdata, model=kde))
         cov = bw * bw
     elif kde.covariance_function:
-        cov = float(kde.covariance_function(kde.xdata, model=kde))
+        cov = as_scalar(kde.covariance_function(kde.xdata, model=kde))
         bw = np.sqrt(cov)
     else:
         return kde.bandwidth, kde.covariance
@@ -206,7 +211,7 @@ class KDE1DMethod(object):
                 return 0
             if x >= upper:
                 return 0
-            return self.pdf(kde, np.atleast_1d(x), pdf_out)
+            return np.asarray(self.pdf(kde, np.atleast_1d(x), pdf_out)).reshape(-1)[0]
 
         @make_ufunc()
         def find_inverse(p, approx):
@@ -487,7 +492,7 @@ class KDE1DMethod(object):
 
         pdf_out = np.empty((1,), dtype=float)
         def pdf(x):
-            return self.pdf(kde, np.array([x]), pdf_out)
+            return np.asarray(self.pdf(kde, np.array([x]), pdf_out)).reshape(-1)[0]
 
         @make_ufunc()
         def comp_cdf(i):
@@ -508,7 +513,7 @@ class KDE1DMethod(object):
         integration of the pdf.
         """
         pts, pdf = self.grid(kde, N, cut)
-        cdf = integrate.cumtrapz(pdf, pts, initial=0)
+        cdf = cumulative_trapezoid(pdf, pts, initial=0)
         return pts, cdf
 
     def grid_size(self, N=None):

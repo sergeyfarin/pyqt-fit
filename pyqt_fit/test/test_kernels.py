@@ -1,7 +1,6 @@
 from __future__ import division, absolute_import, print_function
 
 from .. import kernels
-from .. import _kernels
 
 from scipy import stats
 import numpy.testing
@@ -19,7 +18,7 @@ tol = 1e-8
 
 class TestKernels(object):
     @classmethod
-    def setUpClass(cls, lower=-np.inf, test_width=3):
+    def setup_class(cls, lower=-np.inf, test_width=3):
         cls.lower = float(lower)
         cls.hard_points = ()
         cls.quad_args = dict(limit=100)
@@ -133,28 +132,28 @@ class TestKernels(object):
 
     def test_cdf(self):
         for kernel in kde_utils.kernels1d:
-            yield self.cdf, kernel
+            self.cdf(kernel)
 
     def test_pm1(self):
         for kernel in kde_utils.kernels1d:
-            yield self.pm1, kernel
+            self.pm1(kernel)
 
     def test_pm2(self):
         for kernel in kde_utils.kernels1d:
-            yield self.pm2, kernel
+            self.pm2(kernel)
 
     def test_dct(self):
         for kernel in kde_utils.kernels1d:
-            yield self.dct, kernel
+            self.dct(kernel)
 
     def test_fft(self):
         for kernel in kde_utils.kernels1d:
-            yield self.fft, kernel
+            self.fft(kernel)
 
 
 class TestNormal1d(object):
     @classmethod
-    def setUpClass(cls, lower=-np.inf, test_width=3):
+    def setup_class(cls, lower=-np.inf, test_width=3):
         cls.kernel = kernels.normal_kernel1d()
         cls.norm_ref = stats.norm(loc=0, scale=1)
         cls.xs = np.r_[-test_width / 2:test_width / 2:17j]
@@ -189,7 +188,7 @@ class TestNormal1d(object):
 
 class ComparePythonCython(object):
     @classmethod
-    def initUpClass(cls):
+    def setup_class(cls):
         cls.xs = np.r_[-3:3:4096j]
 
     def _pdf(self, k):
@@ -201,7 +200,7 @@ class ComparePythonCython(object):
 
     def testing_pdf(self):
         for cls in kernels.kernels1D:
-            yield self._pdf, cls
+            self._pdf(cls)
 
     def _cdf(self, k):
         kernels.useCython()
@@ -212,7 +211,7 @@ class ComparePythonCython(object):
 
     def testing_cdf(self):
         for cls in kernels.kernels1D:
-            yield self._cdf, cls
+            self._cdf(cls)
 
     def _pm1(self, k):
         kernels.useCython()
@@ -223,7 +222,7 @@ class ComparePythonCython(object):
 
     def testing_pm1(self):
         for cls in kernels.kernels1D:
-            yield self._pm1, cls
+            self._pm1(cls)
 
     def _pm2(self, k):
         kernels.useCython()
@@ -234,7 +233,7 @@ class ComparePythonCython(object):
 
     def testing_pm2(self):
         for cls in kernels.kernels1D:
-            yield self._pm2, cls
+            self._pm2(cls)
 
 class SimpleNormal(kernels.Kernel1D):
     def pdf(self, x, out=None):
@@ -242,7 +241,7 @@ class SimpleNormal(kernels.Kernel1D):
 
 class TestDefaultKernelOps(object):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.xs = np.r_[-4:4:1024j]
         bw = 0.5
         R = 10

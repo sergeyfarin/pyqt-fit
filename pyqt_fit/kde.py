@@ -53,7 +53,7 @@ import numpy as np
 from .kernels import normal_kernel1d
 from . import kde_methods
 from .kde_bandwidth import variance_bandwidth, silverman_covariance, scotts_covariance, botev_bandwidth
-from .utils import numpy_method_idx
+from .utils import as_scalar, numpy_method_idx
 
 class KDE1D(object):
     r"""
@@ -200,7 +200,7 @@ class KDE1D(object):
     @lower.setter
     def lower(self, val):
         self.need_fit()
-        self._lower = float(val)
+        self._lower = as_scalar(val)
 
     @lower.deleter
     def lower(self):
@@ -218,7 +218,7 @@ class KDE1D(object):
     @upper.setter
     def upper(self, val):
         self.need_fit()
-        self._upper = float(val)
+        self._upper = as_scalar(val)
 
     @upper.deleter
     def upper(self):
@@ -238,9 +238,9 @@ class KDE1D(object):
     def weights(self, ws):
         self.need_fit()
         try:
-            ws = float(ws)
+            ws = as_scalar(ws)
             self._weights = np.asarray(1.)
-        except TypeError:
+        except (TypeError, ValueError):
             ws = np.array(ws, dtype=float)
             self._weights = ws
         self._total_weights = None
@@ -269,8 +269,8 @@ class KDE1D(object):
     def lambdas(self, ls):
         self.need_fit()
         try:
-            self._lambdas = np.asarray(float(ls))
-        except TypeError:
+            self._lambdas = np.asarray(as_scalar(ls))
+        except (TypeError, ValueError):
             ls = np.array(ls, dtype=float)
             self._lambdas = ls
 
@@ -302,7 +302,7 @@ class KDE1D(object):
         if callable(bw):
             self._bw_fct = bw
         else:
-            bw = float(bw)
+            bw = as_scalar(bw)
             self._bw = bw
             self._covariance = bw * bw
 
@@ -333,7 +333,7 @@ class KDE1D(object):
         if callable(cov):
             self._cov_fct = cov
         else:
-            cov = float(cov)
+            cov = as_scalar(cov)
             self._covariance = cov
             self._bw = np.sqrt(cov)
 

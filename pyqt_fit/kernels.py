@@ -130,12 +130,12 @@ class Kernel1D(object):
 
             K_0(z) = \int_{-\infty}^z K(t) dt
         """
-        z = np.asfarray(z)
+        z = np.asarray(z, dtype=float)
         try:
             comp_pdf = self.__comp_pdf
         except AttributeError:
             def pdf(x):
-                return self.pdf(np.atleast_1d(x))
+                return np.asarray(self.pdf(np.atleast_1d(x))).reshape(-1)[0]
             lower = self.lower
             upper = self.upper
             @make_ufunc()
@@ -148,7 +148,8 @@ class Kernel1D(object):
             self.__comp_cdf = comp_pdf
         if out is None:
             out = np.empty(z.shape, dtype=float)
-        return comp_pdf(z, out=out)
+        out[...] = comp_pdf(z)
+        return out
 
     def pm1(self, z, out=None):
         r"""
@@ -158,14 +159,14 @@ class Kernel1D(object):
 
             K_1(z) = \int_{-\infty}^z z K(t) dt
         """
-        z = np.asfarray(z)
+        z = np.asarray(z, dtype=float)
         try:
             comp_pm1 = self.__comp_pm1
         except AttributeError:
             lower = self.lower
             upper = self.upper
             def pm1(x):
-                return x * self.pdf(np.atleast_1d(x))
+                return x * np.asarray(self.pdf(np.atleast_1d(x))).reshape(-1)[0]
             @make_ufunc()
             def comp_pm1(x):
                 if x <= lower:
@@ -176,7 +177,8 @@ class Kernel1D(object):
             self.__comp_pm1 = comp_pm1
         if out is None:
             out = np.empty(z.shape, dtype=float)
-        return comp_pm1(z, out=out)
+        out[...] = comp_pm1(z)
+        return out
 
 
     def pm2(self, z, out=None):
@@ -187,14 +189,14 @@ class Kernel1D(object):
 
             K_2(z) = \int_{-\infty}^z z^2 K(t) dt
         """
-        z = np.asfarray(z)
+        z = np.asarray(z, dtype=float)
         try:
             comp_pm2 = self.__comp_pm2
         except AttributeError:
             lower = self.lower
             upper = self.upper
             def pm2(x):
-                return x * x * self.pdf(np.atleast_1d(x))
+                return x * x * np.asarray(self.pdf(np.atleast_1d(x))).reshape(-1)[0]
             @make_ufunc()
             def comp_pm2(x):
                 if x <= lower:
@@ -205,7 +207,8 @@ class Kernel1D(object):
             self.__comp_pm2 = comp_pm2
         if out is None:
             out = np.empty(z.shape, dtype=float)
-        return comp_pm2(z, out=out)
+        out[...] = comp_pm2(z)
+        return out
 
     def fft(self, z, out=None):
         """
@@ -213,7 +216,7 @@ class Kernel1D(object):
         representing the whole frequency range to be explored. For convenience, the second half of the points will be 
         provided as negative values.
         """
-        z = np.asfarray(z)
+        z = np.asarray(z, dtype=float)
         t_star = 2*np.pi/(z[1]-z[0])**2 / len(z)
         dz = t_star * (z[1] - z[0])
         return fftpack.fft(self(z * t_star) * dz).real
@@ -223,7 +226,7 @@ class Kernel1D(object):
         DCT of the kernel on the points of ``z``. The points will always be provided as a grid with :math:`2^n` points, 
         representing the whole frequency range to be explored.
         """
-        z = np.asfarray(z)
+        z = np.asarray(z, dtype=float)
         a1 = z[1] - z[0]
         gp = (z / a1 + 0.5) * np.pi / (len(z) * a1)
         return fftpack.dct(self(gp) * (gp[1] - gp[0])).real
@@ -265,7 +268,7 @@ class normal_kernel1d(Kernel1D):
         """
         Returns the FFT of the normal distribution
         """
-        z = np.asfarray(z)
+        z = np.asarray(z, dtype=float)
         out = np.multiply(z, z, out)
         out *= -0.5
         np.exp(out, out)
@@ -275,7 +278,7 @@ class normal_kernel1d(Kernel1D):
         """
         Returns the DCT of the normal distribution
         """
-        z = np.asfarray(z)
+        z = np.asarray(z, dtype=float)
         out = np.multiply(z, z, out)
         out *= -0.5
         np.exp(out, out)

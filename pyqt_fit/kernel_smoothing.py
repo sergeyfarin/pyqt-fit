@@ -10,6 +10,7 @@ from scipy.linalg import sqrtm, solve
 import scipy
 import numpy as np
 from .compat import irange
+from .utils import as_scalar
 
 from .cyth import HAS_CYTHON
 
@@ -230,7 +231,7 @@ class LocalLinearKernel1D(object):
     @covariance.setter  # noqa
     def covariance(self, cov):
         if callable(cov):
-            _cov = float(cov(self.xdata, self.ydata))
+            _cov = as_scalar(cov(self.xdata, self.ydata))
         else:
             _cov = float(cov)
         self._covariance = _cov
@@ -330,7 +331,7 @@ class LocalPolynomialKernel1D(object):
     @bandwidth.setter  # noqa
     def bandwidth(self, bw):
         if callable(bw):
-            _bw = float(bw(self.xdata, self.ydata))
+            _bw = as_scalar(bw(self.xdata, self.ydata))
         else:
             _bw = float(bw)
         self._bw = _bw
@@ -354,7 +355,7 @@ class LocalPolynomialKernel1D(object):
     @covariance.setter  # noqa
     def covariance(self, cov):
         if callable(cov):
-            _cov = float(cov(self.xdata, self.ydata))
+            _cov = as_scalar(cov(self.xdata, self.ydata))
         else:
             _cov = float(cov)
         self._covariance = _cov
@@ -419,7 +420,7 @@ class LocalPolynomialKernel1D(object):
             WxXx = Wx * Xx
             XWX = np.dot(Xx.T, WxXx)
             Lx = solve(XWX, WxXx.T)[0]
-            out[i] = np.dot(Lx, ydata)
+            out[i] = np.asarray(np.dot(Lx, ydata)).reshape(-1)[0]
         return out
 
     def __call__(self, *args, **kwords):
@@ -647,7 +648,7 @@ class LocalPolynomialKernel(object):
             np.multiply(Wx, Xx, WxXx)
             np.dot(Xx, WxXx.T, XWX)
             Lx = solve(XWX, WxXx)[0]
-            out[i] = np.dot(Lx, ydata)
+            out[i] = np.asarray(np.dot(Lx, ydata)).reshape(-1)[0]
         return out
 
     def __call__(self, *args, **kwords):

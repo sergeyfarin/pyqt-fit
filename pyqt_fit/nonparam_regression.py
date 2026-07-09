@@ -331,9 +331,9 @@ class NonParamRegression(object):
         if out is None:
             out = np.empty((points.shape[-1],), dtype=type(points.dtype.type() + 0.))
         else:
-            out.shape = (points.shape[-1],)
+            out = out.reshape((points.shape[-1],))
         self._fitted_method.evaluate(self, points, out)
-        out.shape = real_shape[-1:]
+        out = out.reshape(real_shape[-1:])
         if self.ytrans:
             self.ytrans.inv(out, out=out)
         return out

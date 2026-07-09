@@ -23,7 +23,7 @@ methods_args = [dict(q=0),
 
 class TestConvergence1D(object):
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.xx = np.r_[0:3:256j]
         cls.yy = fct(cls.xx)
         cls.nb_samples = 100
@@ -53,8 +53,8 @@ class TestConvergence1D(object):
 
     def testConvergence(self):
         for m, a in zip(methods, methods_args):
-            yield self.convergence, m, a
+            self.convergence(m, a)
         npr_methods.usePython()
-        yield self.convergence, npr_methods.LocalLinearKernel1D, dict(q=1)
+        self.convergence(npr_methods.LocalLinearKernel1D, dict(q=1))
         npr_methods.useCython()
 

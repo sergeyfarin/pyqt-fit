@@ -5,7 +5,6 @@ __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 from ..utils import namedtuple
 from .. import loader
 import os
-from path import path
 
 _fields = ['name', 'description', 'args', 'init_args', 'Dfun', '__call__']
 
@@ -45,11 +44,13 @@ def load():
     """
     global functions
     functions = loader.load(find_functions)
-    extra_path = os.environ.get("PYQTFIT_PATH", "").split(":")
+    extra_path = os.environ.get("PYQTFIT_PATH", "").split(os.pathsep)
     for ep in extra_path:
-        ep = path(ep)
-        if ep and (ep / "functions").exists():
-            functions.update(loader.load(find_functions, ep / "functions"))
+        if not ep:
+            continue
+        functions_path = os.path.join(ep, "functions")
+        if os.path.isdir(functions_path):
+            functions.update(loader.load(find_functions, functions_path))
     return functions
 
 load()

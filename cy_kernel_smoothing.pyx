@@ -7,8 +7,8 @@ from numpy import linalg
 cimport numpy as np
 from libc.math cimport exp, pow
 
-DTYPE = np.float
-ctypedef np.float_t DTYPE_t
+DTYPE = np.float64
+ctypedef np.float64_t DTYPE_t
 #ctypedef np.ndarray[DTYPE_t, ndim=2] ndarray2d_t
 #ctypedef np.ndarray[DTYPE_t, ndim=1] ndarray1d_t
 

@@ -1,7 +1,14 @@
 from __future__ import division, absolute_import, print_function
 
 from .. import utils
-from nose.tools import raises
+
+
+def assert_raises(exception, function, *args, **kwargs):
+    try:
+        function(*args, **kwargs)
+    except exception:
+        return
+    raise AssertionError("{} was not raised".format(exception.__name__))
 
 
 class TestNamedTuple(object):
@@ -31,33 +38,27 @@ class TestNamedTuple(object):
         assert hasattr(n, '__tested__')
         assert n(True)
 
-    @raises(ValueError)
     def test_badname(self):
-        utils.namedtuple('nt', 'x y _test1')
+        assert_raises(ValueError, utils.namedtuple, 'nt', 'x y _test1')
 
-    @raises(ValueError)
     def reserved(self, n):
-        utils.namedtuple('nt', n)
+        assert_raises(ValueError, utils.namedtuple, 'nt', n)
 
     def test_reserved_names(self):
         for n in ['__init__', '__slots__', '__new__', '__repr__', '__getnewargs__']:
-            yield self.reserved, n
+            self.reserved(n)
 
-    @raises(ValueError)
     def test_keyword(self):
-        utils.namedtuple('nt', 'is')
+        assert_raises(ValueError, utils.namedtuple, 'nt', 'is')
 
-    @raises(ValueError)
     def test_duplicate(self):
-        utils.namedtuple('nt', 'x y x')
+        assert_raises(ValueError, utils.namedtuple, 'nt', 'x y x')
 
-    @raises(ValueError)
     def test_number(self):
-        utils.namedtuple('nt', 'x 12 x')
+        assert_raises(ValueError, utils.namedtuple, 'nt', 'x 12 x')
 
-    @raises(ValueError)
     def test_symbol(self):
-        utils.namedtuple('nt', 'x y-t x')
+        assert_raises(ValueError, utils.namedtuple, 'nt', 'x y-t x')
 
 import numpy as np
 
@@ -81,8 +82,10 @@ class TestJacobian(object):
 
     def test_call_prec(self):
         for p in (3, 4, 5, 6, 8):  # Above 8, we hit precision limit of floating point
-            yield self.call_prec, p
+            self.call_prec(p)
 
     def test_call_high_prec(self):
         for p in (5, 8, 9):  # Above 9, we hit precision limit of floating point
-            yield self.call_prec, p, utils.large_float
+            if p == 9 and np.finfo(utils.large_float).precision <= np.finfo(float).precision:
+                continue
+            self.call_prec(p, utils.large_float)

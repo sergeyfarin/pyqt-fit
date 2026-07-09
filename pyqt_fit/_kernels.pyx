@@ -29,7 +29,7 @@ cdef void _vectorize(object z,
 cdef object vectorize(object z,
                       object out,
                       float64_t (*fct)(float64_t v)):
-    cdef np.ndarray zz = np.asfarray(z)
+    cdef np.ndarray zz = np.asarray(z, dtype=np.float64)
     if zz.ndim > 0:
         if out is None:
             out = np.PyArray_EMPTY(zz.ndim, zz.shape, np.NPY_FLOAT64, False)

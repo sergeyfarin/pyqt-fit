@@ -7,16 +7,21 @@ from numpy.random import randn
 from scipy import integrate
 from . import kde_utils
 
+try:
+    simpson = integrate.simpson
+except AttributeError:
+    simpson = integrate.simps
+
 class TestBandwidth(object):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.ratios = np.array([1., 2., 5.])
         d = randn(500)
         cls.vs = cls.ratios[:, np.newaxis]*np.array([d, d, d])
         cls.ss = np.var(cls.vs, axis=1)
 
     def variance_methods(self, m):
-        bws = np.asfarray([m(v) for v in self.vs])
+        bws = np.asarray([m(v) for v in self.vs], dtype=float)
         assert bws.shape == (3, 1, 1)
         rati = bws[:, 0, 0] / self.ss
         assert sum((rati - rati[0])**2) < 1e-6
@@ -24,8 +29,8 @@ class TestBandwidth(object):
         assert sum((rati - self.ratios**2)**2) < 1e-6
 
     def test_variance_methods(self):
-        yield self.variance_methods, kde.silverman_covariance
-        yield self.variance_methods, kde.scotts_covariance
+        self.variance_methods(kde.silverman_covariance)
+        self.variance_methods(kde.scotts_covariance)
 
     def test_botev(self):
         class FakeModel(object):
@@ -42,7 +47,7 @@ class TestBandwidth(object):
 
 class TestKDE1D(kde_utils.KDETester):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_norm(cls)
 
     #def test_converge(self):
@@ -63,7 +68,7 @@ class TestKDE1D(kde_utils.KDETester):
 
     def grid_method_works(self, k, method, name):
         xs, ys = k.grid(4000)
-        tot = integrate.simps(ys, xs)
+        tot = simpson(ys, x=xs)
         acc = max(method.normed_accuracy, method.grid_accuracy)
         assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
@@ -105,19 +110,19 @@ class TestKDE1D(kde_utils.KDETester):
         method = self.methods[0]
         k = self.createKDE(self.vs[1], method)
         xs, ys = k.grid()
-        tot = integrate.simps(ys, xs)
+        tot = simpson(ys, x=xs)
         acc = max(method.grid_accuracy, method.normed_accuracy) * ker.precision_factor
         assert abs(tot - 1) < acc, "Error, {} should be close to 1".format(tot)
 
 class LogTestKDE1D(TestKDE1D):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_lognorm(cls)
         cls.methods = kde_utils.methods_log
 
 class TestSF(kde_utils.KDETester):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_norm(cls)
         cls.methods = kde_utils.methods
         del cls.sizes[1:]
@@ -142,14 +147,14 @@ class TestSF(kde_utils.KDETester):
 
 class TestLogSF(TestSF):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_lognorm(cls)
         cls.methods = kde_utils.methods_log
         del cls.sizes[1:]
 
 class TestISF(kde_utils.KDETester):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_norm(cls)
         cls.methods = kde_utils.methods
         del cls.sizes[1:]
@@ -175,13 +180,13 @@ class TestISF(kde_utils.KDETester):
 
 class TestLogISF(TestISF):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_lognorm(cls)
         del cls.sizes[1:]
 
 class TestICDF(kde_utils.KDETester):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_norm(cls)
         cls.methods = kde_utils.methods
         del cls.sizes[1:]
@@ -207,7 +212,7 @@ class TestICDF(kde_utils.KDETester):
 
 class TestLogICDF(TestICDF):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_lognorm(cls)
         cls.methods = kde_utils.methods_log
         del cls.sizes[1:]
@@ -215,7 +220,7 @@ class TestLogICDF(TestICDF):
 
 class TestHazard(kde_utils.KDETester):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_norm(cls)
         cls.methods = kde_utils.methods
         del cls.sizes[1:]
@@ -250,14 +255,14 @@ class TestHazard(kde_utils.KDETester):
 
 class TestLogHazard(TestHazard):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_lognorm(cls)
         del cls.sizes[1:]
         cls.methods = kde_utils.methods_log
 
 class TestCumHazard(kde_utils.KDETester):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_norm(cls)
         cls.methods = kde_utils.methods
         del cls.sizes[1:]
@@ -289,7 +294,7 @@ class TestCumHazard(kde_utils.KDETester):
 
 class TestLogCumHazard(TestCumHazard):
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         kde_utils.setupClass_lognorm(cls)
         del cls.sizes[1:]
         cls.methods = kde_utils.methods_log

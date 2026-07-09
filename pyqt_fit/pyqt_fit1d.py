@@ -4,19 +4,114 @@ from . import functions, residuals, plot_fit, bootstrap
 from .compat import user_text, CSV_READ_FLAGS
 from .compat import unicode_csv_reader as csv_reader
 
-from PyQt4 import QtGui, QtCore, uic
-from PyQt4.QtCore import pyqtSignature, Qt
-from PyQt4.QtGui import QMessageBox
+try:
+    from PySide6 import QtCore, QtUiTools, QtWidgets
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QDoubleValidator
+    QT_BINDING = "PySide6"
+except ImportError:
+    try:
+        from PySide2 import QtCore, QtUiTools, QtWidgets
+        from PySide2.QtCore import Qt
+        from PySide2.QtGui import QDoubleValidator
+        QT_BINDING = "PySide2"
+    except ImportError:
+        raise ImportError("PySide6 is required for Python 3; PySide2 is "
+                          "supported as the legacy Qt 5 binding")
+
+
+class _QtGui(object):
+    QApplication = QtWidgets.QApplication
+    QDialog = QtWidgets.QDialog
+    QDialogButtonBox = QtWidgets.QDialogButtonBox
+    QFileDialog = QtWidgets.QFileDialog
+    QDoubleValidator = QDoubleValidator
+
+
+QtGui = _QtGui
+QMessageBox = QtWidgets.QMessageBox
+
+
+def pyqtSignature(signature):
+    """Translate the legacy string signatures into Qt for Python slots."""
+    slot_types = {
+        "bool": bool,
+        "const QString&": str,
+        "QAbstractButton*": QtWidgets.QAbstractButton,
+    }
+    if signature:
+        return QtCore.Slot(slot_types.get(signature, object))
+    return QtCore.Slot()
+
+
+def _qt_enum(scope, name):
+    """Read an enum from both Qt 5's and Qt 6's enum layouts."""
+    value = getattr(Qt, name, None)
+    if value is not None:
+        return value
+    return getattr(getattr(Qt, scope), name)
+
+
+DISPLAY_ROLE = _qt_enum("ItemDataRole", "DisplayRole")
+EDIT_ROLE = _qt_enum("ItemDataRole", "EditRole")
+CHECK_STATE_ROLE = _qt_enum("ItemDataRole", "CheckStateRole")
+HORIZONTAL = _qt_enum("Orientation", "Horizontal")
+ITEM_IS_ENABLED = _qt_enum("ItemFlag", "ItemIsEnabled")
+ITEM_IS_EDITABLE = _qt_enum("ItemFlag", "ItemIsEditable")
+ITEM_IS_USER_CHECKABLE = _qt_enum("ItemFlag", "ItemIsUserCheckable")
+NO_ITEM_FLAGS = _qt_enum("ItemFlag", "NoItemFlags")
+
+
+def _dialog_button_role(name):
+    role = getattr(QtGui.QDialogButtonBox, name, None)
+    if role is not None:
+        return role
+    return getattr(QtGui.QDialogButtonBox.ButtonRole, name)
+
+
+RESET_ROLE = _dialog_button_role("ResetRole")
+APPLY_ROLE = _dialog_button_role("ApplyRole")
+
+
+def _load_ui(filename, target):
+    """Load a Designer form into an existing dialog using Qt for Python."""
+    loader = QtUiTools.QUiLoader()
+    form = loader.load(filename, target)
+    if form is None:
+        raise RuntimeError("Unable to load Qt Designer form: {}".format(filename))
+
+    target.setObjectName(form.objectName())
+    target.setGeometry(form.geometry())
+    target.setWindowTitle(form.windowTitle())
+
+    for child in form.findChildren(QtCore.QObject):
+        name = child.objectName()
+        if name:
+            setattr(target, str(name), child)
+
+    layout = form.layout()
+    if layout is not None:
+        form.setLayout(None)
+        target.setLayout(layout)
+
+    form.deleteLater()
 import matplotlib
 from numpy import nan, array, ma, arange
-from path import path
 from .curve_fitting import CurveFitting
+import os
 import sys
 from pylab import close as close_figure
 import traceback
 import re
 
 CIsplitting = re.compile(r'[;, :-]')
+
+
+def _selected_filename(value):
+    """Return a filename from either the Qt4 or Qt5 dialog API."""
+    if isinstance(value, tuple):
+        return value[0]
+    return value
 
 
 def get_args(*a, **k):
@@ -46,10 +141,10 @@ class ParametersModel(QtCore.QAbstractTableModel):
     def columnCount(self, idx=QtCore.QModelIndex()):
         return 3
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role != Qt.DisplayRole:
+    def headerData(self, section, orientation, role=DISPLAY_ROLE):
+        if role != DISPLAY_ROLE:
             return
-        if orientation == Qt.Horizontal:
+        if orientation == HORIZONTAL:
             if section == 0:
                 return "Parameter"
             elif section == 1:
@@ -59,34 +154,34 @@ class ParametersModel(QtCore.QAbstractTableModel):
 
     def flags(self, index):
         if index.column() == 0:
-            return Qt.ItemIsEnabled
+            return ITEM_IS_ENABLED
         elif index.column() == 1:
-            return Qt.ItemIsEnabled | Qt.ItemIsEditable
+            return ITEM_IS_ENABLED | ITEM_IS_EDITABLE
         elif index.column() == 2:
-            return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
-        return Qt.NoItemFlags
+            return ITEM_IS_ENABLED | ITEM_IS_USER_CHECKABLE
+        return NO_ITEM_FLAGS
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=DISPLAY_ROLE):
         r = index.row()
         c = index.column()
         if 0 <= r < len(self.parm_names) and 0 <= c < 3:
             if c == 0:
-                if role == Qt.DisplayRole:
+                if role == DISPLAY_ROLE:
                     return self.parm_names[r]
             elif c == 1:
-                if role == Qt.DisplayRole:
+                if role == DISPLAY_ROLE:
                     return "%g" % (self.parm_values[r],)
-                elif role == Qt.EditRole:
+                elif role == EDIT_ROLE:
                     return "%g" % (self.parm_values[r],)
             elif c == 2:
-                if role == Qt.CheckStateRole:
+                if role == CHECK_STATE_ROLE:
                     return self.fixed[r]
 
-    def setData(self, index, value, role=Qt.DisplayRole):
+    def setData(self, index, value, role=DISPLAY_ROLE):
         r = index.row()
         c = index.column()
         if 0 <= r < len(self.parm_names) and 0 < c < 3:
-            if c == 1 and role == Qt.EditRole:
+            if c == 1 and role == EDIT_ROLE:
                 try:
                     f = float(value)
                     self.parm_values[r] = f
@@ -94,7 +189,7 @@ class ParametersModel(QtCore.QAbstractTableModel):
                     return True
                 except ValueError:
                     print("Error, cannot convert value to double")
-            elif c == 2 and role == Qt.CheckStateRole:
+            elif c == 2 and role == CHECK_STATE_ROLE:
                 self.fixed[r] = value
                 self.dataChanged.emit(index, index)
                 return True
@@ -104,16 +199,31 @@ class ParametersModel(QtCore.QAbstractTableModel):
 class QtFitDlg(QtGui.QDialog):
     def __init__(self, *args, **kwords):
         QtGui.QDialog.__init__(self, *args, **kwords)
-        p = (path(__file__).dirname() / 'qt_fit.ui').abspath()
-        uic.loadUi(p, self)
+        p = os.path.abspath(os.path.join(os.path.dirname(__file__), 'qt_fit.ui'))
+        _load_ui(p, self)
+        self.function.currentTextChanged.connect(self.on_function_currentIndexChanged)
+        self.residuals.currentTextChanged.connect(self.on_residuals_currentIndexChanged)
+        self.selectInputFile.clicked.connect(self.on_selectInputFile_clicked)
+        self.selectOutputFile.clicked.connect(self.on_selectOutputFile_clicked)
+        self.fieldXbox.currentTextChanged.connect(self.on_fieldXbox_currentIndexChanged)
+        self.fieldYbox.currentTextChanged.connect(self.on_fieldYbox_currentIndexChanged)
+        self.inputFile.textChanged.connect(self.on_inputFile_textChanged)
+        self.outputFile.textChanged.connect(self.on_outputFile_textChanged)
+        self.writeOutput.toggled.connect(self.on_writeOutput_toggled)
+        self.computeCI.toggled.connect(self.on_computeCI_toggled)
+        self.CIvalues.textEdited.connect(self.on_CIvalues_textEdited)
+        self.CIvalues.editingFinished.connect(self.on_CIvalues_editingFinished)
+        self.CImethod.currentTextChanged.connect(self.on_CImethod_currentIndexChanged)
+        self.buttonBox.clicked.connect(self.on_buttonBox_clicked)
+        self.buttonBox.rejected.connect(self.on_buttonBox_rejected)
         if sys.platform != "darwin":
             self.selectInputFile.setMaximumWidth(32)
             self.selectOutputFile.setMaximumWidth(32)
         self.validator = QtGui.QDoubleValidator()
         self.xMin.setValidator(self.validator)
         self.xMax.setValidator(self.validator)
-        self.buttonBox.addButton("Plot", QtGui.QDialogButtonBox.ApplyRole)
-        self.buttonBox.addButton("Close Plots", QtGui.QDialogButtonBox.ResetRole)
+        self.buttonBox.addButton("Plot", APPLY_ROLE)
+        self.buttonBox.addButton("Close Plots", RESET_ROLE)
         self.init()
 
     def init(self):
@@ -156,6 +266,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_selectInputFile_clicked(self):
         filename = QtGui.QFileDialog.getOpenFileName(self, "Open CSV file",
                                                      filter="CSV file (*.csv);;All Files (*.*)")
+        filename = _selected_filename(filename)
         if filename:
             self.input = filename
 
@@ -163,6 +274,7 @@ class QtFitDlg(QtGui.QDialog):
     def on_selectOutputFile_clicked(self):
         filename = QtGui.QFileDialog.getSaveFileName(self, "Save CSV file",
                                                      filter="CSV file (*.csv);;All Files (*.*)")
+        filename = _selected_filename(filename)
         if filename:
             self.output = filename
 
@@ -199,15 +311,14 @@ class QtFitDlg(QtGui.QDialog):
 
     @pyqtSignature("const QString&")
     def on_inputFile_textChanged(self, txt):
-        txt = path(txt)
         self.input = txt
 
     def _getInput(self):
         return self._input
 
     def _setInput(self, txt):
-        txt = path(txt)
-        if txt != self._input and txt.isfile():
+        txt = user_text(txt)
+        if txt != self._input and os.path.isfile(txt):
             try:
                 data = None
                 header = None
@@ -262,7 +373,7 @@ class QtFitDlg(QtGui.QDialog):
         return self._output
 
     def _setOutput(self, txt):
-        txt = path(txt)
+        txt = user_text(txt)
         if self._output != txt:
             if txt and not txt.endswith(".csv"):
                 txt += ".csv"
@@ -402,9 +513,9 @@ class QtFitDlg(QtGui.QDialog):
     @pyqtSignature("QAbstractButton*")
     def on_buttonBox_clicked(self, button):
         role = self.buttonBox.buttonRole(button)
-        if role == QtGui.QDialogButtonBox.ResetRole:
+        if role == RESET_ROLE:
             close_figure('all')
-        elif role == QtGui.QDialogButtonBox.ApplyRole:
+        elif role == APPLY_ROLE:
             self.plot()
 
     @pyqtSignature("")
@@ -477,7 +588,7 @@ class QtFitDlg(QtGui.QDialog):
             except Exception as ex:
                 traceback.print_exc()
                 QMessageBox.critical(self, "Error during Parameters Estimation",
-                                     "{1} exception: {2}".format(type(ex).__name__, ex.message))
+                                     "{0} exception: {1}".format(type(ex).__name__, str(ex)))
                 return
             plot_fit.plot1d(result, loc=loc)
             if self.writeResult and outfile:
@@ -493,8 +604,15 @@ def main():
     wnd.raise_()
     return wnd
 
-if __name__ == "__main__":
+
+def run():
+    """Launch the graphical 1D fitting application."""
     app = QtGui.QApplication(sys.argv)
     matplotlib.interactive(True)
-    wnd = main()
-    app.exec_()
+    main()
+    if hasattr(app, "exec"):
+        return app.exec()
+    return app.exec_()
+
+if __name__ == "__main__":
+    run()

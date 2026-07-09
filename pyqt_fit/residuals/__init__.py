@@ -4,7 +4,6 @@ __author__ = "Pierre Barbier de Reuille <pierre.barbierdereuille@gmail.com>"
 
 from ..utils import namedtuple
 from .. import loader
-from path import path
 import os
 
 _fields = ['name', 'description', 'invert', 'Dfun', '__call__']
@@ -46,11 +45,13 @@ def load():
     """
     global residuals
     residuals = loader.load(find_functions)
-    extra_path = os.environ.get("PYQTFIT_PATH", "").split(":")
+    extra_path = os.environ.get("PYQTFIT_PATH", "").split(os.pathsep)
     for ep in extra_path:
-        ep = path(ep)
-        if ep and (ep / "residuals").exists():
-            residuals.update(loader.load(find_functions, ep / "residuals"))
+        if not ep:
+            continue
+        residuals_path = os.path.join(ep, "residuals")
+        if os.path.isdir(residuals_path):
+            residuals.update(loader.load(find_functions, residuals_path))
     return residuals
 
 load()

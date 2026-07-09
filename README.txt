@@ -33,6 +33,24 @@ PyQt-Fit can also be used from the python interpreter. Here is a typical session
 PyQt-Fit is a package for regression in Python. There are two set of tools: for
 parametric, or non-parametric regression.
 
+Installation
+------------
+
+The package supports Python 3 and keeps a Python 2.7-compatible source path for
+legacy applications. Install the core package with::
+
+    python -m pip install .
+
+Install the optional GUI or development dependencies with::
+
+    python -m pip install .[gui]       # PySide6, or PySide2 on legacy Python
+    python -m pip install .[gui-qt5]   # PySide2 legacy Qt 5 path
+    python -m pip install .[test]
+
+The GUI uses PySide6 by default and falls back to PySide2 for the legacy Qt 5
+path. The core regression modules do not require Qt. The old ``path.py``
+dependency is no longer required.
+
 For the parametric regression, the user can define its own vectorized function
 (note that a normal function wrappred into numpy's "vectorize" function is
 perfectly fine here), and find the parameters that best fit some data. It also
